@@ -36,6 +36,12 @@ struct TpHeader
 
   uint64_t get_timestamp() const // NOLINT(build/unsigned)
   {
+//    uint64_t timestamp = m_timestamp_1 | (static_cast<uint64_t>(m_timestamp_2) << 32); // NOLINT(build/unsigned)
+//    if (!m_z) {
+//      timestamp |= static_cast<uint64_t>(m_wib_counter_1) << 48; // NOLINT(build/unsigned)
+//    }
+//    return timestamp;
+
     uint64_t timestamp = (m_timestamp_1 & 0xFFFF0000) >> 16;
     timestamp += static_cast<int64_t>(m_timestamp_1 & 0xFFFF) << 16;
     timestamp += static_cast<int64_t>(m_timestamp_2 & 0xFFFF0000) << 16;
@@ -62,13 +68,15 @@ struct TpHeader
   // Print functions for debugging.
   std::ostream& print(std::ostream& o) const
   {
+
+
     o << "Printing raw WIB TP header:\n";
     o << "flags:" << unsigned(m_flags) << " slot:" << unsigned(m_slot_no) << " wire:" << unsigned(m_wire_no)
       << " fiber:" << unsigned(m_fiber_no) << " crate:" << unsigned(m_crate_no) << " timestamp:" << get_timestamp();
-    o << "\nPrinting raw WIB TP pedinfo:\n";
-    o << "median:" << unsigned(m_median) << " accumulator:" << unsigned(m_accumulator) << " nhits:" << unsigned(m_nhits)
-      << " padding_1:" << unsigned(m_padding_1) << " padding_2:" << unsigned(m_padding_2)
-      << " padding_3:" << unsigned(m_padding_3);
+    //o << "\nPrinting raw WIB TP pedinfo:\n";
+    //o << "median:" << unsigned(m_median) << " accumulator:" << unsigned(m_accumulator) << " nhits:" << unsigned(m_nhits)
+    //  << " padding_1:" << unsigned(m_padding_1) << " padding_2:" << unsigned(m_padding_2)
+    //  << " padding_3:" << unsigned(m_padding_3);
 
     return o << '\n';
   }
@@ -168,15 +176,22 @@ operator<<(std::ostream& o, TpData const& tp)
 //========================
 struct RawWIBTp
 {
-  TpHeader m_head;
-  TpData m_blocks[1];
+//private:
+  //int m_nhits;
 
-  RawWIBTp() { m_nhits = 1; }
+public:
+  TpHeader m_head;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+  TpData m_blocks[];
+#pragma GCC diagnostic pop
+
+  RawWIBTp() { /*m_nhits = 1;*/ }
 
   // mutators
   void set_nhits(int nhits)
   {
-    m_nhits = nhits;
+    //m_nhits = nhits;
     m_head.set_nhits(nhits);
   }
 
@@ -191,8 +206,7 @@ struct RawWIBTp
   int get_nhits() { return m_head.get_nhits(); }
   uint16_t get_padding_3() { return m_head.get_padding_3(); }
 
-private:
-  int m_nhits;
+
 };
 
 inline std::ostream&
