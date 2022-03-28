@@ -368,7 +368,7 @@ get_frame_divided_adcs(const dunedaq::detdataformats::wib::WIBFrame* __restrict_
   // Treating the register as containing 8 32-bit items, this blend
   // mask takes 6 from the first register and 2 from the second
   // register, which is what we want
-  int blend_mask = 0xc0;
+  const int blend_mask = 0xc0;
 
   adcs.collection_registers.set_ymm(0, _mm256_blend_epi32(adcs_tmp.ymm(0), reg0_quad0, blend_mask));
   adcs.collection_registers.set_ymm(1, _mm256_blend_epi32(adcs_tmp.ymm(1), reg0_quad1, blend_mask));
@@ -517,7 +517,7 @@ get_frame_collection_adcs(const dunedaq::detdataformats::wib::WIBFrame* __restri
   // Treating the register as containing 8 32-bit items, this blend
   // mask takes 6 from the first register and 2 from the second
   // register, which is what we want
-  int blend_mask = 0xc0;
+  const int blend_mask = 0xc0;
 
   adcs.set_ymm(0, _mm256_blend_epi32(adcs_tmp.ymm(0), reg0_quad0, blend_mask));
   adcs.set_ymm(1, _mm256_blend_epi32(adcs_tmp.ymm(1), reg0_quad1, blend_mask));
