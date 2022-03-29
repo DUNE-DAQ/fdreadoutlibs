@@ -39,6 +39,7 @@ struct ChanState
   // TODO: DRY July-22-2021 Philip Rodrigues (rodriges@fnal.gov)
   static const int NTAPS = 8;
 
+#ifndef __clang__
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ quantile25[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ quantile75[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -56,6 +57,26 @@ struct ChanState
   alignas(32) int16_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 };
+#else
+  alignas(32) int16_t  pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int16_t  quantile25[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int16_t  quantile75[NREGISTERS * SAMPLES_PER_REGISTER];
+
+  alignas(32) int16_t  accum[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int16_t  accum25[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int16_t  accum75[NREGISTERS * SAMPLES_PER_REGISTER];
+
+  // Variables for filtering
+  alignas(32) int16_t  prev_samp[NREGISTERS * SAMPLES_PER_REGISTER * NTAPS];
+
+  // Variables for hit finding
+  alignas(32) int16_t
+     prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
+  alignas(32) int16_t  hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int16_t  hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
+};
+
+#endif
 
 template<size_t NREGISTERS>
 struct ProcessingInfo

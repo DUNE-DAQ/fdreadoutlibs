@@ -98,7 +98,11 @@ public:
   inline size_t size() const { return N; }
 
 private:
+#ifndef __clang__
   alignas(32) uint16_t __restrict__ m_array[N * 16]; // NOLINT(build/unsigned)
+#else
+  alignas(32) uint16_t m_array[N * 16]; // NOLINT(build/unsigned)
+#endif
 };
 
 typedef RegisterArray<6> FrameRegistersCollection;
