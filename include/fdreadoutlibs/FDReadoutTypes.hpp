@@ -8,8 +8,6 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTTYPES_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTTYPES_HPP_
 
-#include "wib/RawWIBTp.hpp"
-
 #include "appfwk/DAQSink.hpp"
 #include "appfwk/DAQSource.hpp"
 
@@ -19,6 +17,7 @@
 #include "detdataformats/ssp/SSPTypes.hpp"
 #include "detdataformats/wib/WIBFrame.hpp"
 #include "detdataformats/wib2/WIB2Frame.hpp"
+#include "detdataformats/wib/RawWIBTp.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 
 #include <cstdint> // uint_t types
@@ -146,16 +145,15 @@ struct WIB_SUPERCHUNK_STRUCT
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
   static const constexpr uint64_t expected_tick_difference = 25; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
 };
-static_assert(sizeof(struct WIB_SUPERCHUNK_STRUCT) == 5568, "Check your assumptions on WIB_SUPERCHUNK_STRUCT");
 
-static_assert(sizeof(struct WIB_SUPERCHUNK_STRUCT) == WIB_SUPERCHUNK_SIZE,
+static_assert(sizeof(struct dunedaq::detdataformats::wib::WIBFrame)*12 == WIB_SUPERCHUNK_SIZE,
               "Check your assumptions on WIB_SUPERCHUNK_STRUCT");
 
 /**
  * @brief For WIB2 the numbers are different.
  * 12[WIB2 frames] x 468[Bytes] = 5616[Bytes]
  * */
-const constexpr std::size_t WIB2_SUPERCHUNK_SIZE = 5616; // for 12: 5616
+const constexpr std::size_t WIB2_SUPERCHUNK_SIZE = 5664; // for 12: 5664
 struct WIB2_SUPERCHUNK_STRUCT
 {
   using FrameType = dunedaq::detdataformats::wib2::WIB2Frame;
@@ -181,11 +179,11 @@ struct WIB2_SUPERCHUNK_STRUCT
     frame->header.timestamp_2 = ts >> 32;
   }
 
-  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 25) // NOLINT(build/unsigned)
+  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 32) // NOLINT(build/unsigned)
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < 12; ++i) {
-      auto w2f = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(((uint8_t*)(&data)) + i * 468); // NOLINT
+      auto w2f = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(((uint8_t*)(&data)) + i * 472); // NOLINT
       w2f->header.timestamp_1 = ts_next;
       w2f->header.timestamp_2 = ts_next >> 32;
       ts_next += offset;
@@ -207,18 +205,18 @@ struct WIB2_SUPERCHUNK_STRUCT
     return reinterpret_cast<FrameType*>(data + WIB2_SUPERCHUNK_SIZE); // NOLINT
   }
 
-  size_t get_payload_size() { return 5616; }
+  size_t get_payload_size() { return 5664; }
 
   size_t get_num_frames() { return 12; }
 
-  size_t get_frame_size() { return 468; }
+  size_t get_frame_size() { return 472; }
 
   static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
   static const constexpr uint64_t expected_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct WIB2_SUPERCHUNK_STRUCT) == WIB2_SUPERCHUNK_SIZE,
+static_assert(sizeof(struct dunedaq::detdataformats::wib2::WIB2Frame)*12 == WIB2_SUPERCHUNK_SIZE,
               "Check your assumptions on WIB2_SUPERCHUNK_STRUCT");
 
 /**
@@ -339,7 +337,7 @@ struct SW_WIB_TRIGGERPRIMITIVE_STRUCT
 };
 
 static_assert(sizeof(struct SW_WIB_TRIGGERPRIMITIVE_STRUCT) == sizeof(triggeralgs::TriggerPrimitive),
-              "Check your assumptions on TP_READOUT_TYPE");
+              "Check your assumptions on SW_WIB_TRIGGERPRIMITIVE_STRUCT");
 
 const constexpr std::size_t SSP_FRAME_SIZE = 1012;
 struct SSP_FRAME_STRUCT
@@ -358,7 +356,7 @@ struct SSP_FRAME_STRUCT
     return this->get_first_timestamp() < other.get_first_timestamp() ? true : false;
   }
 
-  uint64_t get_timestamp() const 
+  uint64_t get_timestamp() const  // NOLINT(build/unsigned)
   {
     return get_first_timestamp();
   }
@@ -409,7 +407,7 @@ struct SSP_FRAME_STRUCT
 };
 
 static_assert(sizeof(struct SSP_FRAME_STRUCT) == sizeof(detdataformats::ssp::EventHeader) + SSP_FRAME_SIZE,
-              "Check your assumptions on TP_READOUT_TYPE");
+              "Check your assumptions on SSP_FRAME_STRUCT");
 
 /**
  * @brief Convencience wrapper to take ownership over char pointers with
@@ -430,22 +428,40 @@ struct VariableSizePayloadWrapper
 // raw WIB TP
 struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
 {
-  using FrameType = dunedaq::fdreadoutlibs::RawWIBTp;
+  RAW_WIB_TRIGGERPRIMITIVE_STRUCT()
+  {
+    m_raw_tp_frame_chunksize = 0;
+  }
+
+  using FrameType = dunedaq::detdataformats::wib::RawWIBTp;
 
   std::unique_ptr<FrameType> rwtp = nullptr;
 
-  bool operator<(const RAW_WIB_TRIGGERPRIMITIVE_STRUCT& other) const
+  // latency buffer 
+  bool operator<(const RAW_WIB_TRIGGERPRIMITIVE_STRUCT& other) const 
   {
-    return this->rwtp->get_timestamp() < other.rwtp->get_timestamp();
+    // FIXME RS, IH 2022-02-28  rwtp should never be nullptr
+    if (rwtp == nullptr) return true;
+    return rwtp->get_timestamp() < other.rwtp->get_timestamp(); 
   }
 
   uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
   {
-    return rwtp->get_timestamp();
+    // FIXME RS, IH 2022-02-28  rwtp should never be nullptr
+    return rwtp == nullptr ? 0 : rwtp->get_timestamp();
   }
   void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
-    rwtp->set_timestamp(ts);
+    // FIXME RS, IH 2022-28-02  rwtp should never be nullptr
+    if (rwtp != nullptr) {
+      rwtp->set_timestamp(ts);
+    }
+  }
+  void fake_timestamps(uint64_t first_timestamp, uint64_t /*offset = 25*/) // NOLINT(build/unsigned)
+  {
+    if (rwtp != nullptr) {
+      rwtp->set_timestamp(first_timestamp);
+    }
   }
 
   FrameType* begin()
@@ -454,22 +470,69 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
   }
   FrameType* end()
   {
-    return rwtp.get() + 1; // NOLINT
+    return rwtp.get() + get_payload_size(); // NOLINT
   }
 
   static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
   static const constexpr uint64_t expected_tick_difference = 25; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
+  //static const constexpr size_t frame_size = TP_SIZE;
+  //static const constexpr size_t element_size = TP_SIZE;
+  static const constexpr uint64_t tick_dist = 25; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
+  static const constexpr uint8_t frames_per_element = 1; // NOLINT(build/unsigned)
+
   // raw WIB TP frames are variable size
   size_t get_payload_size() {
-    return this->rwtp->get_frame_size();
+    return rwtp->get_frame_size();
   }
 
-  size_t get_num_frames() { return 1; }
+  size_t get_num_frames() {
+    return 1;
+  }
 
   size_t get_frame_size() {
-    return this->rwtp->get_frame_size();
+    return rwtp->get_frame_size();
   }
+
+  void set_raw_tp_frame_chunk(std::vector<char>& source)
+  {
+    int bsize = source.capacity();
+    m_raw_tp_frame_chunk.reserve(bsize);
+    ::memcpy(static_cast<void*>(m_raw_tp_frame_chunk.data()),
+             static_cast<void*>(source.data()),
+             bsize);
+    m_raw_tp_frame_chunksize = bsize;
+  }
+
+  std::vector<std::uint8_t>& get_raw_tp_frame_chunk() // NOLINT(build/unsigned)
+  {
+    return std::ref(m_raw_tp_frame_chunk);
+  }
+
+  std::vector<std::uint8_t>& get_data()  // NOLINT(build/unsigned)
+  {
+    return std::ref(m_raw_tp_frame_chunk);
+  }
+
+  int get_raw_tp_frame_chunksize()
+  {
+    if (m_raw_tp_frame_chunksize == 0) {
+      //TLOG() << "Got raw WIB TP chunk size from buffer: " << get_data().size() << "." << std::endl;
+      return get_data().size();
+    } else {
+      //TLOG() << "Retrieved raw WIB TP chunk size: " << m_raw_tp_frame_chunksize << "." << std::endl;
+      return m_raw_tp_frame_chunksize;
+    }
+  }
+  void set_data_size(const int& bytes)
+  {
+    m_raw_tp_frame_chunksize = bytes;
+  }
+
+
+private:
+  std::vector<std::uint8_t> m_raw_tp_frame_chunk;  // NOLINT(build/unsigned)
+  int m_raw_tp_frame_chunksize;
 };
 
 struct TpSubframe

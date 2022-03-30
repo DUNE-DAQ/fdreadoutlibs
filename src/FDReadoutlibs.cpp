@@ -3,7 +3,6 @@
 #include "fdreadoutlibs/daphne/DAPHNEListRequestHandler.hpp"
 #include "fdreadoutlibs/ssp/SSPFrameProcessor.hpp"
 #include "fdreadoutlibs/wib/RAWWIBTriggerPrimitiveProcessor.hpp"
-#include "fdreadoutlibs/wib/RawWIBTp.hpp"
 #include "fdreadoutlibs/wib/SWWIBTriggerPrimitiveProcessor.hpp"
 #include "fdreadoutlibs/wib/TPEmulatorModel.hpp"
 #include "fdreadoutlibs/wib/WIBFrameProcessor.hpp"

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(fdreadoutlibs VERSION 1.0.0)
+project(fdreadoutlibs VERSION 1.0.3)
 
 find_package(daq-cmake REQUIRED)
 
@@ -11,6 +11,7 @@ find_package(logging REQUIRED)
 find_package(opmonlib REQUIRED)
 find_package(readoutlibs REQUIRED)
 find_package(daqdataformats REQUIRED)
+find_package(detchannelmaps REQUIRED)
 find_package(detdataformats REQUIRED)
 find_package(trigger REQUIRED)
 find_package(triggeralgs REQUIRED)
@@ -36,6 +37,7 @@ set(FDREADOUTLIBS_DEPENDENCIES
   detdataformats::detdataformats
   trigger::trigger
   triggeralgs::triggeralgs
+  detchannelmaps::detchannelmaps
 )
 
 ##############################################################################

@@ -20,6 +20,7 @@
 #include "readoutlibs/readoutinfo/InfoNljs.hpp"
 #include "readoutlibs/utils/ReusableThread.hpp"
 
+#include "detchannelmaps/TPCChannelMap.hpp"
 #include "detdataformats/wib/WIBFrame.hpp"
 #include "fdreadoutlibs/FDReadoutTypes.hpp"
 #include "fdreadoutlibs/wib/WIBTPHandler.hpp"
@@ -30,6 +31,7 @@
 #include "tpg/FrameExpand.hpp"
 #include "tpg/ProcessAVX2.hpp"
 #include "tpg/ProcessingInfo.hpp"
+#include "tpg/RegisterToChannelNumber.hpp"
 #include "tpg/TPGConstants.hpp"
 
 #include <atomic>
@@ -221,6 +223,8 @@ public:
     if (config.enable_software_tpg) {
       m_sw_tpg_enabled = true;
 
+      m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
+            
       m_tphandler.reset(
         new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid));
 
@@ -235,8 +239,8 @@ public:
     // Setup pre-processing pipeline
     TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::add_preprocess_task(
       std::bind(&WIBFrameProcessor::timestamp_check, this, std::placeholders::_1));
-    TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::add_preprocess_task(
-      std::bind(&WIBFrameProcessor::frame_error_check, this, std::placeholders::_1));
+    //TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::add_preprocess_task(
+      //std::bind(&WIBFrameProcessor::frame_error_check, this, std::placeholders::_1));
 
     TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::conf(cfg);
   }
@@ -395,6 +399,8 @@ protected:
     m_induction_items_to_process->write(std::move(ind_item));
 
     if (m_first_coll) {
+      m_register_channel_map = swtpg::get_register_to_offline_channel_map(wfptr, m_channel_map);
+      
       m_coll_tpg_pi->setState(collection_registers);
 
       m_fiber_no = wfptr->get_wib_header()->fiber_no;
@@ -452,7 +458,7 @@ protected:
       for (int i = 0; i < 16; ++i) {
         if (hit_charge[i] && chan[i] != swtpg::MAGIC) {
           // This channel had a hit ending here, so we can create and output the hit here
-          const uint16_t online_channel = swtpg::collection_index_to_channel(chan[i]); // NOLINT(build/unsigned)
+          const uint16_t offline_channel = m_register_channel_map.collection[chan[i]];
           uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
             timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
           uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
@@ -474,7 +480,7 @@ protected:
           trigprim.time_start = tp_t_begin;
           trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
           trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
-          trigprim.channel = online_channel;
+          trigprim.channel = offline_channel;
           trigprim.adc_integral = hit_charge[i];
           trigprim.adc_peak = hit_charge[i] / 20;
           trigprim.detid =
@@ -568,6 +574,14 @@ private:
   uint8_t m_fiber_no; // NOLINT(build/unsigned)
   uint8_t m_slot_no;  // NOLINT(build/unsigned)
   uint8_t m_crate_no; // NOLINT(build/unsigned)
+
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+  swtpg::RegisterChannelMap m_register_channel_map; // Map from
+                                                    // expanded AVX
+                                                    // register
+                                                    // position to
+                                                    // offline channel
+                                                    // number
 
   uint32_t m_offline_channel_base;           // NOLINT(build/unsigned)
   uint32_t m_offline_channel_base_induction; // NOLINT(build/unsigned)
