@@ -67,6 +67,7 @@ get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame
       frame->get_wib_header()->crate_no, frame->get_wib_header()->slot_no, frame->get_wib_header()->fiber_no, ich);
     test_frame->set_channel(ich, offline_ch - min_ch);
   }
+
   // Expand the test frame, so the offline channel numbers are now in the relevant places in the output registers
   swtpg::MessageRegistersCollection collection_registers;
   swtpg::MessageRegistersInduction induction_registers;
@@ -74,10 +75,20 @@ get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame
 
   RegisterChannelMap ret;
   for (size_t i = 0; i < 6 * SAMPLES_PER_REGISTER; ++i) {
-    ret.collection[i] = collection_registers.uint16(i) + min_ch;
+    // expand_message_adcs_inplace reorders the output so
+    // adjacent-in-time registers are adjacent in memory, hence the
+    // need for this indexing. See the comment in that function for a
+    // diagram
+    size_t index = (i/16)*16*12 + (i%16);
+    ret.collection[i] = collection_registers.uint16(index) + min_ch;
   }
   for (size_t i = 0; i < 10 * SAMPLES_PER_REGISTER; ++i) {
-    ret.induction[i] = induction_registers.uint16(i) + min_ch;
+    // expand_message_adcs_inplace reorders the output so
+    // adjacent-in-time registers are adjacent in memory, hence the
+    // need for this indexing. See the comment in that function for a
+    // diagram
+    size_t index = (i/16)*16*12 + (i%16);
+    ret.induction[i] = induction_registers.uint16(index) + min_ch;
   }
 
   auto end_time = std::chrono::steady_clock::now();
