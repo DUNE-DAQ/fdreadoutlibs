@@ -152,24 +152,8 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_slot_no = rwtp->m_head.m_slot_no;
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
-  //TLOG() << "Processing raw TP nhits: " << nhits << ", and: wire, fiber, crate, slot " << m_channel_no << ", " << m_fiber_no << ", " << m_crate_no << ", " << m_slot_no;
-    //uint crate = rwtp->m_head.m_crate_no;
-    //uint slot = rwtp->m_head.m_slot_no;
-    //uint fiber = rwtp->m_head.m_fiber_no;
-    //uint fembchannel = rwtp->m_head.m_wire_no;
-    //auto ch_map = dunedaq::detchannelmaps::make_map("ProtoDUNESP1ChannelMap");
-    //uint offline_channel = ch_map->get_offline_channel_from_crate_slot_fiber_chan(crate, slot, fiber, fembchannel);
-
-
-
-
   for (int i = 0; i < nhits; i++) {
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Processing raw TP hit " << i << " out of " << nhits << " hits in this frame.";
-    //TLOG() << "TODO ivana.hristova@stfc.ac.uk 2022-04-08: Processing raw TP hit " 
-    //       << i << " out of " << nhits << " hits in this frame. " 
-    //       << "on wire " << m_channel_no << " at " << ts_0;
-    //TLOG() << "Processing raw TP hit " << i << " out of " << nhits << " hits in this frame.";
-    //
 
     triggeralgs::TriggerPrimitive trigprim;
     trigprim.time_start = ts_0 + rwtp->m_blocks[i].m_start_time * m_time_tick;
@@ -359,7 +343,6 @@ private:
   static const constexpr std::size_t RAW_WIB_TP_SUBFRAME_SIZE = 12;
 
   // recording, dump raw WIB TP frames
-  //FILE* m_output_file;
   std::string m_output_file_name = "tp_frames_output.bin";
   std::ofstream m_output_file;
   bool m_enable_raw_dump { false };
@@ -367,8 +350,6 @@ private:
   // stitching algorithm
   std::vector<triggeralgs::TriggerPrimitive> m_A[256]; // keep track of TPs to stitch per channel
   std::vector<uint64_t> m_T[256]; // keep track of last stitched start time
-  //std::vector<triggeralgs::TriggerPrimitive> m_tps;  // TODO Feb-15-2022, RS, IH ivana.hristova@stfc.ac.uk: send TPs to trigger
-  //uint64_t tp_start_time { 0 };
   int m_trigprims { 0 };
   int m_frames  { 0 };
   uint64_t m_stitch_constant = 1600; // NOLINT  // one packet = 64 * 25 ns
