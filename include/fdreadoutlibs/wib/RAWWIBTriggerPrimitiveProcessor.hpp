@@ -130,7 +130,7 @@ public:
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::scrap(args);
   }
 
-  void get_info(opmonlib::InfoCollector& ci, int level)
+  void get_info(opmonlib::InfoCollector& /* ci */, int /* level */)
   {
     readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
@@ -332,7 +332,6 @@ void tp_unpack(frame_ptr fr)
 }
 
 protected:
-  timestamp_t m_current_ts = 0;
   int m_time_tick = 25;
 
 private:
