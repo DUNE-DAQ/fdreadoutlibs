@@ -76,6 +76,7 @@ public:
   explicit WIBFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
     : TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>(error_registry)
     , m_sw_tpg_enabled(false)
+    , m_ind_thread_should_run(false)
     , m_coll_primfind_dest(nullptr)
     , m_coll_taps_p(nullptr)
     , m_ind_primfind_dest(nullptr)
@@ -100,7 +101,6 @@ public:
 
   void start(const nlohmann::json& args) override
   {
-    
     // Reset software TPG resources
     if (m_sw_tpg_enabled) {
 
@@ -166,7 +166,7 @@ public:
         0,
         0);
 
-      m_induction_thread = std::thread(&WIBFrameProcessor::find_induction_hits_thread, this);
+      //m_induction_thread = std::thread(&WIBFrameProcessor::find_induction_hits_thread, this);
     } // end if(m_sw_tpg_enabled)
 
     // Reset timestamp check
@@ -190,12 +190,8 @@ public:
 
   void stop(const nlohmann::json& args) override
   {
-    TLOG() << "Stopping";
     inherited::stop(args);
     if (m_sw_tpg_enabled) {
-      TLOG() << "Waiting to join induction thread";
-      m_induction_thread.join();
-      TLOG() << "Induction thread joined";
       // Make temp. buffers reusable on next start.
       if (m_coll_taps_p) {
         delete[] m_coll_taps_p;
@@ -258,6 +254,11 @@ public:
       // Setup parallel post-processing
       TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::add_postprocess_task(
         std::bind(&WIBFrameProcessor::find_collection_hits, this, std::placeholders::_1));
+
+      // start the thread for induction hit finding
+      TLOG() << "Launch induction hit finding thread"; 
+      m_ind_thread_should_run.store(true);
+      m_induction_thread = std::thread(&WIBFrameProcessor::find_induction_hits_thread, this);
     }
 
     // Setup pre-processing pipeline
@@ -271,7 +272,13 @@ public:
 
   void scrap(const nlohmann::json& args) override
   {
-    m_tphandler.reset();
+   if(m_sw_tpg_enabled) {	  
+      TLOG() << "Waiting to join induction thread";
+      m_ind_thread_should_run.store(false);
+      m_induction_thread.join();
+      TLOG() << "Induction thread joined";
+   }
+      m_tphandler.reset();
 
     TaskRawDataProcessorModel<types::WIB_SUPERCHUNK_STRUCT>::scrap(args);
   }
@@ -529,7 +536,7 @@ protected:
     pthread_setname_np(pthread_self(), thread_name.str().c_str());
 
     size_t n_items=0;
-    while (m_run_marker.load()) {
+    while (m_ind_thread_should_run.load()) {
       // There must be a nicer way to write this
       while (!m_induction_item_ready.load()) {
         // PAR 2022-03-16 Empirically, we can't sleep here, or wait on
@@ -547,9 +554,9 @@ protected:
 
         // std::this_thread::sleep_for(std::chrono::microseconds(1));
         _mm_pause();
-        if(!m_run_marker.load()) break;
+        if(!m_ind_thread_should_run.load()) break;
       }
-      if(!m_run_marker.load()) break;
+      if(!m_ind_thread_should_run.load()) break;
 
       find_induction_hits(m_induction_item_to_process);
 
@@ -657,6 +664,7 @@ protected:
 
 private:
   bool m_sw_tpg_enabled;
+  std::atomic<bool> m_ind_thread_should_run;
 
   InductionItemToProcess* m_induction_item_to_process;
   std::atomic<bool> m_induction_item_ready{false};

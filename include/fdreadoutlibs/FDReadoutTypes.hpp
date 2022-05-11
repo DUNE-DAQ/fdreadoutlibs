@@ -436,8 +436,6 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
 
   using FrameType = RAW_WIB_TRIGGERPRIMITIVE_STRUCT;
 
-  std::unique_ptr<dunedaq::detdataformats::wib::RawWIBTp> rwtp = nullptr; // TODO 2020-04-15: keep for backward compatibility; used in lxlibs/test/apps/test_tp_elinkhandler_app.cxx
-
   // latency buffer 
   bool operator<(const RAW_WIB_TRIGGERPRIMITIVE_STRUCT& other) const 
   {
@@ -500,7 +498,7 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
              bsize);
     m_raw_tp_frame_chunksize = bsize;
 
-    //unpack_timestamp(); // TODO 2022-04-15: slows down readout; timestamp really needed here?
+    unpack_timestamp();
   }
 
   std::vector<std::uint8_t>& get_data()  // NOLINT(build/unsigned)
@@ -512,7 +510,7 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
   {
     m_raw_tp_frame_chunksize = bytes;
 
-    //unpack_timestamp(); // TODO 2022-04-15: slows down readout; timestamp not really needed here? 
+    unpack_timestamp();
   }
   int get_raw_tp_frame_chunksize()
   {

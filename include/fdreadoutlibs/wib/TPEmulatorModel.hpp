@@ -134,161 +134,7 @@ public:
   }
 
 protected:
-/*
-  void unpack_tpframe_version_2(int& nhits, int& offset) {
-
-    auto& source = m_file_source->get();
-    dunedaq::detdataformats::wib::RawWIBTp* rwtps =
-           static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
-           sizeof(dunedaq::detdataformats::wib::TpHeader) + nhits * sizeof(dunedaq::detdataformats::wib::TpData)
-           ));
-
-    m_payload_wrapper.rwtp.release( );
-    m_payload_wrapper.rwtp.reset( rwtps );
-
-    m_payload_wrapper.rwtp->set_nhits(nhits);
-
-    ::memcpy(static_cast<void*>(&m_payload_wrapper.rwtp->m_head),
-             static_cast<void*>(source.data() + offset),
-             2*RAW_WIB_TP_SUBFRAME_SIZE);
-
-    for (int i=0; i<nhits; i++) {
-      ::memcpy(static_cast<void*>(&m_payload_wrapper.rwtp->m_blocks[i]),
-               static_cast<void*>(source.data() + offset + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
-               RAW_WIB_TP_SUBFRAME_SIZE);
-    }
-
-    m_tp_frames++;
-    m_tp_hits += nhits;
-
-  }
-
-  void unpack_tpframe_version_1(int& offset)
-  {
-    auto& source = m_file_source->get();
-
-    // Count number of subframes in a TP frame
-    int n = 1;
-    while (reinterpret_cast<types::TpSubframe*>(((uint8_t*)source.data()) // NOLINT
-           + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 != 0xDEADBEEF) {
-      n++;
-    }
-
-    int bsize = n * RAW_WIB_TP_SUBFRAME_SIZE;
-    std::vector<char> tmpbuffer;
-    tmpbuffer.reserve(bsize);
-    int nhits = n - 2;
-
-    // add header block 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + 0),
-             static_cast<void*>(source.data() + offset),
-             RAW_WIB_TP_SUBFRAME_SIZE);
-
-    // add pedinfo block 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + RAW_WIB_TP_SUBFRAME_SIZE),
-             static_cast<void*>(source.data() + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE),
-             RAW_WIB_TP_SUBFRAME_SIZE);
-
-   // add TP hits 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + 2*RAW_WIB_TP_SUBFRAME_SIZE),
-             static_cast<void*>(source.data() + offset + RAW_WIB_TP_SUBFRAME_SIZE),
-             nhits*RAW_WIB_TP_SUBFRAME_SIZE);
-
-    dunedaq::detdataformats::wib::RawWIBTp* rwtps =
-           static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
-           sizeof(dunedaq::detdataformats::wib::TpHeader) + nhits * sizeof(dunedaq::detdataformats::wib::TpData)
-           ));
-    m_payload_wrapper.rwtp.release( );
-    m_payload_wrapper.rwtp.reset( rwtps );
-    m_payload_wrapper.rwtp->set_nhits(nhits);
-
-    ::memcpy(static_cast<void*>(&m_payload_wrapper.rwtp->m_head),
-             static_cast<void*>(tmpbuffer.data() + 0),
-             2*RAW_WIB_TP_SUBFRAME_SIZE);
-
-    for (int i=0; i<nhits; i++) {
-      ::memcpy(static_cast<void*>(&m_payload_wrapper.rwtp->m_blocks[i]),
-               static_cast<void*>(tmpbuffer.data() + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
-               RAW_WIB_TP_SUBFRAME_SIZE);
-    }
-
-    // old format lacks number of hits
-    m_payload_wrapper.rwtp->set_nhits(nhits); // explicitly set number of hits in new format
-
-    m_tp_frames++;
-    m_tp_hits += nhits;
-  }
-
   void run_produce()
-  {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Data generation thread " << m_this_link_number << " started";
-
-    // pthread_setname_np(pthread_self(), get_name().c_str());
-
-    int offset = 0;
-    auto& source = m_file_source->get();
-    int num_elem = m_file_source->num_elements();
-
-    if (num_elem == 0) {
-      TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! Sleeping...";
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      num_elem = m_file_source->num_elements();
-    }
-    while (m_run_marker.load()) {
-      // Which element to push to the buffer
-      if (offset == num_elem * static_cast<int>(RAW_WIB_TP_SUBFRAME_SIZE)) { // NOLINT(build/unsigned)
-        offset = 0;
-        //TLOG() << "TPEmulatorModel Number of TP frames " << m_tp_frames;
-        //TLOG() << "TPEmulatorModel Number of TP hits " << m_tp_hits;
-        m_tp_frames = 0;
-        m_tp_hits = 0;
-      }
-
-      // Create next TP frame
-      m_payload_wrapper.rwtp.reset(new types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT::FrameType());
-      ::memcpy(static_cast<void*>(&m_payload_wrapper.rwtp->m_head),
-               static_cast<void*>(source.data() + offset),
-               m_payload_wrapper.rwtp->get_header_size());
-      int nhits = m_payload_wrapper.rwtp->get_nhits();
-      uint16_t padding = m_payload_wrapper.rwtp->get_padding_3(); // NOLINT
-
-      if (padding == 48879) { // padding hex is BEEF, new TP format
-
-        unpack_tpframe_version_2(nhits, offset);
-
-      } else { // old TP format
-
-        unpack_tpframe_version_1(offset);
-
-      }
-
-      // optional (test unpacking processor)
-      int bsize = m_payload_wrapper.rwtp->get_frame_size();
-      std::vector<char> tmpbuffer;
-      tmpbuffer.reserve(bsize);
-      ::memcpy(static_cast<void*>(tmpbuffer.data()),
-               static_cast<void*>(source.data() + offset),
-               m_payload_wrapper.rwtp->get_frame_size());
-      m_payload_wrapper.set_raw_tp_frame_chunk(tmpbuffer);
-
-      offset += m_payload_wrapper.rwtp->get_frame_size();
-
-      // queue in to actual DAQSink
-      try {
-        m_raw_data_sink->push(std::move(m_payload_wrapper), m_sink_queue_timeout_ms);
-      } catch (const dunedaq::appfwk::QueueTimeoutExpired& excpt) {
-        // std::runtime_error("Queue timed out...");
-      }
-
-      // Count packet and limit rate if needed.
-      ++m_packet_count;
-      ++m_packet_count_tot;
-      m_rate_limiter->limit();
-    }
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Data generation thread " << m_this_link_number << " finished";
-  }
-*/
-    void run_produce()
   {
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Data generation thread " << m_this_link_number << " started";
 
@@ -306,10 +152,6 @@ protected:
       // Which element to push to the buffer
       if (offset == num_elem * static_cast<int>(RAW_WIB_TP_SUBFRAME_SIZE)) { // NOLINT(build/unsigned)
         offset = 0;
-        //TLOG() << "TPEmulatorModel Number of TP frames " << m_tp_frames;
-        //TLOG() << "TPEmulatorModel Number of TP hits " << m_tp_hits;
-        m_tp_frames = 0;
-        m_tp_hits = 0;
       }
       int bsize = num_elem * static_cast<int>(RAW_WIB_TP_SUBFRAME_SIZE);
       std::vector<char> tmpbuffer;
@@ -374,8 +216,6 @@ private:
   daqdataformats::GeoID m_geoid;
 
   types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT m_payload_wrapper;
-  int m_tp_frames = 0;
-  int m_tp_hits = 0;
 
 };
 

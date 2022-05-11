@@ -20,6 +20,7 @@
 #include "trigger/TPSet.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 
+#include "detchannelmaps/TPCChannelMap.hpp"
 #include "fdreadoutlibs/wib/WIBTPHandler.hpp"
 #include "rcif/cmd/Nljs.hpp"
 #include "trigger/TPSet.hpp"
@@ -49,6 +50,9 @@ public:
   using rwtp_ptr = detdataformats::wib::RawWIBTp*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
+  // Channel map function type
+  typedef int (*chan_map_fn_t)(int);
+  
   explicit RAWWIBTriggerPrimitiveProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
     : TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>(error_registry)
     , m_fw_tpg_enabled(false)
@@ -60,16 +64,18 @@ public:
                 std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack, this, std::placeholders::_1));
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::conf(args);
 
-    m_output_file = fopen(m_output_file_name.c_str(), "wb");
+    m_output_file.open(m_output_file_name, std::ios::out | std::ios::binary);
 
     auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-    //if (config.enable_firmware_tpg) {
-    if (config.enable_software_tpg) {
+    if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
+      m_enable_raw_dump = true;
 
       m_tphandler.reset(
             new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid));
     }
+
+    m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
   }
 
   void init(const nlohmann::json& args) override
@@ -112,7 +118,7 @@ public:
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of TP frames " << m_frames;
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of TP hits " << m_trigprims;
 
-    fclose(m_output_file);
+    m_output_file.close();
   }
 
   void scrap(const nlohmann::json& args) override
@@ -122,7 +128,7 @@ public:
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::scrap(args);
   }
 
-  void get_info(opmonlib::InfoCollector& ci, int level)
+  void get_info(opmonlib::InfoCollector& /* ci */, int /* level */)
   {
     readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
@@ -133,27 +139,16 @@ public:
     }
   }
 
-  void tp_dump_frame() 
-  {
-    if (m_enable_raw_dump) {
-      fwrite(&rwtp->m_head, 1, sizeof(dunedaq::detdataformats::wib::TpHeader),
-        m_output_file);
-      for (int i=0; i<rwtp->get_nhits(); i++) {
-        fwrite(&rwtp->m_blocks[i], 1,
-               sizeof(dunedaq::detdataformats::wib::TpData), m_output_file);
-      }
-    }
-  }
-
-void tp_stitch()
+void tp_stitch(rwtp_ptr rwtp)
 {
   m_frames++;
   uint64_t ts_0 = rwtp->m_head.get_timestamp(); // NOLINT
   int nhits = rwtp->m_head.get_nhits(); // NOLINT
   uint8_t m_channel_no = rwtp->m_head.m_wire_no;
   uint8_t m_fiber_no = rwtp->m_head.m_fiber_no;
-
-
+  uint8_t m_crate_no = rwtp->m_head.m_crate_no;
+  uint8_t m_slot_no = rwtp->m_head.m_slot_no;
+  uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
   for (int i = 0; i < nhits; i++) {
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Processing raw TP hit " << i << " out of " << nhits << " hits in this frame.";
 
@@ -161,7 +156,7 @@ void tp_stitch()
     trigprim.time_start = ts_0 + rwtp->m_blocks[i].m_start_time * m_time_tick;
     trigprim.time_peak = ts_0 + rwtp->m_blocks[i].m_peak_time * m_time_tick;
     trigprim.time_over_threshold = (rwtp->m_blocks[i].m_end_time - rwtp->m_blocks[i].m_start_time) * m_time_tick;
-    trigprim.channel = m_channel_no;
+    trigprim.channel = offline_channel; // m_channel_no;
     trigprim.adc_integral = rwtp->m_blocks[i].m_sum_adc;
     trigprim.adc_peak = rwtp->m_blocks[i].m_peak_adc;
     trigprim.detid =
@@ -188,6 +183,7 @@ void tp_stitch()
         }
         m_A[m_channel_no][0].time_over_threshold += trigprim.time_over_threshold;
         m_A[m_channel_no][0].adc_integral += trigprim.adc_integral;
+        //stitched_time_start = trigprim.time_start;
         m_T[m_channel_no].push_back(trigprim.time_start);
 
       } else {
@@ -211,6 +207,7 @@ void tp_stitch()
     if (m_tp_continue == 0 && m_tp_end_time != 63) {
       if (m_A[m_channel_no].size() == 1) {
         // the current hit completes one stitched TriggerPrimitive
+        //tp_start_time = m_A[m_channel_no][0].time_start;
         if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][0]), ts_0)) {
           m_tps_dropped++;
         }
@@ -220,6 +217,7 @@ void tp_stitch()
         m_T[m_channel_no].clear();
       } else {
         // the current hit is one TriggerTrimitive
+        //tp_start_time = trigprim.time_start;
         if (!m_tphandler->add_tp(std::move(trigprim), ts_0)) {
           m_tps_dropped++;
         }
@@ -228,6 +226,7 @@ void tp_stitch()
       }
     } else {
       // the current hit starts one TriggerPrimitive
+      //tp_start_time = trigprim.time_start;
       if (m_A[m_channel_no].size() == 0) {
         m_A[m_channel_no].push_back(trigprim);
         m_T[m_channel_no].push_back(trigprim.time_start);
@@ -252,7 +251,8 @@ void tp_stitch()
 }
 
 
-void unpack_tpframe_version_1(frame_ptr fr)
+//void unpack_tpframe_version_1(frame_ptr fr)
+void tp_unpack(frame_ptr fr)  
 {
   auto& srcbuffer = fr->get_data();
   int num_elem = fr->get_raw_tp_frame_chunksize();
@@ -267,7 +267,6 @@ void unpack_tpframe_version_1(frame_ptr fr)
   }
 
   int offset = 0;
-  rwtp = std::make_unique<detdataformats::wib::RawWIBTp>();
   while (offset <= num_elem) {
 
     if (offset == num_elem) break;
@@ -295,17 +294,10 @@ void unpack_tpframe_version_1(frame_ptr fr)
              RAW_WIB_TP_SUBFRAME_SIZE);
 
     // add TP hits 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + 2*RAW_WIB_TP_SUBFRAME_SIZE),
-             static_cast<void*>(srcbuffer.data() + offset + RAW_WIB_TP_SUBFRAME_SIZE),
-             nhits*RAW_WIB_TP_SUBFRAME_SIZE);
-
-    dunedaq::detdataformats::wib::RawWIBTp* rwtps =
-           static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
-           sizeof(dunedaq::detdataformats::wib::TpHeader) + nhits * sizeof(dunedaq::detdataformats::wib::     TpData)
-           ));
-    rwtp.release( );
-    rwtp.reset( rwtps );
-    rwtp->set_nhits(nhits);
+    rwtp_ptr rwtp =
+         static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
+         sizeof(dunedaq::detdataformats::wib::TpHeader) + nhits * sizeof(dunedaq::detdataformats::wib::TpData)
+         ));
 
     ::memcpy(static_cast<void*>(&rwtp->m_head),
              static_cast<void*>(tmpbuffer.data() + 0),
@@ -326,116 +318,17 @@ void unpack_tpframe_version_1(frame_ptr fr)
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of hits, padding, wire " << debug_nhits << ", " << debug_padding   << ", " << debug_wire;
 
     // raw recording 
-    tp_dump_frame();
+    if (m_enable_raw_dump) {
+      m_output_file.write(tmpbuffer.data(), bsize);
+    }
 
     // stitch TP hits
-    tp_stitch();
+    tp_stitch(rwtp);
     offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
-  }
-}
-
-void unpack_tpframe_version_2(frame_ptr fr)
-{
-  auto& srcbuffer = fr->get_data();
-  int num_elem = fr->get_raw_tp_frame_chunksize();
-
-  if (num_elem == 0) {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! ";
-    return;
-  }
-  if (num_elem % RAW_WIB_TP_SUBFRAME_SIZE != 0) {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
-    return;
-  }
-
-  int offset = 0;
-  while (offset <= num_elem) {
-
-    if (offset == num_elem) break;
-
-    ::memcpy(static_cast<void*>(&rwtp->m_head),
-             static_cast<void*>(srcbuffer.data() + offset),
-             2*RAW_WIB_TP_SUBFRAME_SIZE);
-    int nhits = rwtp->get_nhits();
-
-    dunedaq::detdataformats::wib::RawWIBTp* rwtps =
-          static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
-          (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE
-          ));
-    rwtp.release( );
-    rwtp.reset( rwtps );
-    rwtp->set_nhits(nhits);
-    int check_nhits = rwtp->get_nhits();
-
-    ::memcpy(static_cast<void*>(&rwtp->m_head),
-             static_cast<void*>(srcbuffer.data() + offset),
-             2*RAW_WIB_TP_SUBFRAME_SIZE);
-
-    for (int i=0; i<nhits; i++) {
-      ::memcpy(static_cast<void*>(&rwtp->m_blocks[i]),
-               static_cast<void*>(srcbuffer.data() + offset + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
-               RAW_WIB_TP_SUBFRAME_SIZE);
-    }
-
-    int debug_nhits = rwtp->get_nhits();
-    uint16_t debug_padding = rwtp->get_padding_3(); // NOLINT
-    uint16_t debug_wire = rwtp->m_head.m_wire_no; // NOLINT
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of hits, padding, wire " << debug_nhits << ", " << debug_padding   << ", " << debug_wire;
-
-    // raw recording 
-    //tp_dump_frame();
-
-    // stitch TP hits
-    tp_stitch();
-    offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
-  }
-}
-
-void tp_unpack(frame_ptr fr) 
-{
-  rwtp = std::make_unique<detdataformats::wib::RawWIBTp>();
-
-  if (m_tpframe_version == 0) { 
-
-    auto& srcbuffer = fr->get_data();
-    int num_elem = fr->get_raw_tp_frame_chunksize();
-
-    if (num_elem == 0) {
-      TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! ";
-      return;
-    }   
-    if (num_elem % RAW_WIB_TP_SUBFRAME_SIZE != 0) {
-      TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
-      return;
-    }
-
-    ::memcpy(static_cast<void*>(&rwtp->m_head),
-             static_cast<void*>(srcbuffer.data()),
-             rwtp->get_header_size());
-    int nhits = rwtp->get_nhits();
-    uint16_t padding = rwtp->get_padding_3(); // NOLINT
-
-    if (padding == 48879) { // padding hex is BEEF, new TP format
-      m_tpframe_version = 2;
-      tp_unpack(fr);
-    } else { // old TP format
-      m_tpframe_version = 1;
-      tp_unpack(fr);
-    }
-  } else if (m_tpframe_version == 1) {
-    TLOG_DEBUG(TLVL_WORK_STEPS)  << "Unpack raw WIB TP frame version 1.";
-    unpack_tpframe_version_1(fr);
-  } else if (m_tpframe_version == 2) {
-    TLOG_DEBUG(TLVL_WORK_STEPS)  << "Unpack raw WIB TP frame version 2.";
-    unpack_tpframe_version_2(fr);
-  } else {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Unknown raw WIB TP frame version! ";
-    return;
   }
 }
 
 protected:
-  timestamp_t m_current_ts = 0;
   int m_time_tick = 25;
 
 private:
@@ -444,15 +337,11 @@ private:
 
   // unpacking
   static const constexpr std::size_t RAW_WIB_TP_SUBFRAME_SIZE = 12;
-  types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT m_payload_wrapper;
-  using FrameType = dunedaq::detdataformats::wib::RawWIBTp;
-  std::unique_ptr<FrameType> rwtp = nullptr;
-  int m_tpframe_version { 0 };
 
   // recording, dump raw WIB TP frames
-  FILE* m_output_file;
   std::string m_output_file_name = "tp_frames_output.bin";
-  bool m_enable_raw_dump { true };
+  std::ofstream m_output_file;
+  bool m_enable_raw_dump { false };
 
   // stitching algorithm
   std::vector<triggeralgs::TriggerPrimitive> m_A[256]; // keep track of TPs to stitch per channel
@@ -467,7 +356,7 @@ private:
   std::unique_ptr<appfwk::DAQSink<trigger::TPSet>> m_tpset_sink;
   std::unique_ptr<WIBTPHandler> m_tphandler;
   std::atomic<uint64_t> m_tps_dropped{ 0 };
-
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // info
   std::atomic<uint64_t> m_sent_tps{ 0 }; // NOLINT(build/unsigned)
