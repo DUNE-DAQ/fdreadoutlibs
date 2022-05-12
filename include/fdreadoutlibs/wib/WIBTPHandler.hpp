@@ -28,12 +28,14 @@ public:
                         iomanager::SenderConcept<trigger::TPSet>& tpset_sink,
                         uint64_t tp_timeout,        // NOLINT(build/unsigned)
                         uint64_t tpset_window_size, // NOLINT(build/unsigned)
-                        daqdataformats::GeoID geoId)
+                        daqdataformats::GeoID geoId,
+                        std::string tpset_topic)
     : m_tp_sink(tp_sink)
     , m_tpset_sink(tpset_sink)
     , m_tp_timeout(tp_timeout)
     , m_tpset_window_size(tpset_window_size)
     , m_geoid(geoId)
+    , m_tpset_topic(tpset_topic)
   {}
 
   void set_run_number(daqdataformats::run_number_t run_number)
@@ -83,7 +85,7 @@ public:
       }
 
       try {
-        m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10));
+        m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10), m_tpset_topic);
         m_sent_tpsets++;
       } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
         ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tpset_sink"));
@@ -113,7 +115,8 @@ private:
   uint64_t m_tpset_window_size;    // NOLINT(build/unsigned)
   uint64_t m_next_tpset_seqno = 0; // NOLINT(build/unsigned)
   daqdataformats::GeoID m_geoid;
-
+  std::string m_tpset_topic;
+  
   std::atomic<size_t> m_sent_tps{ 0 };    // NOLINT(build/unsigned)
   std::atomic<size_t> m_sent_tpsets{ 0 }; // NOLINT(build/unsigned)
 
