@@ -140,6 +140,9 @@ public:
       info.num_tpsets_sent = m_tphandler->get_and_reset_num_sent_tpsets();
       info.num_tps_dropped = m_tps_dropped.exchange(0);
     }
+
+    readoutlibs::TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::get_info(ci, level);
+    ci.add(info);
   }
 
 void tp_stitch(rwtp_ptr rwtp)
