@@ -131,7 +131,7 @@ public:
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::scrap(args);
   }
 
-  void get_info(opmonlib::InfoCollector& /* ci */, int /* level */)
+  void get_info(opmonlib::InfoCollector& ci, int level)
   {
     readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
