@@ -64,14 +64,9 @@ public:
                 std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack, this, std::placeholders::_1));
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::conf(args);
 
-    //m_output_file = fopen(m_output_filedd_name.c_str(), "wb");
-    //m_output_file(m_output_file_name, std::ios::out | std::ios::binary);
-    m_output_file.open(m_output_file_name, std::ios::out | std::ios::binary);
-
     auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
-      m_enable_raw_dump = true;
 
       m_tphandler.reset(
             new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
@@ -120,8 +115,6 @@ public:
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of TP frames " << m_tp_frames;
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of TPs stitched " << m_tps_stitched;
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Number of TPs dropped " << m_tps_dropped;
-
-    m_output_file.close();
   }
 
   void scrap(const nlohmann::json& args) override
@@ -322,11 +315,6 @@ void tp_unpack(frame_ptr fr)
     // old format lacks number of hits
     rwtp->set_nhits(nhits); // explicitly set number of hits in new format
 
-    // raw recording 
-    if (m_enable_raw_dump) {
-      m_output_file.write(tmpbuffer.data(), bsize);
-    }
- 
     // stitch TP hits
     tp_stitch(rwtp);
     offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
@@ -342,11 +330,6 @@ private:
 
   // unpacking
   static const constexpr std::size_t RAW_WIB_TP_SUBFRAME_SIZE = 12;
-
-  // recording, dump raw WIB TP frames
-  std::string m_output_file_name = "tp_frames_output.bin";
-  std::ofstream m_output_file;
-  bool m_enable_raw_dump { false };
 
   // stitching algorithm
   std::vector<triggeralgs::TriggerPrimitive> m_A[256]; // keep track of TPs to stitch per channel
