@@ -69,21 +69,6 @@ public:
       tpset.type = trigger::TPSet::Type::kPayload;
       tpset.origin = m_geoid;
 
-      while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
-        triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
-        types::SW_WIB_TRIGGERPRIMITIVE_STRUCT* tp_readout_type =
-          reinterpret_cast<types::SW_WIB_TRIGGERPRIMITIVE_STRUCT*>(&tp); // NOLINT
-        try {
-            types::SW_WIB_TRIGGERPRIMITIVE_STRUCT tp_copy(*tp_readout_type);
-          m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
-          m_sent_tps++;
-        } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
-        }
-        tpset.objects.emplace_back(std::move(tp));
-        m_tp_buffer.pop();
-      }
-
       try {
         m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10), m_tpset_topic);
         m_sent_tpsets++;

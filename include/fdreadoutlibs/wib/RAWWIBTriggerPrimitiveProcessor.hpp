@@ -79,15 +79,6 @@ public:
   {
     try {
       auto queue_index = appfwk::connection_index(args, {});
-      if (queue_index.find("tp") != queue_index.end()) {
-        m_tp_source = get_iom_receiver<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>(queue_index["tp_out"]);
-      }
-    } catch (const ers::Issue& excpt) {
-      // error
-    }
-
-    try {
-      auto queue_index = appfwk::connection_index(args, {});
       if (queue_index.find("tp_out") != queue_index.end()) {
         m_tp_sink = get_iom_sender<types::SW_WIB_TRIGGERPRIMITIVE_STRUCT>(queue_index["tp_out"]);
       }
@@ -206,7 +197,6 @@ void tp_stitch(rwtp_ptr rwtp)
     if (m_tp_continue == 0 && m_tp_end_time != 63) {
       if (m_A[m_channel_no].size() == 1) {
         // the current hit completes one stitched TriggerPrimitive
-        //tp_start_time = m_A[m_channel_no][0].time_start;
         if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][0]), ts_0)) {
           m_tps_dropped++;
         }
@@ -216,7 +206,6 @@ void tp_stitch(rwtp_ptr rwtp)
         m_T[m_channel_no].clear();
       } else {
         // the current hit is one TriggerTrimitive
-        //tp_start_time = trigprim.time_start;
         if (!m_tphandler->add_tp(std::move(trigprim), ts_0)) {
           m_tps_dropped++;
         }
@@ -225,7 +214,6 @@ void tp_stitch(rwtp_ptr rwtp)
       }
     } else {
       // the current hit starts one TriggerPrimitive
-      //tp_start_time = trigprim.time_start;
       if (m_A[m_channel_no].size() == 0) {
         m_A[m_channel_no].push_back(trigprim);
         m_T[m_channel_no].push_back(trigprim.time_start);
