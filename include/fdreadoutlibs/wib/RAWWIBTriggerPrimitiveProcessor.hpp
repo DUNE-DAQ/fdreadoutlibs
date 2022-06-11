@@ -68,8 +68,10 @@ public:
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
 
+      TLOG() << "IRHRI fwTPG enabled -- before reset tp handler";
       m_tphandler.reset(
             new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
+      TLOG() << "IRHRI fwTPG enabled -- after reset tp handler";
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
