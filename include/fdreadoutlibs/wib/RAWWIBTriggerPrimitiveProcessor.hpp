@@ -106,8 +106,10 @@ public:
   {
     if (m_fw_tpg_enabled) {
       rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
+      TLOG() << "IRHRI fwTPG enabled -- setting run number";
       m_tphandler->set_run_number(start_params.run);
 
+      TLOG() << "IRHRI fwTPG enabled -- going to reset tp handler";
       m_tphandler->reset();
       m_tps_dropped = 0;
     }
@@ -122,7 +124,9 @@ public:
 
   void scrap(const nlohmann::json& args) override
   {
+    TLOG() << "IRHRI fwTPG enabled -- before reset tp handler";
     m_tphandler.reset();
+    TLOG() << "IRHRI fwTPG enabled -- after reset tp handler";
 
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::scrap(args);
   }
