@@ -68,10 +68,10 @@ public:
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
 
-      TLOG() << "IRHRI fwTPG enabled -- before reset tp handler";
+      TLOG(1) << "IRHRI fwTPG enabled -- before reset tp handler";
       m_tphandler.reset(
             new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
-      TLOG() << "IRHRI fwTPG enabled -- after reset tp handler";
+      TLOG(1) << "IRHRI fwTPG enabled -- after reset tp handler";
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
@@ -108,10 +108,10 @@ public:
   {
     if (m_fw_tpg_enabled) {
       rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
-      TLOG() << "IRHRI fwTPG enabled -- setting run number";
+      TLOG(1) << "IRHRI fwTPG enabled -- setting run number";
       m_tphandler->set_run_number(start_params.run);
 
-      TLOG() << "IRHRI fwTPG enabled -- going to reset tp handler";
+      TLOG(1) << "IRHRI fwTPG enabled -- going to reset tp handler";
       m_tphandler->reset();
       m_tps_dropped = 0;
     }
@@ -126,9 +126,9 @@ public:
 
   void scrap(const nlohmann::json& args) override
   {
-    TLOG() << "IRHRI fwTPG enabled -- before reset tp handler";
+    TLOG(1) << "IRHRI fwTPG enabled -- before reset tp handler";
     m_tphandler.reset();
-    TLOG() << "IRHRI fwTPG enabled -- after reset tp handler";
+    TLOG(1) << "IRHRI fwTPG enabled -- after reset tp handler";
 
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::scrap(args);
   }
@@ -150,7 +150,7 @@ public:
 void tp_stitch(rwtp_ptr rwtp)
 {
   m_fake_timestamp += 6400;
-  TLOG() << "IRHRI tp_stitch " << m_fake_timestamp; 
+  TLOG(1) << "IRHRI tp_stitch " << m_fake_timestamp; 
   m_tp_frames++;
   uint64_t ts_0 = rwtp->m_head.get_timestamp(); // NOLINT
   //uint64_t ts_0 = m_fake_timestamp; // NOLINT
@@ -161,7 +161,7 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
   //uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
-  TLOG() << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits";
+  TLOG(1) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits";
   for (int i = 0; i < nhits; i++) {
 
     triggeralgs::TriggerPrimitive trigprim;
@@ -177,10 +177,10 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
     trigprim.version = 1;
 
-    TLOG() << "IRHRI tp_stitch time_start " << trigprim.time_start; 
-    TLOG() << "IRHRI tp_stitch time_peak " << trigprim.time_peak; 
-    TLOG() << "IRHRI tp_stitch time_over_threshold " << trigprim.time_over_threshold; 
-    TLOG() << "IRHRI tp_stitch channel " << trigprim.channel; 
+    TLOG(1) << "IRHRI tp_stitch time_start " << trigprim.time_start; 
+    TLOG(1) << "IRHRI tp_stitch time_peak " << trigprim.time_peak; 
+    TLOG(1) << "IRHRI tp_stitch time_over_threshold " << trigprim.time_over_threshold; 
+    TLOG(1) << "IRHRI tp_stitch channel " << trigprim.channel; 
 
     // stitch current hit to previous hit
     if (m_A[m_channel_no].size() == 1) {
@@ -210,7 +210,7 @@ void tp_stitch(rwtp_ptr rwtp)
         }
         m_tps_stitched++;
         m_tphandler->try_sending_tpsets(ts_0);
-        TLOG() << "IRHRI tp_stitch try_sending_tpsets 0 " ; 
+        TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 0 " ; 
         m_A[m_channel_no].clear();
         m_T[m_channel_no].clear();
       }
@@ -228,7 +228,7 @@ void tp_stitch(rwtp_ptr rwtp)
           m_tps_dropped++;
         }
         m_tphandler->try_sending_tpsets(ts_0);
-        TLOG() << "IRHRI tp_stitch try_sending_tpsets 1 " ; 
+        TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 1 " ; 
         m_tps_stitched++;
         m_A[m_channel_no].clear();
         m_T[m_channel_no].clear();
@@ -238,8 +238,8 @@ void tp_stitch(rwtp_ptr rwtp)
           m_tps_dropped++;
         }
         m_tphandler->try_sending_tpsets(ts_0);
-        TLOG() << "IRHRI tp_stitch try_sending_tpsets 2 " ; 
-        TLOG() << "IRHRI tp_stitch current time " <<  ts_0; 
+        TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 2 " ; 
+        TLOG(1) << "IRHRI tp_stitch current time " <<  ts_0; 
         m_tps_stitched++;      
       }
     } else {
@@ -258,7 +258,7 @@ void tp_stitch(rwtp_ptr rwtp)
             m_tps_dropped++;
           }
           m_tphandler->try_sending_tpsets(ts_0);
-          TLOG() << "IRHRI tp_stitch try_sending_tpsets 3 " ; 
+          TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 3 " ; 
           m_tps_stitched++;      
           m_A[m_channel_no].clear();
           m_T[m_channel_no].clear();
@@ -285,7 +285,7 @@ void tp_unpack(frame_ptr fr)
   }
 
   
-  TLOG() << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " vytes from FELIX";
+  TLOG(1) << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " vytes from FELIX";
   int offset = 0;
   while (offset <= num_elem) {
 
@@ -302,7 +302,7 @@ void tp_unpack(frame_ptr fr)
     std::vector<char> tmpbuffer;
     tmpbuffer.reserve(bsize);
     int nhits = n - 2;
-    TLOG() << "IRHRI fwTPG enabled -- tp unpack TP frame size " << bsize;
+    TLOG(1) << "IRHRI fwTPG enabled -- tp unpack TP frame size " << bsize;
 
     // add header block 
     ::memcpy(static_cast<void*>(tmpbuffer.data() + 0),
@@ -336,7 +336,7 @@ void tp_unpack(frame_ptr fr)
 
     // old format lacks number of hits
     rwtp->set_nhits(nhits); // explicitly set number of hits in new format
-    TLOG() << "IRHRI fwTPG enabled -- before stitch we found " << nhits << " hits";
+    TLOG(1) << "IRHRI fwTPG enabled -- before stitch we found " << nhits << " hits";
 
     // stitch TP hits
     tp_stitch(rwtp);
