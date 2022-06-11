@@ -75,6 +75,7 @@ public:
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
+    TLOG(1) << "IRHRI fwTPG enabled -- channel map made";
   }
 
   void init(const nlohmann::json& args) override
@@ -159,7 +160,7 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_fiber_no = rwtp->m_head.m_fiber_no; // NOLINT
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
-  //uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
+  uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
   TLOG(1) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits";
   for (int i = 0; i < nhits; i++) {
@@ -168,7 +169,7 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.time_start = ts_0 + rwtp->m_blocks[i].m_start_time * m_time_tick;
     trigprim.time_peak = ts_0 + rwtp->m_blocks[i].m_peak_time * m_time_tick;
     trigprim.time_over_threshold = (rwtp->m_blocks[i].m_end_time - rwtp->m_blocks[i].m_start_time) * m_time_tick;
-    trigprim.channel = m_channel_no; //offline_channel; // m_channel_no;
+    trigprim.channel = offline_channel; //offline_channel; // m_channel_no;
     trigprim.adc_integral = rwtp->m_blocks[i].m_sum_adc;
     trigprim.adc_peak = rwtp->m_blocks[i].m_peak_adc;
     trigprim.detid =
@@ -285,7 +286,7 @@ void tp_unpack(frame_ptr fr)
   }
 
   
-  TLOG(1) << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " vytes from FELIX";
+  TLOG(1) << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " bytes from FELIX";
   int offset = 0;
   while (offset <= num_elem) {
 
