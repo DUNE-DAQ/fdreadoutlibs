@@ -159,6 +159,7 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
   //uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
+  TLOG() << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits";
   for (int i = 0; i < nhits; i++) {
 
     triggeralgs::TriggerPrimitive trigprim;
@@ -281,6 +282,8 @@ void tp_unpack(frame_ptr fr)
     return;
   }
 
+  
+  TLOG() << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " vytes from FELIX";
   int offset = 0;
   while (offset <= num_elem) {
 
@@ -297,6 +300,7 @@ void tp_unpack(frame_ptr fr)
     std::vector<char> tmpbuffer;
     tmpbuffer.reserve(bsize);
     int nhits = n - 2;
+    TLOG() << "IRHRI fwTPG enabled -- tp unpack TP frame size " << bsize;
 
     // add header block 
     ::memcpy(static_cast<void*>(tmpbuffer.data() + 0),
@@ -330,6 +334,7 @@ void tp_unpack(frame_ptr fr)
 
     // old format lacks number of hits
     rwtp->set_nhits(nhits); // explicitly set number of hits in new format
+    TLOG() << "IRHRI fwTPG enabled -- before stitch we found " << nhits << " hits";
 
     // stitch TP hits
     tp_stitch(rwtp);
