@@ -162,7 +162,8 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
-  TLOG(1) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits";
+  TLOG(1) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits" ;
+  TLOG(1) << "IRHRI fwTPG enabled -- offline channel " << offline_channel ;
   for (int i = 0; i < nhits; i++) {
 
     triggeralgs::TriggerPrimitive trigprim;
