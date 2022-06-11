@@ -60,6 +60,16 @@ public:
 
   void try_sending_tpsets(uint64_t currentTime) // NOLINT(build/unsigned)
   {
+    //currentTime = 6148914691236637205;
+    //m_tpset_window_size = 1000;
+    //m_tp_timeout = 0;
+    TLOG() << "IRHRI try_sending_tpsets ";
+    TLOG() << "IRHRI tp buffer size " << m_tp_buffer.size();
+    TLOG() << "IRHRI start " << m_tp_buffer.top().time_start;
+    TLOG() << "IRHRI timeout " << m_tp_timeout;
+    TLOG() << "IRHRI window " << m_tpset_window_size;
+    TLOG() << "IRHRI current time " << currentTime ;
+    //m_tp_timeout = 0;
     if (!m_tp_buffer.empty() && m_tp_buffer.top().time_start + m_tpset_window_size + m_tp_timeout < currentTime) {
       trigger::TPSet tpset;
       tpset.run_number = m_run_number;
@@ -68,7 +78,12 @@ public:
       tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
       tpset.type = trigger::TPSet::Type::kPayload;
       tpset.origin = m_geoid;
+      TLOG() << "IRHRI tpset time start " << m_tp_buffer.top().time_start ; 
+      TLOG() << "IRHRI tpset window " << m_tpset_window_size ; 
+      TLOG() << "Number of TPs in TPSet is " << tpset.objects.size() << ", GeoID is " << tpset.origin << ", seqno is " << tpset.seqno << ", start timestamp is " << tpset.start_time << ", run number is " << tpset.run_number ;
 
+
+      
       while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
         triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
         types::SW_WIB_TRIGGERPRIMITIVE_STRUCT* tp_readout_type =
@@ -78,7 +93,7 @@ public:
           //m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
           m_sent_tps++;
         } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-            //ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
+          //ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
         }
         tpset.objects.emplace_back(std::move(tp));
         m_tp_buffer.pop();

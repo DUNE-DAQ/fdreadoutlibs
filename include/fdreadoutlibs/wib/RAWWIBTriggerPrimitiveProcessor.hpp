@@ -77,11 +77,23 @@ public:
 
   void init(const nlohmann::json& args) override
   {
+    m_fake_timestamp = 0;
+    /*
     try {
       auto queue_index = appfwk::connection_index(args, {});
-      if (queue_index.find("tp_out") != queue_index.end()) {
-        m_tp_sink = get_iom_sender<types::SW_WIB_TRIGGERPRIMITIVE_STRUCT>(queue_index["tp_out"]);
+      if (queue_index.find("tp") != queue_index.end()) {
+        m_tp_source = get_iom_receiver<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>(queue_index["tp"]);
       }
+    } catch (const ers::Issue& excpt) {
+      // error
+    }
+    */ 
+
+    try {
+      auto queue_index = appfwk::connection_index(args, {});
+      //if (queue_index.find("tp_out") != queue_index.end()) {
+      //  m_tp_sink = get_iom_sender<types::SW_WIB_TRIGGERPRIMITIVE_STRUCT>(queue_index["tp_out"]);
+      //}
       if (queue_index.find("tpset_out") != queue_index.end()) {
         m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
       }
@@ -131,14 +143,17 @@ public:
 
 void tp_stitch(rwtp_ptr rwtp)
 {
+  m_fake_timestamp += 6400;
+  TLOG() << "IRHRI tp_stitch " << m_fake_timestamp; 
   m_tp_frames++;
   uint64_t ts_0 = rwtp->m_head.get_timestamp(); // NOLINT
+  //uint64_t ts_0 = m_fake_timestamp; // NOLINT
   int nhits = rwtp->m_head.get_nhits(); // NOLINT
   uint8_t m_channel_no = rwtp->m_head.m_wire_no; // NOLINT
   uint8_t m_fiber_no = rwtp->m_head.m_fiber_no; // NOLINT
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
-  uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
+  //uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
   for (int i = 0; i < nhits; i++) {
 
@@ -146,7 +161,7 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.time_start = ts_0 + rwtp->m_blocks[i].m_start_time * m_time_tick;
     trigprim.time_peak = ts_0 + rwtp->m_blocks[i].m_peak_time * m_time_tick;
     trigprim.time_over_threshold = (rwtp->m_blocks[i].m_end_time - rwtp->m_blocks[i].m_start_time) * m_time_tick;
-    trigprim.channel = offline_channel; // m_channel_no;
+    trigprim.channel = m_channel_no; //offline_channel; // m_channel_no;
     trigprim.adc_integral = rwtp->m_blocks[i].m_sum_adc;
     trigprim.adc_peak = rwtp->m_blocks[i].m_peak_adc;
     trigprim.detid =
@@ -154,6 +169,11 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
     trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
     trigprim.version = 1;
+
+    TLOG() << "IRHRI tp_stitch time_start " << trigprim.time_start; 
+    TLOG() << "IRHRI tp_stitch time_peak " << trigprim.time_peak; 
+    TLOG() << "IRHRI tp_stitch time_over_threshold " << trigprim.time_over_threshold; 
+    TLOG() << "IRHRI tp_stitch channel " << trigprim.channel; 
 
     // stitch current hit to previous hit
     if (m_A[m_channel_no].size() == 1) {
@@ -173,7 +193,6 @@ void tp_stitch(rwtp_ptr rwtp)
         }
         m_A[m_channel_no][0].time_over_threshold += trigprim.time_over_threshold;
         m_A[m_channel_no][0].adc_integral += trigprim.adc_integral;
-        //stitched_time_start = trigprim.time_start;
         m_T[m_channel_no].push_back(trigprim.time_start);
 
       } else {
@@ -184,6 +203,7 @@ void tp_stitch(rwtp_ptr rwtp)
         }
         m_tps_stitched++;
         m_tphandler->try_sending_tpsets(ts_0);
+        TLOG() << "IRHRI tp_stitch try_sending_tpsets 0 " ; 
         m_A[m_channel_no].clear();
         m_T[m_channel_no].clear();
       }
@@ -201,6 +221,7 @@ void tp_stitch(rwtp_ptr rwtp)
           m_tps_dropped++;
         }
         m_tphandler->try_sending_tpsets(ts_0);
+        TLOG() << "IRHRI tp_stitch try_sending_tpsets 1 " ; 
         m_tps_stitched++;
         m_A[m_channel_no].clear();
         m_T[m_channel_no].clear();
@@ -210,6 +231,8 @@ void tp_stitch(rwtp_ptr rwtp)
           m_tps_dropped++;
         }
         m_tphandler->try_sending_tpsets(ts_0);
+        TLOG() << "IRHRI tp_stitch try_sending_tpsets 2 " ; 
+        TLOG() << "IRHRI tp_stitch current time " <<  ts_0; 
         m_tps_stitched++;      
       }
     } else {
@@ -228,6 +251,7 @@ void tp_stitch(rwtp_ptr rwtp)
             m_tps_dropped++;
           }
           m_tphandler->try_sending_tpsets(ts_0);
+          TLOG() << "IRHRI tp_stitch try_sending_tpsets 3 " ; 
           m_tps_stitched++;      
           m_A[m_channel_no].clear();
           m_T[m_channel_no].clear();
@@ -333,6 +357,7 @@ private:
   std::unique_ptr<WIBTPHandler> m_tphandler;
   std::atomic<uint64_t> m_tps_dropped{ 0 }; // NOLINT
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+  uint64_t m_fake_timestamp{ 0 };
 
   // info
   std::atomic<uint64_t> m_sent_tps{ 0 }; // NOLINT(build/unsigned)
