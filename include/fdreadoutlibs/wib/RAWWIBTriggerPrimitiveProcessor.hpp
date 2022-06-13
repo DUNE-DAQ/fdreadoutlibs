@@ -185,36 +185,36 @@ void tp_stitch(rwtp_ptr rwtp)
     TLOG(1) << "IRHRI tp_stitch channel " << trigprim.channel; 
 
     // stitch current hit to previous hit
-    if (m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].size() == 1) {
+    if (m_A[m_channel_no][m_fiber_no].size() == 1) {
       if (static_cast<int>(rwtp->m_blocks[i].m_start_time) == 0
           && (
-          static_cast<int>(trigprim.time_start) - static_cast<int>(m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].time_start)
+          static_cast<int>(trigprim.time_start) - static_cast<int>(m_A[m_channel_no][m_fiber_no][0].time_start)
              <= static_cast<int>(m_stitch_constant)
-          || (static_cast<int>(trigprim.time_start) - static_cast<int>(m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0])
+          || (static_cast<int>(trigprim.time_start) - static_cast<int>(m_T[m_channel_no][m_fiber_no][0])
              <= static_cast<int>(m_stitch_constant))
              )
           ) {
         // current hit is continuation of previous hit
-        m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
-        if (trigprim.adc_peak > m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].adc_peak) {
-          m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].time_peak = trigprim.time_peak;
-          m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].adc_peak = trigprim.adc_peak;
+        m_T[m_channel_no][m_fiber_no].clear();
+        if (trigprim.adc_peak > m_A[m_channel_no][m_fiber_no][0].adc_peak) {
+          m_A[m_channel_no][m_fiber_no][0].time_peak = trigprim.time_peak;
+          m_A[m_channel_no][m_fiber_no][0].adc_peak = trigprim.adc_peak;
         }
-        m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].time_over_threshold += trigprim.time_over_threshold;
-        m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0].adc_integral += trigprim.adc_integral;
-        m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].push_back(trigprim.time_start);
+        m_A[m_channel_no][m_fiber_no][0].time_over_threshold += trigprim.time_over_threshold;
+        m_A[m_channel_no][m_fiber_no][0].adc_integral += trigprim.adc_integral;
+        m_T[m_channel_no][m_fiber_no].push_back(trigprim.time_start);
 
       } else {
         // current hit is not continuation of previous hit
         // add previous hit to TriggerPrimitives
-        if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0]), ts_0)) {
+        if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][0]), ts_0)) {
           m_tps_dropped++;
         }
         m_tps_stitched++;
         m_tphandler->try_sending_tpsets(ts_0);
         TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 0 " ; 
-        m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
-        m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
+        m_A[m_channel_no][m_fiber_no].clear();
+        m_T[m_channel_no][m_fiber_no].clear();
       }
     }
 
@@ -224,16 +224,16 @@ void tp_stitch(rwtp_ptr rwtp)
     uint8_t m_tp_end_time = rwtp->m_blocks[i].m_end_time; // NOLINT
  
     if (m_tp_continue == 0 && m_tp_end_time != 63) {
-      if (m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].size() == 1) {
+      if (m_A[m_channel_no][m_fiber_no].size() == 1) {
         // the current hit completes one stitched TriggerPrimitive
-        if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0]), ts_0)) {
+        if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][0]), ts_0)) {
           m_tps_dropped++;
         }
         m_tphandler->try_sending_tpsets(ts_0);
         TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 1 " ; 
         m_tps_stitched++;
-        m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
-        m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
+        m_A[m_channel_no][m_fiber_no].clear();
+        m_T[m_channel_no][m_fiber_no].clear();
       } else {
         // the current hit is one TriggerTrimitive
         if (!m_tphandler->add_tp(std::move(trigprim), ts_0)) {
@@ -246,24 +246,24 @@ void tp_stitch(rwtp_ptr rwtp)
       }
     } else {
       // the current hit starts one TriggerPrimitive
-      if (m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].size() == 0) {
-        m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].push_back(trigprim);
-        m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].push_back(trigprim.time_start);
+      if (m_A[m_channel_no][m_fiber_no].size() == 0) {
+        m_A[m_channel_no][m_fiber_no].push_back(trigprim);
+        m_T[m_channel_no][m_fiber_no].push_back(trigprim.time_start);
       } else { // decide to add long TriggerPrimitive even when it doesn't end properly
                // this is rare case and can be removed for efficiency    
         // the current hit is "bad"
         // add one TriggerPrimitive from previous stitched hits except the current hit  
         if ( m_tp_continue == 0 && m_tp_end_time == 63 &&
-             static_cast<int>(trigprim.time_start) - static_cast<int>(m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0])
+             static_cast<int>(trigprim.time_start) - static_cast<int>(m_T[m_channel_no][m_fiber_no][0])
              <= static_cast<int>(m_stitch_constant)) {
-          if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no][0]), ts_0)) {
+          if (!m_tphandler->add_tp(std::move(m_A[m_channel_no][m_fiber_no][0]), ts_0)) {
             m_tps_dropped++;
           }
           m_tphandler->try_sending_tpsets(ts_0);
           TLOG(1) << "IRHRI tp_stitch try_sending_tpsets 3 " ; 
           m_tps_stitched++;      
-          m_A[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
-          m_T[m_channel_no][m_fiber_no][m_crate_no][m_slot_no].clear();
+          m_A[m_channel_no][m_fiber_no].clear();
+          m_T[m_channel_no][m_fiber_no].clear();
         }
       }
     }
@@ -295,10 +295,19 @@ void tp_unpack(frame_ptr fr)
 
     // Count number of subframes in a TP frame
     int n = 1;
-    while (reinterpret_cast<types::TpSubframe*>(((uint8_t*)srcbuffer.data()) // NOLINT
-           + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 != 0xDEADBEEF) {
-      n++;
+    //while (reinterpret_cast<types::TpSubframe*>(((uint8_t*)srcbuffer.data()) // NOLINT
+    //       + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 != 0xDEADBEEF) {
+    //  n++;
+    //}
+    bool ped_found { false };
+    for (n=1; offset+(n-1)*RAW_WIB_TP_SUBFRAME_SIZE<num_elem; ++n) {
+      if (reinterpret_cast<types::TpSubframe*>(((uint8_t*)srcbuffer.data()) // NOLINT
+           + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 == 0xDEADBEEF) {
+        ped_found = true;
+        break; 
+      }  
     }
+    if (!ped_found) return;
 
     int bsize = n * RAW_WIB_TP_SUBFRAME_SIZE;
     std::vector<char> tmpbuffer;
@@ -357,8 +366,8 @@ private:
   static const constexpr std::size_t RAW_WIB_TP_SUBFRAME_SIZE = 12;
 
   // stitching algorithm
-  std::vector<triggeralgs::TriggerPrimitive> m_A[256][10][10][10]; // keep track of TPs to stitch per channel
-  std::vector<uint64_t> m_T[256][10][10][10]; // NOLINT // keep track of last stitched start time
+  std::vector<triggeralgs::TriggerPrimitive> m_A[256][10]; // keep track of TPs to stitch per channel
+  std::vector<uint64_t> m_T[256][10]; // NOLINT // keep track of last stitched start time
   std::atomic<uint64_t> m_tps_stitched { 0 }; // NOLINT
   std::atomic<uint64_t> m_tp_frames  { 0 }; // NOLINT
   uint64_t m_stitch_constant = 1600; // NOLINT  // one packet = 64 * 25 ns
