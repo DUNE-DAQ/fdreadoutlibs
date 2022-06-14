@@ -285,7 +285,6 @@ void tp_unpack(frame_ptr fr)
     TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
     return;
   }
-
   
   TLOG(1) << "IRHRI fwTPG enabled -- tp unpack received " << num_elem << " bytes from FELIX";
   int offset = 0;
@@ -293,42 +292,9 @@ void tp_unpack(frame_ptr fr)
 
     if (offset == num_elem) break;
 
-    // Count number of subframes in a TP frame
-    int n = 1;
-    //while (reinterpret_cast<types::TpSubframe*>(((uint8_t*)srcbuffer.data()) // NOLINT
-    //       + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 != 0xDEADBEEF) {
-    //  n++;
-    //}
-    bool ped_found { false };
-    for (n=1; offset+(n-1)*RAW_WIB_TP_SUBFRAME_SIZE<num_elem; ++n) {
-      if (reinterpret_cast<types::TpSubframe*>(((uint8_t*)srcbuffer.data()) // NOLINT
-           + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE)->word3 == 0xDEADBEEF) {
-        ped_found = true;
-        break; 
-      }  
-    }
-    if (!ped_found) return;
-
-    int bsize = n * RAW_WIB_TP_SUBFRAME_SIZE;
-    std::vector<char> tmpbuffer;
-    tmpbuffer.reserve(bsize);
-    int nhits = n - 2;
-    TLOG(1) << "IRHRI fwTPG enabled -- tp unpack TP frame size " << bsize;
-
-    // add header block 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + 0),
-             static_cast<void*>(srcbuffer.data() + offset),
-             RAW_WIB_TP_SUBFRAME_SIZE);
-
-    // add pedinfo block 
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + RAW_WIB_TP_SUBFRAME_SIZE),
-             static_cast<void*>(srcbuffer.data() + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE),
-             RAW_WIB_TP_SUBFRAME_SIZE);
-
-    // add TP hits
-    ::memcpy(static_cast<void*>(tmpbuffer.data() + 2*RAW_WIB_TP_SUBFRAME_SIZE),
-             static_cast<void*>(srcbuffer.data() + offset + RAW_WIB_TP_SUBFRAME_SIZE),
-             nhits*RAW_WIB_TP_SUBFRAME_SIZE);
+    auto tph = reinterpret_cast<dunedaq::detdataformats::wib::TpHeader*>(srcbuffer.data() + offset);
+    int nhits = tph->get_nhits();
+    TLOG(1) << "IRHRI fwTPG enabled -- number of hits from header is " << nhits;
 
     rwtp_ptr rwtp =
          static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
@@ -336,18 +302,16 @@ void tp_unpack(frame_ptr fr)
          ));
 
     ::memcpy(static_cast<void*>(&rwtp->m_head),
-             static_cast<void*>(tmpbuffer.data() + 0),
+             static_cast<void*>(srcbuffer.data() + offset),
              2*RAW_WIB_TP_SUBFRAME_SIZE);
 
     for (int i=0; i<nhits; i++) {
       ::memcpy(static_cast<void*>(&rwtp->m_blocks[i]),
-               static_cast<void*>(tmpbuffer.data() + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
+               static_cast<void*>(srcbuffer.data() + offset + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
                RAW_WIB_TP_SUBFRAME_SIZE);
     }
 
-    // old format lacks number of hits
-    rwtp->set_nhits(nhits); // explicitly set number of hits in new format
-    TLOG(1) << "IRHRI fwTPG enabled -- before stitch we found " << nhits << " hits";
+    TLOG(1) << "IRHRI fwTPG enabled -- before stitch we found " << rwtp->get_nhits() << " hits";
 
     // stitch TP hits
     tp_stitch(rwtp);
