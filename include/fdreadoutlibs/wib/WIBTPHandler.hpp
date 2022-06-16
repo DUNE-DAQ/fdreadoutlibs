@@ -60,16 +60,6 @@ public:
 
   void try_sending_tpsets(uint64_t currentTime) // NOLINT(build/unsigned)
   {
-    //currentTime = 6148914691236637205;
-    //m_tpset_window_size = 1000;
-    //m_tp_timeout = 0;
-    TLOG(1) << "IRHRI try_sending_tpsets ";
-    TLOG(1) << "IRHRI tp buffer size " << m_tp_buffer.size();
-    TLOG(1) << "IRHRI start " << m_tp_buffer.top().time_start;
-    TLOG(1) << "IRHRI timeout " << m_tp_timeout;
-    TLOG(1) << "IRHRI window " << m_tpset_window_size;
-    TLOG(1) << "IRHRI current time " << currentTime ;
-    //m_tp_timeout = 0;
     if (!m_tp_buffer.empty() && m_tp_buffer.top().time_start + m_tpset_window_size + m_tp_timeout < currentTime) {
       trigger::TPSet tpset;
       tpset.run_number = m_run_number;
@@ -78,9 +68,9 @@ public:
       tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
       tpset.type = trigger::TPSet::Type::kPayload;
       tpset.origin = m_geoid;
-      TLOG(1) << "IRHRI tpset time start " << m_tp_buffer.top().time_start ; 
-      TLOG(1) << "IRHRI tpset window " << m_tpset_window_size ; 
-      TLOG(1) << "Number of TPs in TPSet is " << tpset.objects.size() << ", GeoID is " << tpset.origin << ", seqno is " << tpset.seqno << ", start timestamp is " << tpset.start_time << ", run number is " << tpset.run_number ;
+      TLOG(20) << "IRHRI tpset time start " << m_tp_buffer.top().time_start ; 
+      TLOG(20) << "IRHRI tpset window " << m_tpset_window_size ; 
+      TLOG(20) << "Number of TPs in TPSet is " << tpset.objects.size() << ", GeoID is " << tpset.origin << ", seqno is " << tpset.seqno << ", start timestamp is " << tpset.start_time << ", run number is " << tpset.run_number ;
 
 
       
@@ -90,10 +80,10 @@ public:
           reinterpret_cast<types::SW_WIB_TRIGGERPRIMITIVE_STRUCT*>(&tp); // NOLINT
         try {
             types::SW_WIB_TRIGGERPRIMITIVE_STRUCT tp_copy(*tp_readout_type);
-          //m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
+          m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
           m_sent_tps++;
         } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-          //ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
+          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
         }
         tpset.objects.emplace_back(std::move(tp));
         m_tp_buffer.pop();
