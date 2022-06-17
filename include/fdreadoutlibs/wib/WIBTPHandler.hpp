@@ -68,11 +68,6 @@ public:
       tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
       tpset.type = trigger::TPSet::Type::kPayload;
       tpset.origin = m_geoid;
-      TLOG(20) << "IRHRI tpset time start " << m_tp_buffer.top().time_start ; 
-      TLOG(20) << "IRHRI tpset window " << m_tpset_window_size ; 
-      TLOG(20) << "Number of TPs in TPSet is " << tpset.objects.size() << ", GeoID is " << tpset.origin << ", seqno is " << tpset.seqno << ", start timestamp is " << tpset.start_time << ", run number is " << tpset.run_number ;
-
-
       
       while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
         triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
