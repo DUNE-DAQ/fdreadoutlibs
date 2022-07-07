@@ -296,11 +296,12 @@ void tp_unpack(frame_ptr fr)
     ::memcpy(static_cast<void*>(tmpbuffer.data() + 2*RAW_WIB_TP_SUBFRAME_SIZE),
              static_cast<void*>(srcbuffer.data() + offset + RAW_WIB_TP_SUBFRAME_SIZE),
              nhits*RAW_WIB_TP_SUBFRAME_SIZE);
-
+ 
+    auto heap_memory_block = malloc(
+         sizeof(dunedaq::detdataformats::wib::TpHeader) + 
+         nhits * sizeof(dunedaq::detdataformats::wib::TpData));
     rwtp_ptr rwtp =
-         static_cast<dunedaq::detdataformats::wib::RawWIBTp*>( malloc(
-         sizeof(dunedaq::detdataformats::wib::TpHeader) + nhits * sizeof(dunedaq::detdataformats::wib::TpData)
-         ));
+         static_cast<dunedaq::detdataformats::wib::RawWIBTp*>(heap_memory_block);
 
     ::memcpy(static_cast<void*>(&rwtp->m_head),
              static_cast<void*>(tmpbuffer.data() + 0),
@@ -318,6 +319,7 @@ void tp_unpack(frame_ptr fr)
     // stitch TP hits
     tp_stitch(rwtp);
     offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
+    free(heap_memory_block);
   }
 }
 
