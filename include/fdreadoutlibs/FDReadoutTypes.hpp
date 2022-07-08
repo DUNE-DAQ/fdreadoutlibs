@@ -18,7 +18,7 @@
 #include "detdataformats/wib/WIBFrame.hpp"
 #include "detdataformats/wib2/WIB2Frame.hpp"
 #include "detdataformats/tde/TDE16Frame.hpp"
-#include "detdataformats/wib/RawWIBTp.hpp"
+#include "detdataformats/fwtp/RawTp.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 
 #include <cstdint> // uint_t types
@@ -570,8 +570,8 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
 
 private:
 void unpack_timestamp() {
-    std::unique_ptr<detdataformats::wib::RawWIBTp> rwtp = 
-                    std::make_unique<detdataformats::wib::RawWIBTp>();
+    std::unique_ptr<detdataformats::fwtp::RawTp> rwtp = 
+                    std::make_unique<detdataformats::fwtp::RawTp>();
     ::memcpy(static_cast<void*>(&rwtp->m_head),
              static_cast<void*>(m_raw_tp_frame_chunk.data()),
              2*RAW_WIB_TP_SUBFRAME_SIZE); 
