@@ -60,11 +60,23 @@ public:
 
   void conf(const nlohmann::json& args) override
   {
-    TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
-                std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack, this, std::placeholders::_1));
+    auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+
+    m_format_version = config.fwtp_format_version;
+    TLOG_DEBUG(1) << "Raw TP frame format version is: " << m_format_version;
+
+    if (m_format_version == 1) {
+      TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
+                  std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack_v1, this, std::placeholders::_1));
+    } else if (m_format_version == 2) {
+      TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
+                  std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack_v2, this, std::placeholders::_1));
+    } else {
+      TLOG_DEBUG(1) << "WARNING Unknown raw TP frame format version: " << m_format_version << ". Expect: 1,2. Default: 1.";
+    }
+
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::conf(args);
 
-    auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
       m_tphandler.reset(
@@ -253,9 +265,7 @@ void tp_stitch(rwtp_ptr rwtp)
   }
 } // NOLINT (exceeding 80 lines)
 
-
-//void unpack_tpframe_version_1(frame_ptr fr)
-void tp_unpack(frame_ptr fr)  
+void tp_unpack_v1(frame_ptr fr)  
 {
   auto& srcbuffer = fr->get_data();
   int num_elem = fr->get_raw_tp_frame_chunksize();
@@ -332,6 +342,59 @@ void tp_unpack(frame_ptr fr)
   }
 }
 
+void tp_unpack_v2(frame_ptr fr)  
+{
+  auto& srcbuffer = fr->get_data();
+  int num_elem = fr->get_raw_tp_frame_chunksize();
+
+  if (num_elem == 0) {
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! ";
+    return;
+  }
+  if (num_elem % RAW_WIB_TP_SUBFRAME_SIZE != 0) {
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
+    return;
+  }
+ 
+  int offset = 0;
+  while (offset <= num_elem) {
+
+    if (offset == num_elem) break;
+
+    // Count number of hits in a TP frame
+    bool ped_found { false };
+    auto tph = reinterpret_cast<dunedaq::detdataformats::fwtp::TpHeader*>(srcbuffer.data() + offset);
+    int nhits = tph->get_nhits();
+    if (tph->m_padding_3 == 0xBEEF) {
+      ped_found = true;
+    }
+    TLOG(1) << "IRHRI fwTPG enabled -- number of hits from header is " << nhits;
+
+    if (!ped_found) return;
+
+    auto heap_memory_block = malloc(
+         sizeof(dunedaq::detdataformats::fwtp::TpHeader) + 
+         nhits * sizeof(dunedaq::detdataformats::fwtp::TpData));
+    rwtp_ptr rwtp =
+         static_cast<dunedaq::detdataformats::fwtp::RawTp*>(heap_memory_block);
+
+    ::memcpy(static_cast<void*>(&rwtp->m_head),
+             static_cast<void*>(srcbuffer.data() + offset),
+             2*RAW_WIB_TP_SUBFRAME_SIZE);
+
+    for (int i=0; i<nhits; i++) {
+      ::memcpy(static_cast<void*>(&rwtp->m_blocks[i]),
+               static_cast<void*>(srcbuffer.data() + offset + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
+               RAW_WIB_TP_SUBFRAME_SIZE);
+    }
+
+    // stitch TP hits
+    tp_stitch(rwtp);
+    offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
+    free(heap_memory_block);
+  }
+}
+
 protected:
   double m_time_tick { 1.0 }; // 
 
@@ -347,7 +410,8 @@ private:
   std::vector<uint64_t> m_T[256][10]; // NOLINT // keep track of last stitched start time
   std::atomic<uint64_t> m_tps_stitched { 0 }; // NOLINT
   std::atomic<uint64_t> m_tp_frames  { 0 }; // NOLINT
-  uint64_t m_stitch_constant { 1 }; // NOLINT  // number of ticks between WIB-to-TP packets
+  int m_stitch_constant { 1 }; // number of ticks between WIB-to-TP packets
+  int m_format_version { 1 };  // Format version of raw TP frames for firmware TPG 
   std::vector<int> m_nhits { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
   // interface to DS
