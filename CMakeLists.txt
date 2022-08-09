@@ -54,7 +54,7 @@ endif()
 daq_add_library(
   *.cpp
   wib/*.cpp
-  wib/tpg/*.cpp
+  tpg/*.cpp
   wib2/*.cpp
   daphne/*.cpp
   tde/*.cpp

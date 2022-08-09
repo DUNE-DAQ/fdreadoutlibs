@@ -29,12 +29,12 @@
 #include "trigger/TPSet.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 
-#include "tpg/DesignFIR.hpp"
-#include "tpg/FrameExpand.hpp"
-#include "tpg/ProcessAVX2.hpp"
-#include "tpg/ProcessingInfo.hpp"
-#include "tpg/RegisterToChannelNumber.hpp"
-#include "tpg/TPGConstants.hpp"
+#include "../tpg/DesignFIR.hpp"
+#include "../tpg/FrameExpand.hpp"
+#include "../tpg/ProcessAVX2.hpp"
+#include "../tpg/ProcessingInfo.hpp"
+#include "../tpg/RegisterToChannelNumber.hpp"
+#include "../tpg/TPGConstants.hpp"
 
 #include <atomic>
 #include <bitset>

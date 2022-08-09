@@ -6,4 +6,4 @@
  * received with this code.
  */
 
-#include "fdreadoutlibs/wib/tpg/ProcessAVX2.hpp"
+#include "fdreadoutlibs/tpg/ProcessAVX2.hpp"

@@ -7,7 +7,7 @@
  * received with this code.
  */
 
-#include "fdreadoutlibs/wib/tpg/FrameExpand.hpp"
+#include "fdreadoutlibs/tpg/FrameExpand.hpp"
 
 namespace swtpg {
 
