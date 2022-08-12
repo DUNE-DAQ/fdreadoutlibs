@@ -55,7 +55,7 @@ using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
-
+/*
 //==============================================================================
 // Unpacking wib2 frames
 inline void
@@ -76,7 +76,7 @@ unpack_frame(const dunedaq::fdreadoutlibs::types::WIB2_SUPERCHUNK_STRUCT* __rest
     }
   }
 }
-
+*/
 
 
 	
@@ -468,10 +468,13 @@ protected:
     // up with all channels
     swtpg::MessageRegistersCollection collection_registers;
     InductionItemToProcess ind_item;
-    expand_message_adcs_inplace(fp, &collection_registers, &ind_item.registers);
+    // WIB
+    //expand_message_adcs_inplace(fp, &collection_registers, &ind_item.registers);
+    // WIB2
+    expand_message_adcs_inplace_wib2(fp, &collection_registers, &ind_item.registers);
 
     if (m_first_coll) {
-      m_register_channel_map = swtpg::get_register_to_offline_channel_map(wfptr, m_channel_map);
+      m_register_channel_map = swtpg::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map);
 
       m_coll_tpg_pi->setState(collection_registers);
 

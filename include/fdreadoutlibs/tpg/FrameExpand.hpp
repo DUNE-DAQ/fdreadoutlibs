@@ -714,6 +714,27 @@ expand_message_adcs_inplace(const dunedaq::fdreadoutlibs::types::WIB_SUPERCHUNK_
   }
 }
 
+//==============================================================================
+// for wib2 
+inline void
+expand_message_adcs_inplace_wib2(const dunedaq::fdreadoutlibs::types::WIB2_SUPERCHUNK_STRUCT* __restrict__ ucs,
+                            swtpg::MessageRegistersCollection* __restrict__ collection_registers,
+                            swtpg::MessageRegistersInduction* __restrict__ induction_registers)
+{
+  for (size_t iframe = 0; iframe < swtpg::FRAMES_PER_MSG; ++iframe) {
+    const dunedaq::detdataformats::wib2::WIB2Frame* frame =
+      reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(ucs) + iframe; // NOLINT
+
+    for (size_t iblock = 0; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME; ++iblock) {
+      collection_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
+    }
+    // Same for induction registers
+    for (size_t iblock = swtpg::COLLECTION_REGISTERS_PER_FRAME; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME + swtpg::INDUCTION_REGISTERS_PER_FRAME; ++iblock) {
+      induction_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
+    }
+  }
+}
+
 
 
 
