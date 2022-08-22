@@ -127,7 +127,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
       frame->get_wib2_header()->crate, frame->get_wib2_header()->slot, frame->get_wib2_header()->link, ich);
     min_ch = std::min(min_ch, offline_ch);
   }
-  TLOG_DEBUG(0) << "get_register_to_offline_channel_map for crate " << frame->get_wib2_header()->crate << " slot "
+  TLOG_DEBUG(0) << "get_register_to_offline_channel_map_wib2 for crate " << frame->get_wib2_header()->crate << " slot "
                 << frame->get_wib2_header()->slot << " link " << frame->get_wib2_header()->link << ". min_ch is "
                 << min_ch;
   // Now set each of the channels in our test frame to their
@@ -142,7 +142,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
   for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->get_wib2_header()->crate, frame->get_wib2_header()->slot, frame->get_wib2_header()->link, ich);
-    test_frame->set_channel(ich, offline_ch - min_ch);
+    //test_frame->set_channel(ich, offline_ch - min_ch);
   }
 
   // Expand the test frame, so the offline channel numbers are now in the relevant places in the output registers
@@ -170,15 +170,15 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
 
   auto end_time = std::chrono::steady_clock::now();
   auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  TLOG_DEBUG(0) << "get_register_to_offline_channel_map built map in " << dur << "us";
+  TLOG_DEBUG(0) << "get_register_to_offline_channel_map_wib2 built map in " << dur << "us";
   return ret;
 }
 
 RegisterChannelMap
-get_register_to_offline_channel_map(const dunedaq::detdataformats::wib2::WIB2Frame* frame, std::string channel_map_name)
+get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WIB2Frame* frame, std::string channel_map_name)
 {
   auto ch_map = dunedaq::detchannelmaps::make_map(channel_map_name);
-  return get_register_to_offline_channel_map(frame, ch_map);
+  return get_register_to_offline_channel_map_wib2(frame, ch_map);
 }
 
 

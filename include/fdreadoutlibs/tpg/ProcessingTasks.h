@@ -34,6 +34,21 @@ struct ItemToProcess
                               // whether they're getting behind
 };
 
+
+// The details of a netio message to be processed for the wib2 format
+struct ItemToProcessWib2
+{
+  uint64_t timestamp;         // The timestamp of the first frame in the
+                              // netio message
+  SUPERCHUNK_WIB2_CHAR_STRUCT scs; // The raw message to be
+                              // processed
+  uint64_t timeQueued;        // The time this item was queued
+                              // so receivers can detect
+                              // whether they're getting behind
+};
+
+
+
 constexpr uint64_t END_OF_MESSAGES = 0xffffffffffffffff;
 
 // Return the current steady clock in microseconds

@@ -22,7 +22,7 @@
 #include "readoutlibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib/WIBFrame.hpp"
+#include "detdataformats/wib2/WIB2Frame.hpp"
 #include "fdreadoutlibs/FDReadoutTypes.hpp"
 #include "fdreadoutlibs/wib/WIBTPHandler.hpp"
 #include "rcif/cmd/Nljs.hpp"
@@ -55,29 +55,6 @@ using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
-/*
-//==============================================================================
-// Unpacking wib2 frames
-inline void
-unpack_frame(const dunedaq::fdreadoutlibs::types::WIB2_SUPERCHUNK_STRUCT* __restrict__ ucs,
-                            swtpg::MessageRegistersCollection* __restrict__ collection_registers,
-                            swtpg::MessageRegistersInduction* __restrict__ induction_registers)
-{
-  for (size_t iframe = 0; iframe < swtpg::FRAMES_PER_MSG; ++iframe) {
-    const dunedaq::detdataformats::wib2::WIB2Frame* frame =
-      reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(ucs) + iframe; // NOLINT
-
-    for (size_t iblock = 0; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME; ++iblock) {
-      collection_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
-    }
-    // Same for induction registers
-    for (size_t iblock = swtpg::COLLECTION_REGISTERS_PER_FRAME; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME + swtpg::INDUCTION_REGISTERS_PER_FRAME; ++iblock) {
-      induction_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
-    }
-  }
-}
-*/
-
 
 	
 class WIB2FrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::WIB2_SUPERCHUNK_STRUCT>
@@ -130,6 +107,7 @@ public:
       m_tphandler->reset();
       m_tps_dropped = 0;
 
+      TLOG() << "AAA: before swtpg::firwin_in \n\n\n";
       m_coll_taps = swtpg::firwin_int(7, 0.1, m_coll_multiplier);
       m_coll_taps.push_back(0);
       m_ind_taps = swtpg::firwin_int(7, 0.1, m_ind_multiplier);
@@ -245,7 +223,8 @@ public:
       if (queue_index.find("tpset_out") != queue_index.end()) {
         m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
       }
-      m_err_frame_sink = get_iom_sender<detdataformats::wib2::WIB2Frame>(queue_index["errored_frames"]);
+      // Error frames have been removed from wib2. We rely only on operational monitoring
+      //m_err_frame_sink = get_iom_sender<detdataformats::wib2::WIB2Frame>(queue_index["errored_frames"]);
     } catch (const ers::Issue& excpt) {
       throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
     }
@@ -268,7 +247,7 @@ public:
       m_tphandler.reset(
         new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
 
-      // m_induction_items_to_process = std::make_unique<readoutlibs::IterableQueueModel<InductionItemToProcess>>(
+      // m_induction_items_to_process = std::make_unique<readoutlibs::IterableQueueModel<InductionItemToProcessWib2>>(
       //   200000, false, 0, true, 64); // 64 byte aligned
 
       // Setup parallel post-processing
@@ -419,12 +398,15 @@ protected:
         }
       }
 
-      auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame::Header*>(wf->get_wib2_header());
+      //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame::Header*>(wf->get_wib2_header());
       //if (wfh->wib_errors) {
       //  m_frame_error_count += std::bitset<16>(wfh->wib_errors).count();
       //}
 
       m_current_frame_pushed = false;
+      /*
+       * Commenting out frame check, originally included in WIB1
+       *
       for (int j = 0; j < m_num_frame_error_bits; ++j) {
         if (1 << j) {
           if (m_error_occurrence_counters[j] < m_error_counter_threshold) {
@@ -441,6 +423,7 @@ protected:
           }
         }
       }
+      */
       wf++;
       m_frames_processed++;
     }
@@ -456,6 +439,7 @@ protected:
 
     auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp); // NOLINT
     uint64_t timestamp = wfptr->get_timestamp();                        // NOLINT(build/unsigned)
+    
 
     // First, expand the frame ADCs into 16-bit values in AVX2
     // registers. They're split into "collection" and "induction"
@@ -468,8 +452,7 @@ protected:
     // up with all channels
     swtpg::MessageRegistersCollection collection_registers;
     InductionItemToProcess ind_item;
-    // WIB
-    //expand_message_adcs_inplace(fp, &collection_registers, &ind_item.registers);
+
     // WIB2
     expand_message_adcs_inplace_wib2(fp, &collection_registers, &ind_item.registers);
 
@@ -483,7 +466,7 @@ protected:
       m_slot_no = wfptr->get_wib2_header()->slot;
 
       TLOG() << "Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
-
+      
       std::stringstream ss;
       ss << "Collection channels are:\n";
       for(size_t i=0; i<swtpg::COLLECTION_REGISTERS_PER_FRAME*swtpg::SAMPLES_PER_REGISTER; ++i){
@@ -504,6 +487,10 @@ protected:
     m_induction_item_to_process = &ind_item;
     m_induction_item_ready.store(true);
 
+
+
+
+
     // Find the hits in the "collection" registers
     m_coll_tpg_pi->input = &collection_registers;
     *m_coll_primfind_dest = swtpg::MAGIC;
@@ -523,7 +510,7 @@ protected:
       TLOG() << "Total hits in first superchunk: " << nhits;
       m_first_coll = false;
     }
-
+  
     // Wait for the induction item to be done. We have to spin here,
     // and not sleep, because we only have 6 microseconds to process
     // each superchunk. It appears that anything that makes a system
@@ -535,7 +522,9 @@ protected:
 
     m_num_hits_ind += add_hits_to_tphandler(m_ind_primfind_dest, timestamp, types::kInduction);
 
+
     m_tphandler->try_sending_tpsets(timestamp);
+
   }
 
   void find_induction_hits(InductionItemToProcess* induction_item_to_process)
