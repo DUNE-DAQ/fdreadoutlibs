@@ -342,13 +342,13 @@ protected:
   {
     // If EMU data, emulate perfectly incrementing timestamp
     if (inherited::m_emulator_mode) {                           // emulate perfectly incrementing timestamp
-      uint64_t ts_next = m_previous_ts + 300;                   // NOLINT(build/unsigned)
+      uint64_t ts_next = m_previous_ts + 384;                   // NOLINT(build/unsigned)
       auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));  // NOLINT
       for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
         //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(wf);
         //wfh->set_timestamp(ts_next);
         wf->set_timestamp(ts_next);
-        ts_next += 25;
+        ts_next += 32;
         wf++;
       }
     }
@@ -358,10 +358,10 @@ protected:
     m_current_ts = wfptr->get_timestamp();
 
     // Check timestamp
-    if (m_current_ts - m_previous_ts != 300) {
+    if (m_current_ts - m_previous_ts != 384) {
       ++m_ts_error_ctr;
       m_error_registry->add_error("MISSING_FRAMES",
-                                  readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + 300, m_current_ts));
+                                  readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + 384, m_current_ts));
       if (m_first_ts_missmatch) { // log once
         TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts)
                                      << " current: " + std::to_string(m_current_ts);
@@ -485,7 +485,7 @@ protected:
 
     // Signal to the induction thread that there's an item ready
     m_induction_item_to_process = &ind_item;
-    m_induction_item_ready.store(true);
+    //m_induction_item_ready.store(true);
 
 
 
@@ -586,7 +586,7 @@ protected:
 
   unsigned int add_hits_to_tphandler(uint16_t* primfind_it, timestamp_t timestamp, types::CollectionOrInduction coll_or_ind)
   {
-    constexpr int clocksPerTPCTick = 25;
+    constexpr int clocksPerTPCTick = 32;
 
     uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; // NOLINT(build/unsigned)
     unsigned int nhits = 0;

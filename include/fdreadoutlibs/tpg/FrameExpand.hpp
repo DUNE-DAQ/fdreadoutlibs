@@ -721,19 +721,20 @@ expand_message_adcs_inplace_wib2(const dunedaq::fdreadoutlibs::types::WIB2_SUPER
                             swtpg::MessageRegistersCollection* __restrict__ collection_registers,
                             swtpg::MessageRegistersInduction* __restrict__ induction_registers)
 {
+
   for (size_t iframe = 0; iframe < swtpg::FRAMES_PER_MSG; ++iframe) {
     const dunedaq::detdataformats::wib2::WIB2Frame* frame =
       reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(ucs) + iframe; // NOLINT
     
+
     for (size_t iblock = 0; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME; ++iblock) {
-      collection_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
+      collection_registers->set_ymm(iblock + iframe * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*(iblock + iframe * swtpg::FRAMES_PER_MSG)));
     }
-    /*
     // Same for induction registers
-    for (size_t iblock = swtpg::COLLECTION_REGISTERS_PER_FRAME; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME + swtpg::INDUCTION_REGISTERS_PER_FRAME; ++iblock) {
-      induction_registers->set_ymm(iframe + iblock * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*iblock));
-    }
-    */
+    //for (size_t iblock = swtpg::COLLECTION_REGISTERS_PER_FRAME; iblock < swtpg::COLLECTION_REGISTERS_PER_FRAME + swtpg::INDUCTION_REGISTERS_PER_FRAME - 1; ++iblock) {
+      //std::cout << "iframe: " << iframe << " iblock: "  <<  iblock << " FRAMES_PER_MSG: " <<  swtpg::FRAMES_PER_MSG << std::endl;
+      //induction_registers->set_ymm(iblock + iframe * swtpg::FRAMES_PER_MSG, swtpg::unpack_one_register(frame->adc_words+7*(iblock + iframe * swtpg::FRAMES_PER_MSG)));
+    //}
   }
 }
 
