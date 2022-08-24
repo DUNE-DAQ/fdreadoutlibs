@@ -107,7 +107,6 @@ public:
       m_tphandler->reset();
       m_tps_dropped = 0;
 
-      TLOG() << "AAA: before swtpg::firwin_in \n\n\n";
       m_coll_taps = swtpg::firwin_int(7, 0.1, m_coll_multiplier);
       m_coll_taps.push_back(0);
       m_ind_taps = swtpg::firwin_int(7, 0.1, m_ind_multiplier);
@@ -468,7 +467,7 @@ protected:
       m_crate_no = wfptr->get_wib2_header()->crate;
       m_slot_no = wfptr->get_wib2_header()->slot;
 
-      TLOG() << "Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
+      TLOG() << "Collection: Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
       
       std::stringstream ss;
       ss << "Collection channels are:\n";
@@ -488,10 +487,6 @@ protected:
 
     // Signal to the induction thread that there's an item ready
     m_induction_item_to_process = &ind_item;
-    //m_induction_item_ready.store(true);
-
-
-
 
 
     // Find the hits in the "collection" registers
@@ -513,7 +508,7 @@ protected:
       TLOG() << "Total hits in first superchunk: " << nhits;
       m_first_coll = false;
     }
-  
+    
     // Wait for the induction item to be done. We have to spin here,
     // and not sleep, because we only have 6 microseconds to process
     // each superchunk. It appears that anything that makes a system
@@ -534,7 +529,7 @@ protected:
   {
     if (m_first_ind) {
       m_ind_tpg_pi->setState(induction_item_to_process->registers);
-      TLOG() << "Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
+      TLOG() << "Induction: Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
     }
 
     m_ind_tpg_pi->input = &induction_item_to_process->registers;
@@ -571,10 +566,13 @@ protected:
 
         // std::this_thread::sleep_for(std::chrono::microseconds(1));
         _mm_pause();
+      
         if(!m_ind_thread_should_run.load()) break;
       }
+
       if(!m_ind_thread_should_run.load()) break;
 
+      
       find_induction_hits(m_induction_item_to_process);
 
       // Signal back to the collection thread that we're done
