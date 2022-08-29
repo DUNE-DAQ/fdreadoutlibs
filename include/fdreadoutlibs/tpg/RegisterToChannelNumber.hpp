@@ -124,11 +124,11 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
   uint min_ch = UINT_MAX;
   for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
-      frame->get_wib2_header()->crate, frame->get_wib2_header()->slot, frame->get_wib2_header()->link, ich);
+      frame->header.crate, frame->header.slot, frame->header.link, ich);
     min_ch = std::min(min_ch, offline_ch);
   }
-  TLOG_DEBUG(0) << "get_register_to_offline_channel_map_wib2 for crate " << frame->get_wib2_header()->crate << " slot "
-                << frame->get_wib2_header()->slot << " link " << frame->get_wib2_header()->link << ". min_ch is "
+  TLOG_DEBUG(0) << "get_register_to_offline_channel_map_wib2 for crate " << frame->header.crate << " slot "
+                << frame->header.slot << " link " << frame->header.link << ". min_ch is "
                 << min_ch;
   // Now set each of the channels in our test frame to their
   // corresponding offline channel number, minus the minimum channel
@@ -141,7 +141,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
     reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(&superchunk);
   for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
-      frame->get_wib2_header()->crate, frame->get_wib2_header()->slot, frame->get_wib2_header()->link, ich);
+      frame->header.crate, frame->header.slot, frame->header.link, ich);
     //test_frame->set_channel(ich, offline_ch - min_ch);
   }
 

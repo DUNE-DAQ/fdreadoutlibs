@@ -400,7 +400,7 @@ protected:
         }
       }
 
-      //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame::Header*>(wf->get_wib2_header());
+      //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame::Header*>(wf->header);
       //if (wfh->wib_errors) {
       //  m_frame_error_count += std::bitset<16>(wfh->wib_errors).count();
       //}
@@ -456,16 +456,20 @@ protected:
     InductionItemToProcess ind_item;
 
     // WIB2
+    auto start = std::chrono::high_resolution_clock::now();
     expand_message_adcs_inplace_wib2(fp, &collection_registers, &ind_item.registers);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    TLOG() << "AAA: message_adcs_in_place execution time [us]: " << duration.count() ;
 
     if (m_first_coll) {
       m_register_channel_map = swtpg::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map);
 
       m_coll_tpg_pi->setState(collection_registers);
 
-      m_link = wfptr->get_wib2_header()->link;
-      m_crate_no = wfptr->get_wib2_header()->crate;
-      m_slot_no = wfptr->get_wib2_header()->slot;
+      m_link = wfptr->header.link;
+      m_crate_no = wfptr->header.crate;
+      m_slot_no = wfptr->header.slot;
 
       TLOG() << "Collection: Got first item, fiber/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
       
@@ -487,12 +491,20 @@ protected:
 
     // Signal to the induction thread that there's an item ready
     m_induction_item_to_process = &ind_item;
+    m_induction_item_ready.store(true);
 
 
     // Find the hits in the "collection" registers
+     auto start_find_hits_collection_regist = std::chrono::high_resolution_clock::now();
+    
     m_coll_tpg_pi->input = &collection_registers;
     *m_coll_primfind_dest = swtpg::MAGIC;
     swtpg::process_window_avx2(*m_coll_tpg_pi);
+    
+    auto stop_find_hits_collection_regist = std::chrono::high_resolution_clock::now();
+    auto duration_find_hits_collection_regist = std::chrono::duration_cast<std::chrono::microseconds>(stop_find_hits_collection_regist - start_find_hits_collection_regist);
+    TLOG() << "AAA: find hits collection execution time [us]: " << duration_find_hits_collection_regist.count() ;
+
 
     unsigned int nhits = add_hits_to_tphandler(m_coll_primfind_dest, timestamp, types::kCollection);
 
@@ -566,14 +578,20 @@ protected:
 
         // std::this_thread::sleep_for(std::chrono::microseconds(1));
         _mm_pause();
-      
+       
         if(!m_ind_thread_should_run.load()) break;
       }
 
       if(!m_ind_thread_should_run.load()) break;
 
       
+      auto start_find_hits_induction_regist = std::chrono::high_resolution_clock::now();
       find_induction_hits(m_induction_item_to_process);
+      auto stop_find_hits_induction_regist = std::chrono::high_resolution_clock::now();
+      auto duration_find_hits_induction_regist = std::chrono::duration_cast<std::chrono::microseconds>(stop_find_hits_induction_regist - start_find_hits_induction_regist);
+      TLOG() << "AAA: find hits induction execution time [us]: " << duration_find_hits_induction_regist.count() ;
+
+
 
       // Signal back to the collection thread that we're done
       m_induction_item_ready.store(false);
