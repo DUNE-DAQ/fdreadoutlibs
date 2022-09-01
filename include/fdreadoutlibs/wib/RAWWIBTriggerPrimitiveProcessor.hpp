@@ -68,7 +68,7 @@ public:
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
       m_tphandler.reset(
-            new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
+            new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_sourceid, config.tpset_topic));
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
@@ -162,7 +162,7 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.adc_integral = rwtp->m_blocks[i].m_sum_adc;
     trigprim.adc_peak = rwtp->m_blocks[i].m_peak_adc;
     trigprim.detid =
-            m_fiber_no; // TODO: convert crate/slot/fiber to GeoID Roland Sipos rsipos@cern.ch July-22-2021
+            m_fiber_no; // TODO: convert crate/slot/fiber to SourceID Roland Sipos rsipos@cern.ch July-22-2021
     trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
     trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
     trigprim.version = 1;

@@ -33,16 +33,15 @@ TDECrateSourceEmulatorModel<ReadoutType>::conf(const nlohmann::json& args,
     std::mt19937 mt(rand()); // NOLINT(runtime/threadsafe_fn)
     std::uniform_real_distribution<double> dis(0.0, 1.0);
 
-    m_geoid.element_id = m_link_conf.geoid.element;
-    m_geoid.region_id = m_link_conf.geoid.region;
-    m_geoid.system_type = ReadoutType::system_type;
+    m_sourceid.id = m_link_conf.source_id;
+    m_sourceid.subsystem = ReadoutType::subsystem;
 
     m_file_source = std::make_unique<readoutlibs::FileSourceBuffer>(m_link_conf.input_limit, sizeof(ReadoutType) * 12);
     try {
       m_file_source->read(m_link_conf.data_filename);
     } catch (const ers::Issue& ex) {
       ers::fatal(ex);
-      throw readoutlibs::ConfigurationError(ERS_HERE, m_geoid, "", ex);
+      throw readoutlibs::ConfigurationError(ERS_HERE, m_sourceid, "", ex);
     }
     m_dropouts_length = m_link_conf.random_population_size;
     if (m_dropout_rate == 0.0) {
@@ -62,7 +61,7 @@ TDECrateSourceEmulatorModel<ReadoutType>::conf(const nlohmann::json& args,
     m_is_configured = true;
   }
   // Configure thread:
-  m_producer_thread.set_name("fakeprod", m_link_conf.geoid.element);
+  m_producer_thread.set_name("fakeprod", m_link_conf.source_id);
 }
 
 template<class ReadoutType>
@@ -158,7 +157,7 @@ TDECrateSourceEmulatorModel<ReadoutType>::run_produce()
         try {
         m_raw_data_sender->send(std::move(*payload), m_raw_sender_timeout_ms);
         } catch (ers::Issue& excpt) {
-          ers::warning(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "raw data input queue", excpt));
+          ers::warning(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "raw data input queue", excpt));
         // std::runtime_error("Queue timed out...");
         }
       }

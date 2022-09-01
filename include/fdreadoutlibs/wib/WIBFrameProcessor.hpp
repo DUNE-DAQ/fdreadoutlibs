@@ -230,9 +230,8 @@ public:
   void conf(const nlohmann::json& cfg) override
   {
     auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-    m_geoid.element_id = config.element_id;
-    m_geoid.region_id = config.region_id;
-    m_geoid.system_type = types::WIB_SUPERCHUNK_STRUCT::system_type;
+    m_sourceid.id = config.source_id;
+    m_sourceid.subsystem = types::WIB_SUPERCHUNK_STRUCT::subsystem;
     m_error_counter_threshold = config.error_counter_threshold;
     m_error_reset_freq = config.error_reset_freq;
 
@@ -242,7 +241,7 @@ public:
       m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
       m_tphandler.reset(
-        new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_geoid, config.tpset_topic));
+        new WIBTPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, m_sourceid, config.tpset_topic));
 
       // m_induction_items_to_process = std::make_unique<readoutlibs::IterableQueueModel<InductionItemToProcess>>(
       //   200000, false, 0, true, 64); // 64 byte aligned
@@ -410,7 +409,7 @@ protected:
                 m_err_frame_sink->send(std::move(wf_copy), std::chrono::milliseconds(10));
                 m_current_frame_pushed = true;
               } catch (const ers::Issue& excpt) {
-                ers::warning(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "Errored frame queue", excpt));
+                ers::warning(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "Errored frame queue", excpt));
               }
             }
           }
@@ -529,7 +528,7 @@ protected:
   void find_induction_hits_thread()
   {
     std::stringstream thread_name;
-    thread_name << "ind-hits-" << m_geoid.region_id << "-" << m_geoid.element_id;
+    thread_name << "ind-hits-" << m_sourceid.id;
     pthread_setname_np(pthread_self(), thread_name.str().c_str());
 
     size_t n_items=0;
@@ -636,7 +635,7 @@ protected:
           trigprim.adc_integral = hit_charge[i];
           trigprim.adc_peak = hit_charge[i] / 20;
           trigprim.detid =
-            m_fiber_no; // TODO: convert crate/slot/fiber to GeoID Roland Sipos rsipos@cern.ch July-22-2021
+            m_fiber_no; // TODO: convert crate/slot/fiber to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
           trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
           trigprim.version = 1;
@@ -730,7 +729,7 @@ private:
 
   std::atomic<uint64_t> m_frame_error_count{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_frames_processed{ 0 };  // NOLINT(build/unsigned)
-  daqdataformats::GeoID m_geoid;
+  daqdataformats::SourceID m_sourceid;
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)

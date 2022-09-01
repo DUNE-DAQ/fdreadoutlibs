@@ -28,13 +28,13 @@ public:
                         iomanager::SenderConcept<trigger::TPSet>& tpset_sink,
                         uint64_t tp_timeout,        // NOLINT(build/unsigned)
                         uint64_t tpset_window_size, // NOLINT(build/unsigned)
-                        daqdataformats::GeoID geoId,
+                        daqdataformats::SourceID sourceId,
                         std::string tpset_topic)
     : m_tp_sink(tp_sink)
     , m_tpset_sink(tpset_sink)
     , m_tp_timeout(tp_timeout)
     , m_tpset_window_size(tpset_window_size)
-    , m_geoid(geoId)
+    , m_sourceid(sourceId)
     , m_tpset_topic(tpset_topic)
   {}
 
@@ -67,7 +67,7 @@ public:
       tpset.end_time = tpset.start_time + m_tpset_window_size;
       tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
       tpset.type = trigger::TPSet::Type::kPayload;
-      tpset.origin = m_geoid;
+      tpset.origin = m_sourceid;
       
       while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
         triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
@@ -78,7 +78,7 @@ public:
           m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
           m_sent_tps++;
         } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tp_sink"));
+          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tp_sink"));
         }
         tpset.objects.emplace_back(std::move(tp));
         m_tp_buffer.pop();
@@ -88,7 +88,7 @@ public:
         m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10), m_tpset_topic);
         m_sent_tpsets++;
       } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-        ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_geoid, "m_tpset_sink"));
+        ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tpset_sink"));
       }
     }
   }
@@ -114,7 +114,7 @@ private:
   uint64_t m_tp_timeout;           // NOLINT(build/unsigned)
   uint64_t m_tpset_window_size;    // NOLINT(build/unsigned)
   uint64_t m_next_tpset_seqno = 0; // NOLINT(build/unsigned)
-  daqdataformats::GeoID m_geoid;
+  daqdataformats::SourceID m_sourceid;
   std::string m_tpset_topic;
   
   std::atomic<size_t> m_sent_tps{ 0 };    // NOLINT(build/unsigned)

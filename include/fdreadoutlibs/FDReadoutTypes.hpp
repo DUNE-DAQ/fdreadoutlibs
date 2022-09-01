@@ -12,7 +12,7 @@
 //#include "iomanager/Receiver.hpp"
 
 #include "daqdataformats/FragmentHeader.hpp"
-#include "daqdataformats/GeoID.hpp"
+#include "daqdataformats/SourceID.hpp"
 #include "detdataformats/daphne/DAPHNEFrame.hpp"
 #include "detdataformats/ssp/SSPTypes.hpp"
 #include "detdataformats/wib/WIBFrame.hpp"
@@ -126,8 +126,8 @@ struct WIB_SUPERCHUNK_STRUCT
   size_t get_frame_size() { return 464; }
   
   static const constexpr size_t fixed_payload_size = 5568;
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kProtoWIB;
   static const constexpr uint64_t expected_tick_difference = 25; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
 };
 
@@ -191,8 +191,8 @@ struct TDE_AMC_STRUCT
   }
 
   // static const constexpr size_t fixed_payload_size = 5568;
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTDE_AMC;
   static const constexpr uint64_t expected_tick_difference = 1000; // NOLINT(build/unsigned)
 
 };
@@ -262,8 +262,8 @@ struct WIB2_SUPERCHUNK_STRUCT
 
   size_t get_frame_size() { return 472; }
 
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIB;
   static const constexpr uint64_t expected_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
@@ -332,8 +332,8 @@ struct DAPHNE_SUPERCHUNK_STRUCT
 
   size_t get_frame_size() { return 584; }
 
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kPDS;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kPDSData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
   static const constexpr uint64_t expected_tick_difference = 16; // NOLINT(build/unsigned)
 };
 
@@ -382,8 +382,8 @@ struct SW_WIB_TRIGGERPRIMITIVE_STRUCT
 
   size_t get_frame_size() { return TP_SIZE; }
 
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTriggerPrimitives;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kSW_TriggerPrimitive;
   static const constexpr uint64_t expected_tick_difference = 25; // NOLINT(build/unsigned)
 };
 
@@ -452,8 +452,8 @@ struct SSP_FRAME_STRUCT
     return SSP_FRAME_SIZE;
   }
 
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kPDS;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kPDSData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kUnknown;
   static const constexpr uint64_t expected_tick_difference = 25; // NOLINT(build/unsigned)
 };
 
@@ -519,8 +519,8 @@ struct RAW_WIB_TRIGGERPRIMITIVE_STRUCT
     return reinterpret_cast<FrameType*>(m_raw_tp_frame_chunk.data()+m_raw_tp_frame_chunksize); // NOLINT
   }
 
-  static const constexpr daqdataformats::GeoID::SystemType system_type = daqdataformats::GeoID::SystemType::kTPC;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTPCData;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kSW_TriggerPrimitive;
   static const constexpr uint64_t expected_tick_difference = 0; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
   //static const constexpr size_t frame_size = TP_SIZE;
   //static const constexpr size_t element_size = TP_SIZE;
