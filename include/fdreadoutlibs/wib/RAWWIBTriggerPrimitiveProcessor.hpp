@@ -60,11 +60,26 @@ public:
 
   void conf(const nlohmann::json& args) override
   {
-    TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
-                std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack, this, std::placeholders::_1));
+    auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+
+    m_format_version = 1;
+    if (config.fwtp_format_version == 2) {
+      m_format_version = 2;
+    } else {
+      TLOG_DEBUG(1) << "WARNING Unknown raw TP frame format version: " << config.fwtp_format_version << ". Expect: 1 or 2. Falling back to default: 1.";
+    }
+    TLOG_DEBUG(1) << "Raw TP frame format version is: " << m_format_version;
+    
+    if (m_format_version == 1) {
+      TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
+                  std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack_v1, this, std::placeholders::_1));
+    }
+    if (m_format_version == 2) {
+      TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
+                  std::bind(&RAWWIBTriggerPrimitiveProcessor::tp_unpack_v2, this, std::placeholders::_1));
+    }
     TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::conf(args);
 
-    auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
     if (config.enable_firmware_tpg) {
       m_fw_tpg_enabled = true;
       m_tphandler.reset(
@@ -113,6 +128,9 @@ public:
     for (size_t i = 0; i < m_nhits.size(); i++) {
       TLOG_DEBUG(1) << "Number of frames with hits " << i << ": " << m_nhits[i] << ", " << (double)((double)m_nhits[i]/(double)m_tp_frames) << "\n";
     }
+    TLOG_DEBUG(1) << "Value of wirecounter[0][0] i.e. '(wire0,fiber0)' " << m_wirecounter[0][0]; 
+    TLOG_DEBUG(1) << "Value of wirecounter[4][0] i.e. '(wire4,fiber0)' " << m_wirecounter[4][0]; 
+    TLOG_DEBUG(1) << "Value of wirecounter[252][0] i.e. '(wire252,fiber0)' " << m_wirecounter[252][0]; 
   }
 
   void scrap(const nlohmann::json& args) override
@@ -148,9 +166,12 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
-
+  m_wirecounter[m_channel_no][m_fiber_no] += 1;
+  
+  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- fwTP timestamp: " << ts_0;
   TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits" ;
   TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- offline channel " << offline_channel ;
+  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- wire, fiber, slot, crate: " << (int)m_channel_no << ", " << (int)m_fiber_no << ", " << (int)m_slot_no << ", " << (int)m_crate_no;
   m_nhits[nhits] += 1;
   for (int i = 0; i < nhits; i++) {
 
@@ -254,8 +275,7 @@ void tp_stitch(rwtp_ptr rwtp)
 } // NOLINT (exceeding 80 lines)
 
 
-//void unpack_tpframe_version_1(frame_ptr fr)
-void tp_unpack(frame_ptr fr)  
+void tp_unpack_v1(frame_ptr fr)  
 {
   auto& srcbuffer = fr->get_data();
   int num_elem = fr->get_raw_tp_frame_chunksize();
@@ -285,6 +305,8 @@ void tp_unpack(frame_ptr fr)
         break; 
       }  
     }
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_unpack pedestal word found, n, offset: " 
+      << ped_found << ", " << n << ", " << offset;
     if (!ped_found) return;
 
     int bsize = n * RAW_WIB_TP_SUBFRAME_SIZE;
@@ -332,6 +354,66 @@ void tp_unpack(frame_ptr fr)
   }
 }
 
+void tp_unpack_v2(frame_ptr fr)
+{
+  auto& srcbuffer = fr->get_data();
+  int num_elem = fr->get_raw_tp_frame_chunksize();
+
+  if (num_elem == 0) {
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! ";
+    return;
+  }
+  if (num_elem % RAW_WIB_TP_SUBFRAME_SIZE != 0) {
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
+    return;
+  }
+
+  int offset = 0;
+  while (offset <= num_elem) {
+
+    if (offset == num_elem) break;
+
+    // Count number of hits in a TP frame
+    int n = 1;
+    int nhits = 0;
+    bool ped_found { false };
+    for (n=1; offset+(n-1)*RAW_WIB_TP_SUBFRAME_SIZE<(size_t)num_elem; ++n) {
+      auto tph = reinterpret_cast<dunedaq::detdataformats::fwtp::TpHeader*>(srcbuffer.data() 
+               + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE);
+      nhits = tph->get_nhits();
+      if (tph->m_padding_3 == 0xBEEF) {
+        ped_found = true;
+        break;
+      }
+    }
+    offset += (n-1)*RAW_WIB_TP_SUBFRAME_SIZE;
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_unpack pedestal word found, n, offset, nhits: " 
+      << ped_found << ", " << n << ", " << offset << ", " << nhits;
+    if (!ped_found) return;
+
+    auto heap_memory_block = malloc(
+         sizeof(dunedaq::detdataformats::fwtp::TpHeader) +
+         nhits * sizeof(dunedaq::detdataformats::fwtp::TpData));
+    rwtp_ptr rwtp =
+         static_cast<dunedaq::detdataformats::fwtp::RawTp*>(heap_memory_block);
+
+    ::memcpy(static_cast<void*>(&rwtp->m_head),
+             static_cast<void*>(srcbuffer.data() + offset),
+             2*RAW_WIB_TP_SUBFRAME_SIZE);
+
+    for (int i=0; i<nhits; i++) {
+      ::memcpy(static_cast<void*>(&rwtp->m_blocks[i]),
+               static_cast<void*>(srcbuffer.data() + offset + (2+i)*RAW_WIB_TP_SUBFRAME_SIZE),
+               RAW_WIB_TP_SUBFRAME_SIZE);
+    }
+
+    // stitch TP hits
+    tp_stitch(rwtp);
+    offset += (2+nhits)*RAW_WIB_TP_SUBFRAME_SIZE;
+    free(heap_memory_block);
+  }
+}
+
 protected:
   double m_time_tick { 1.0 }; // 
 
@@ -347,8 +429,10 @@ private:
   std::vector<uint64_t> m_T[256][10]; // NOLINT // keep track of last stitched start time
   std::atomic<uint64_t> m_tps_stitched { 0 }; // NOLINT
   std::atomic<uint64_t> m_tp_frames  { 0 }; // NOLINT
-  uint64_t m_stitch_constant { 1 }; // NOLINT  // number of ticks between WIB-to-TP packets
+  int m_stitch_constant { 2048 }; // number of ticks between WIB-to-TP packets
+  int m_format_version { 1 };  // Format version of raw TP frames for firmware TPG
   std::vector<int> m_nhits { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  int m_wirecounter[256][10];
 
   // interface to DS
   bool m_fw_tpg_enabled;
