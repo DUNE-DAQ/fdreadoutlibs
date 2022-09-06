@@ -146,8 +146,21 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_channel_no = rwtp->m_head.m_wire_no; // NOLINT
   uint8_t m_fiber_no = rwtp->m_head.m_fiber_no; // NOLINT
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
-  uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
+  uint8_t m_slot_no = (rwtp->m_head.m_slot_no) & ((uint8_t) 0x7); // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
+
+  if(m_tp_frames % 50000 == 0)
+  {
+    TLOG() << "tp frame: " << m_tp_frames;
+    TLOG() << "timestamp: " << ts_0;
+    TLOG() << "nHits: " << nhits;
+    TLOG() << "header word 1: " << std::setfill('0') << std::setw(8) << std::hex << ((uint32_t*)& rwtp->m_head)[0];
+    TLOG() << "channel: " << (uint16_t) m_channel_no;
+    TLOG() << "fiber: " << (uint16_t) m_fiber_no;
+    TLOG() << "crate: " << (uint16_t) m_crate_no;
+    TLOG() << "slot: " << (uint16_t) m_slot_no;
+    TLOG() << "offline channel: " << offline_channel;
+  }
 
   TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits" ;
   TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- offline channel " << offline_channel ;
