@@ -61,6 +61,8 @@ public:
   void conf(const nlohmann::json& args) override
   {
     auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+    m_sourceid.id = config.source_id;
+    m_sourceid.subsystem = types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT::subsystem;
 
     m_format_version = 1;
     if (config.fwtp_format_version == 2) {
@@ -429,6 +431,8 @@ private:
   std::vector<uint64_t> m_T[256][10]; // NOLINT // keep track of last stitched start time
   std::atomic<uint64_t> m_tps_stitched { 0 }; // NOLINT
   std::atomic<uint64_t> m_tp_frames  { 0 }; // NOLINT
+  daqdataformats::SourceID m_sourceid;
+
   int m_stitch_constant { 2048 }; // number of ticks between WIB-to-TP packets
   int m_format_version { 1 };  // Format version of raw TP frames for firmware TPG
   std::vector<int> m_nhits { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
