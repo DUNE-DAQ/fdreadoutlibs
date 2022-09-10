@@ -34,8 +34,7 @@
 #include <iostream>
 #include <fstream>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using namespace dunedaq::readoutlibs::logging;
+using dunedaq::readoutlibs::logging::TLVL_WORK_STEPS;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -68,9 +67,9 @@ public:
     if (config.fwtp_format_version == 2) {
       m_format_version = 2;
     } else {
-      TLOG_DEBUG(1) << "WARNING Unknown raw TP frame format version: " << config.fwtp_format_version << ". Expect: 1 or 2. Falling back to default: 1.";
+      TLOG_DEBUG(15) << "WARNING Unknown raw TP frame format version: " << config.fwtp_format_version << ". Expect: 1 or 2. Falling back to default: 1.";
     }
-    TLOG_DEBUG(1) << "Raw TP frame format version is: " << m_format_version;
+    TLOG_DEBUG(15) << "Raw TP frame format version is: " << m_format_version;
     
     if (m_format_version == 1) {
       TaskRawDataProcessorModel<types::RAW_WIB_TRIGGERPRIMITIVE_STRUCT>::add_preprocess_task(
@@ -92,7 +91,7 @@ public:
 
     m_stitch_constant = config.fwtp_stitch_constant;
     m_time_tick = m_stitch_constant/64;
-    TLOG_DEBUG(1) << "TP frame stitching parameters are ( " << m_stitch_constant << ", " << m_time_tick << ")";
+    TLOG_DEBUG(15) << "TP frame stitching parameters are ( " << m_stitch_constant << ", " << m_time_tick << ")";
   }
 
   void init(const nlohmann::json& args) override
@@ -123,16 +122,14 @@ public:
 
   void stop(const nlohmann::json& /*args*/) override
   {
-    TLOG_DEBUG(1) << "Number of TP frames " << m_tp_frames;
-    TLOG_DEBUG(1) << "Number of TPs stitched " << m_tps_stitched;
-    TLOG_DEBUG(1) << "Number of TPs dropped " << m_tps_dropped; 
+    TLOG_DEBUG(20) << "Number of TP frames " << m_tp_frames;
+    TLOG_DEBUG(20) << "Number of TPs stitched " << m_tps_stitched;
+    TLOG_DEBUG(20) << "Number of TPs dropped " << m_tps_dropped; 
 
     for (size_t i = 0; i < m_nhits.size(); i++) {
-      TLOG_DEBUG(1) << "Number of frames with hits " << i << ": " << m_nhits[i] << ", " << (double)((double)m_nhits[i]/(double)m_tp_frames) << "\n";
+      TLOG_DEBUG(20) << "Number of frames with hits " << i << ": " << m_nhits[i] << ", " 
+        << static_cast<double>(static_cast<double>(m_nhits[i])/static_cast<double>(m_tp_frames)) << "\n";
     }
-    TLOG_DEBUG(1) << "Value of wirecounter[0][0] i.e. '(wire0,fiber0)' " << m_wirecounter[0][0]; 
-    TLOG_DEBUG(1) << "Value of wirecounter[4][0] i.e. '(wire4,fiber0)' " << m_wirecounter[4][0]; 
-    TLOG_DEBUG(1) << "Value of wirecounter[252][0] i.e. '(wire252,fiber0)' " << m_wirecounter[252][0]; 
   }
 
   void scrap(const nlohmann::json& args) override
@@ -168,12 +165,7 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
   uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
-  m_wirecounter[m_channel_no][m_fiber_no] += 1;
   
-  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- fwTP timestamp: " << ts_0;
-  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits" ;
-  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- offline channel " << offline_channel ;
-  TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- wire, fiber, slot, crate: " << (int)m_channel_no << ", " << (int)m_fiber_no << ", " << (int)m_slot_no << ", " << (int)m_crate_no;
   m_nhits[nhits] += 1;
   for (int i = 0; i < nhits; i++) {
 
@@ -189,11 +181,6 @@ void tp_stitch(rwtp_ptr rwtp)
     trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
     trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
     trigprim.version = 1;
-
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_stitch time_start " << trigprim.time_start; 
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_stitch time_peak " << trigprim.time_peak; 
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_stitch time_over_threshold " << trigprim.time_over_threshold; 
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_stitch channel " << trigprim.channel; 
 
     // stitch current hit to previous hit
     if (m_A[m_channel_no][m_fiber_no].size() == 1) {
@@ -307,8 +294,6 @@ void tp_unpack_v1(frame_ptr fr)
         break; 
       }  
     }
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_unpack pedestal word found, n, offset: " 
-      << ped_found << ", " << n << ", " << offset;
     if (!ped_found) return;
 
     int bsize = n * RAW_WIB_TP_SUBFRAME_SIZE;
@@ -380,7 +365,7 @@ void tp_unpack_v2(frame_ptr fr)
     int nhits = 0;
     bool ped_found { false };
     for (n=1; offset+(n-1)*RAW_WIB_TP_SUBFRAME_SIZE<(size_t)num_elem; ++n) {
-      auto tph = reinterpret_cast<dunedaq::detdataformats::fwtp::TpHeader*>(srcbuffer.data() 
+      auto tph = reinterpret_cast<dunedaq::detdataformats::fwtp::TpHeader*>(srcbuffer.data() // NOLINT
                + offset + (n-1)*RAW_WIB_TP_SUBFRAME_SIZE);
       nhits = tph->get_nhits();
       if (tph->m_padding_3 == 0xBEEF) {
@@ -389,8 +374,6 @@ void tp_unpack_v2(frame_ptr fr)
       }
     }
     offset += (n-1)*RAW_WIB_TP_SUBFRAME_SIZE;
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI tp_unpack pedestal word found, n, offset, nhits: " 
-      << ped_found << ", " << n << ", " << offset << ", " << nhits;
     if (!ped_found) return;
 
     auto heap_memory_block = malloc(
@@ -436,7 +419,6 @@ private:
   int m_stitch_constant { 2048 }; // number of ticks between WIB-to-TP packets
   int m_format_version { 1 };  // Format version of raw TP frames for firmware TPG
   std::vector<int> m_nhits { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-  int m_wirecounter[256][10];
 
   // interface to DS
   bool m_fw_tpg_enabled;
@@ -445,7 +427,7 @@ private:
   std::unique_ptr<WIBTPHandler> m_tphandler;
   std::atomic<uint64_t> m_tps_dropped{ 0 }; // NOLINT
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
-  uint64_t m_fake_timestamp{ 0 };
+  uint64_t m_fake_timestamp{ 0 }; // NOLINT
 
   // info
   std::atomic<uint64_t> m_sent_tps{ 0 }; // NOLINT(build/unsigned)
