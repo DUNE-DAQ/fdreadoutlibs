@@ -140,13 +140,13 @@ void tp_stitch(rwtp_ptr rwtp)
 {
   m_fake_timestamp += 6400; 
   m_tp_frames++;
-  uint64_t ts_0 = rwtp->m_head.get_timestamp(); // NOLINT
-  //uint64_t ts_0 = m_fake_timestamp; // NOLINT
+  //uint64_t ts_0 = rwtp->m_head.get_timestamp(); // NOLINT
+  uint64_t ts_0 = m_fake_timestamp; // NOLINT
   int nhits = rwtp->m_head.get_nhits(); // NOLINT
   uint8_t m_channel_no = rwtp->m_head.m_wire_no; // NOLINT
   uint8_t m_fiber_no = rwtp->m_head.m_fiber_no; // NOLINT
   uint8_t m_crate_no = rwtp->m_head.m_crate_no; // NOLINT
-  uint8_t m_slot_no = rwtp->m_head.m_slot_no; // NOLINT
+  uint8_t m_slot_no = (rwtp->m_head.m_slot_no) & ((uint8_t) 0x7); // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
 
   TLOG_DEBUG(TLVL_WORK_STEPS) << "IRHRI fwTPG enabled -- will loop over " << nhits << " hits" ;
