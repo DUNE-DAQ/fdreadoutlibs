@@ -338,8 +338,9 @@ protected:
    * */
   void timestamp_check(frameptr fp)
   {
-    uint16_t wib2_tick_difference = types::WIB2_SUPERCHUNK_STRUCT::expected_tick_difference; 
-    uint16_t wib2_superchunk_tick_difference = wib2_tick_difference * fp->get_num_frames();
+    //uint16_t wib2_tick_difference = types::WIB2_SUPERCHUNK_STRUCT::expected_tick_difference; 
+    uint16_t wib2_superchunk_tick_difference = 384;
+    //uint16_t wib2_superchunk_tick_difference = wib2_tick_difference * fp->get_num_frames();
 
     // If EMU data, emulate perfectly incrementing timestamp
     if (inherited::m_emulator_mode) {                           // emulate perfectly incrementing timestamp
@@ -349,7 +350,7 @@ protected:
         //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(wf);
         //wfh->set_timestamp(ts_next);
         wf->set_timestamp(ts_next);
-        ts_next += wib2_tick_difference;
+        ts_next += 32;
         wf++;
       }
     }

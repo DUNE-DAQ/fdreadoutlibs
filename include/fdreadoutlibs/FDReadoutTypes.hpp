@@ -384,7 +384,7 @@ struct SW_WIB_TRIGGERPRIMITIVE_STRUCT
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kSW_TriggerPrimitive;
-  static const constexpr uint64_t expected_tick_difference = 25; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct SW_WIB_TRIGGERPRIMITIVE_STRUCT) == sizeof(triggeralgs::TriggerPrimitive),
