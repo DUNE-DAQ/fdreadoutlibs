@@ -16,8 +16,11 @@ void
 TDEFrameGrouper::group(std::vector<std::vector<detdataformats::tde::TDE16Frame>>& v, 
                        detdataformats::tde::TDE16Frame* frames)
 {
-  for (int i = 0; i < 12 * 64; i++) {
-    v[frames[i].get_tde_header()->slot][frames[i].get_tde_header()->link] = frames[i];
+  // for (int i = 0; i < 1 * 64; i++) {
+  //   v[frames[i].get_tde_header()->slot][frames[i].get_tde_header()->link] = frames[i];
+  // }
+  for (int i = 0; i < 1 * 64; i++) {
+    v[0][frames[i].get_tde_header()->link] = frames[i];
   }
 }
 

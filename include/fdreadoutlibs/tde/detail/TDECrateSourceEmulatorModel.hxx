@@ -124,22 +124,22 @@ TDECrateSourceEmulatorModel<ReadoutType>::run_produce()
 
   while (m_run_marker.load()) {
     // Which element to push to the buffer
-    if (offset == num_elem * sizeof(ReadoutType) * 12 || (offset + 1) * sizeof(ReadoutType) * 12 > source.size()) {
+    if (offset == num_elem * sizeof(ReadoutType) || (offset + 1) * sizeof(ReadoutType) > source.size()) {
       offset = 0;
     }
 
     bool create_frame = m_dropouts[dropout_index]; // NOLINT(runtime/threadsafe_fn)
     dropout_index = (dropout_index + 1) % m_dropouts.size();
     if (create_frame) {
-      detdataformats::tde::TDE16Frame frames[12 * 64] ;
+      detdataformats::tde::TDE16Frame frames[64] ;
       ::memcpy(static_cast<void*>(frames),
-               static_cast<void*>(source.data() + offset * sizeof(ReadoutType) * 12),
-               sizeof(ReadoutType) * 12);
+               static_cast<void*>(source.data() + offset * sizeof(ReadoutType)),
+               sizeof(ReadoutType));
 
-      std::vector<std::vector<detdataformats::tde::TDE16Frame>> v(12, std::vector<detdataformats::tde::TDE16Frame>(64));
+      std::vector<std::vector<detdataformats::tde::TDE16Frame>> v(1, std::vector<detdataformats::tde::TDE16Frame>(64));
       m_tde_frame_grouper->group(v, frames);
 
-      for (int i = 0; i < 12; i++)
+      for (int i = 0; i < 1; i++)
       {
         ReadoutType* payload = reinterpret_cast<ReadoutType*>(v[i].data());
 
@@ -149,13 +149,13 @@ TDECrateSourceEmulatorModel<ReadoutType>::run_produce()
         // Introducing frame errors
         std::vector<uint16_t> frame_errs; // NOLINT(build/unsigned)
         for (size_t i = 0; i < rptr->get_num_frames(); ++i) {
-        frame_errs.push_back(m_error_bit_generator.next());
+          frame_errs.push_back(m_error_bit_generator.next());
         }
         payload->fake_frame_errors(&frame_errs);
 
         // send it
         try {
-        m_raw_data_sender->send(std::move(*payload), m_raw_sender_timeout_ms);
+          m_raw_data_sender->send(std::move(*payload), m_raw_sender_timeout_ms);
         } catch (ers::Issue& excpt) {
           ers::warning(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "raw data input queue", excpt));
         // std::runtime_error("Queue timed out...");
