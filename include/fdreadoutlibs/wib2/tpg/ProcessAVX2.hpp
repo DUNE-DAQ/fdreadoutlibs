@@ -368,6 +368,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
   }
 
   info.nhits = nhits;
+  //printf("Found %d hits\n", nhits);
+
 
 } // NOLINT(readability/fn_size)
 

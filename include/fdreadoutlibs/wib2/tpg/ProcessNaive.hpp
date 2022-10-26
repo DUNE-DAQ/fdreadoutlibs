@@ -19,6 +19,13 @@
 
 namespace swtpg_wib2 {
 
+
+struct MessageADCs
+{
+  char fragments[ADCS_SIZE];
+};
+
+
 void
 frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acclimit)
 {
@@ -138,6 +145,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
+        //std::cout << "ICHAN: " << ichan << std::endl;
         (*output_loc++) = itime;           // NOLINT
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
@@ -146,6 +154,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         hit_tover = 0;
 
         ++nhits;
+
         prev_was_over = false;
 
       } // end if left hit
@@ -153,14 +162,20 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     } // end loop over samples
   }   // end loop over channels
 
-  // printf("Found %d hits\n", nhits);
   info.nhits += nhits;
+
+  if (nhits > 0) { 
+    std::cout << "FOUND HITS: " << nhits << std::endl;
+  }  
   info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
   // Write a magic "end-of-hits" value into the list of hits
   for (int i = 0; i < 4; ++i) {
     (*output_loc++) = MAGIC; // NOLINT
   }
+
+  //printf("Found %d hits\n", nhits);
+
 }
 
 } // namespace swtpg_wib2
