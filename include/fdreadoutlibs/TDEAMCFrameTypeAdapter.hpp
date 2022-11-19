@@ -15,7 +15,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 namespace types {
 
-const constexpr std::size_t kTDEAMCFrameSize = 64 * sizeof(dunedaq::detdataformats::tde::TDE16Frame);
+const constexpr std::size_t kTDEAMCFrameSize = 1 * sizeof(dunedaq::detdataformats::tde::TDE16Frame);
 struct TDEAMCFrameTypeAdapter
 
 {
