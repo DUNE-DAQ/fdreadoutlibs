@@ -138,12 +138,14 @@ i*/
 
   void stop(const nlohmann::json& /*args*/) override
   {
-    TLOG_DEBUG(20) << "Number of TP frames " << m_tp_frames;
-    TLOG_DEBUG(20) << "Number of TPs stitched " << m_tps_stitched;
-    TLOG_DEBUG(20) << "Number of TPs dropped " << m_tps_dropped; 
+    m_tphandler.reset();
+
+    TLOG() << "Sbhuller: Number of TP frames " << m_tp_frames;
+    TLOG() << "Sbhuller: Number of TPs stitched " << m_tps_stitched;
+    TLOG() << "Sbhuller: Number of TPs dropped " << m_tps_dropped; 
 
     for (size_t i = 0; i < m_nhits.size(); i++) {
-      TLOG_DEBUG(20) << "Number of frames with hits " << i << ": " << m_nhits[i] << ", " 
+      TLOG() << "Sbhuller: Number of frames with hits " << i << ": " << m_nhits[i] << ", " 
         << static_cast<double>(static_cast<double>(m_nhits[i])/static_cast<double>(m_tp_frames)) << "\n";
     }
   }
@@ -170,8 +172,11 @@ i*/
     if (m_fw_tpg_enabled) {
       int new_hits = m_total_hits_count.exchange(0);
       double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
-      TLOG_DEBUG(TLVL_TAKE_NOTE) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-      TLOG_DEBUG(TLVL_TAKE_NOTE) << "Total new hits: " << new_hits;
+      if(new_hits > 0)
+      {
+        TLOG() << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
+        TLOG() << "Total new hits: " << new_hits;
+      }
       info.rate_tp_hits = new_hits / seconds / 1000.;
     }
     m_t0 = now;
@@ -199,12 +204,31 @@ void tp_stitch(rwtp_ptr rwtp)
   uint8_t m_slot_no = (rwtp->m_head.m_slot_no) & ((uint8_t) 0x7); // NOLINT
   uint offline_channel = m_channel_map->get_offline_channel_from_crate_slot_fiber_chan(m_crate_no, m_slot_no, m_fiber_no, m_channel_no);
  
+  if(offline_channel == 0xFFFFFFFF)
+  {
+    TLOG() << "Sbhuller: Found bad channel number, assuming this is bad data and will not process this data.";
+    return;
+  }
+
   if (nhits < 8) { 
     m_nhits[nhits] += 1;
   }
   m_total_hits_count += nhits;
 
   m_tp_hits += nhits;
+
+  // if(m_tp_frames % 1000 == 0)
+  // {
+  TLOG() << "Sbhuller: tp frame: " << m_tp_frames;
+  TLOG() << "Sbhuller: timestamp: " << ts_0;
+  TLOG() << "Sbhuller: nHits: " << nhits;
+  TLOG() << "Sbhuller: header word 1: " << std::setfill('0') << std::setw(8) << std::hex << ((uint32_t*)& rwtp->m_head)[0];
+  TLOG() << "Sbhuller: channel: " << (uint16_t) m_channel_no;
+  TLOG() << "Sbhuller: fiber: " << (uint16_t) m_fiber_no;
+  TLOG() << "Sbhuller: crate: " << (uint16_t) m_crate_no;
+  TLOG() << "Sbhuller: slot: " << (uint16_t) m_slot_no;
+  TLOG() << "Sbhuller: offline channel: " << offline_channel;
+  // }
 
   for (int i = 0; i < nhits; i++) {
 
@@ -305,18 +329,22 @@ void tp_stitch(rwtp_ptr rwtp)
 
 void tp_unpack(frame_ptr fr)  
 {
-  auto& srcbuffer = fr->get_data();
+
+  TLOG() << "Sbhuller: is there anybody out there?";
+
   int num_elem = fr->get_raw_tp_frame_chunksize();
 
   if (num_elem == 0) {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "No raw WIB TP elements to read from buffer! ";
+    TLOG() << "Sbhuller: No raw WIB TP elements to read from buffer! ";
     return;
   }
   if (num_elem % RAW_WIB_TP_SUBFRAME_SIZE != 0) {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "Raw WIB TP elements not multiple of subframe size (3)! ";
+    TLOG() << "Sbhuller: Raw WIB TP elements not multiple of subframe size (3)! ";
     return;
   }
 
+  auto& srcbuffer = fr->get_data();
+  
   double dbg_frames = 0;
   double dbg_microseconds = 0;
   int offset = 0;
@@ -381,6 +409,8 @@ void tp_unpack(frame_ptr fr)
  
     // old format lacks number of hits
     rwtp->set_nhits(nhits); // explicitly set number of hits in new format
+
+    TLOG() << "Sbhuller: dbg_frames: " << dbg_frames;
 
     // stitch TP hits
     tp_stitch(rwtp);
