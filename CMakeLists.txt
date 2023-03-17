@@ -44,9 +44,13 @@ set(FDREADOUTLIBS_DEPENDENCIES
 ##############################################################################
 # Extra options and tweaks
 set(FDREADOUTLIBS_USE_INTRINSICS ON)
+set(FDREADOUTLIBS_USE_AVX512 ON)
 
 if(${FDREADOUTLIBS_USE_INTRINSICS})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+  if(${FDREADOUTLIBS_USE_AVX512})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512bw -DAVX512")
+  endif()
 endif()
 
 ##############################################################################
@@ -67,8 +71,7 @@ daq_add_library(
 
 daq_add_application(TDEFileCreator TDEFileCreator.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 daq_add_application(WIB2TestBench WIB2TestBench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
-#daq_add_application(WIBEthTestBench WIBEthTestBench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
-#daq_add_application(WIBEthAddFakeHits WIBEthAddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
+daq_add_application(WIB2TestBench512 WIB2TestBench512.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 daq_add_application(WIB2AddFakeHits WIB2AddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(WIB2BinaryFrameReader WIB2BinaryFrameReader.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(TestSWTPGAlgorithms TestSWTPGAlgorithms.cxx TEST LINK_LIBRARIES fdreadoutlibs CLI11::CLI11)

@@ -86,7 +86,6 @@ struct swtpg_output{
 };
 
 
-// Parse the channel mask file
 std::set<uint> channel_mask_parser(std::string file_input) {
     std::ifstream inputFile(file_input);
 
@@ -108,7 +107,7 @@ std::set<uint> channel_mask_parser(std::string file_input) {
 class WIB2FrameHandler {
 
 public: 
-  explicit WIB2FrameHandler(int register_selector_params) 
+  explicit WIB2FrameHandler(int register_selector_params )
   {
     m_register_selector = register_selector_params;
   }
@@ -170,6 +169,7 @@ public:
     );
 
   }
+
 
 
 private: 
@@ -283,8 +283,7 @@ public:
     // Result is 4 words chan, timestamp, charge and tover threshold
     size_t max_result_size = swtpg_wib2::FRAMES_PER_MSG / 2 * swtpg_wib2::NUM_REGISTERS_PER_FRAME *
       swtpg_wib2::SAMPLES_PER_REGISTER * 4;
-    // AAA: TODO: bufferSize should be configurable from
-    size_t bufferSize = 1000000;              
+    size_t bufferSize=1000000;              //  <== Could/should be config param
     m_buffer_max_level=bufferSize-max_result_size;
     for(int i=0; i<2; ++i) {
       m_primfind_buffer[i] = new uint16_t[bufferSize];
@@ -349,7 +348,7 @@ public:
       TLOG() << "add_hits_tphandler_thread joined";
       m_tphandler.reset();
 
-      // Delete the two primfind buffers
+      // Pop and delete all the elements of the destination queues
       for (int i=0;i<2;++i) {
         delete[] m_primfind_buffer[i];
       }
@@ -407,8 +406,14 @@ protected:
   std::atomic<int> m_ts_error_ctr{ 0 };
 
 
+
+  void postprocess_example(const types::DUNEWIBSuperChunkTypeAdapter* fp)
+  {
+    TLOG() << "Postprocessing: " << fp->get_first_timestamp();
+  }
+
   /**
-   * Pipeline Stage 1.: Check proper timestamp increments in WIB2 frame
+   * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
    * */
   void timestamp_check(frameptr fp)
   {
@@ -456,9 +461,33 @@ protected:
     m_last_processed_daq_ts = m_current_ts;
   }
 
+  /**
+   * Pipeline Stage 2.: Check WIB headers for error flags
+   * */
+  void frame_error_check(frameptr fp)
+  {
+    if (!fp)
+      return;
+
+    auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp)); // NOLINT
+    for (size_t i = 0; i < fp->get_num_frames(); ++i) {
+      if (m_frames_processed % 10000 == 0) {
+        for (int i = 0; i < m_num_frame_error_bits; ++i) {
+          if (m_error_occurrence_counters[i])
+            m_error_occurrence_counters[i]--;
+        }
+      }
+
+      m_current_frame_pushed = false;
+
+
+      wf++;
+      m_frames_processed++;
+    }
+  }
 
   /**
-   * Pipeline Stage 2.: Perform software hit finding
+   * Pipeline Stage 3.: Do software TPG
    * */
   void find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
   {
@@ -492,16 +521,17 @@ protected:
       m_link = wfptr->header.link;
       m_crate_no = wfptr->header.crate;
       m_slot_no = wfptr->header.slot;
-      TLOG() << "Got first item, link=" << m_link << " crate=" << m_crate_no << " slot=" << m_slot_no;          
+      TLOG() << "Got first item, link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;      
 
 
       
-      //std::stringstream ss;
-      //ss << " Before_10_seconds: Channels for register selection " << register_selection << " are:\n";
-      //for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
-        //ss << i << "\t" << frame_handler->register_channel_map.channel[i] << "\t" << frame_handler->m_tpg_processing_info->chanState.pedestals[i] << "\n";
-      //}
-      //TLOG() << ss.str();      
+      std::stringstream ss;
+      ss << " Before_10_seconds: Channels for register selection " << register_selection << " are:\n";
+      
+      for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
+        ss << i << "\t" << frame_handler->register_channel_map.channel[i] << "\t" << frame_handler->m_tpg_processing_info->chanState.pedestals[i] << "\n";
+      }
+      TLOG() << ss.str();      
       
 
       // Add WIB2FrameHandler channel map to the common m_register_channels. 
@@ -515,7 +545,7 @@ protected:
 
 
 
-      TLOG_DEBUG(4) << "Processed the first superchunk ";
+      TLOG() << "Processed the first superchunk ";
 
       // Set first hit bool to false so that registration of channel map is not executed twice
       frame_handler->first_hit = false;
@@ -525,7 +555,6 @@ protected:
 
     if (timestamp - frame_handler->timestamp_first_hit > 625000000 && !frame_handler->produce_tps) {
       frame_handler->produce_tps = true;
-      /*
       std::stringstream ss_produce_tps;
       ss_produce_tps << "After_10_seconds: Channels for register selection " << register_selection << " are:\n";
       
@@ -533,7 +562,6 @@ protected:
         ss_produce_tps << i << "\t" << frame_handler->register_channel_map.channel[i] << "\t" << frame_handler->m_tpg_processing_info->chanState.pedestals[i] << "\n";
       }
       TLOG() << ss_produce_tps.str();      
-      */
  
     }
 
@@ -544,13 +572,14 @@ protected:
     *destination_ptr = swtpg_wib2::MAGIC;
     frame_handler->m_tpg_processing_info->output = destination_ptr;
 
+    uint16_t* next_dest;
     if (m_tpg_algorithm == "SWTPG") {
-      swtpg_wib2::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
+      next_dest=swtpg_wib2::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
     } else if (m_tpg_algorithm == "AbsRS" ){
-      swtpg_wib2::process_window_rs_avx2(*frame_handler->m_tpg_processing_info, register_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
+      next_dest=swtpg_wib2::process_window_rs_avx2(*frame_handler->m_tpg_processing_info, register_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
     } else {
       throw TPGAlgorithmInexistent(ERS_HERE, "m_tpg_algo");
-    }    
+    }     
     
 
     if (frame_handler->produce_tps) {
@@ -559,17 +588,15 @@ protected:
 
     // Push to the MPMC tphandler queue only if it's possible, else drop the TPs.
     if(m_tphandler_queue.try_push(std::move(swtpg_processing_result), std::chrono::milliseconds(0))) {
-      update_primfind_dest(destination_ptr);
+      update_primfind_dest(next_dest);
     }
     else {
         // we're going to lose these hits
         ers::warning(TPHandlerBacklog(ERS_HERE, m_sourceid.id));
-        m_tps_dropped++;
     }
 
   }
   }
-
 
 
   unsigned int process_swtpg_hits(uint16_t* primfind_it, timestamp_t timestamp)
@@ -737,9 +764,9 @@ private:
 
   std::atomic<bool> m_add_hits_tphandler_thread_should_run;
 
-  uint32_t m_link; // NOLINT(build/unsigned)
-  uint32_t m_slot_no;  // NOLINT(build/unsigned)
-  uint32_t m_crate_no; // NOLINT(build/unsigned)
+  uint8_t m_link; // NOLINT(build/unsigned)
+  uint8_t m_slot_no;  // NOLINT(build/unsigned)
+  uint8_t m_crate_no; // NOLINT(build/unsigned)
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
@@ -764,15 +791,28 @@ private:
   size_t m_capacity_mpmc_queue = 300000; 
   iomanager::FollyMPMCQueue<swtpg_output> m_tphandler_queue{"tphandler_queue", m_capacity_mpmc_queue};
 
-
+#if 0
+  // Destination queue represents the queue of primfind
+  // destinations after the execution of the SWTPG. The size
+  // was set to 1000 because a size of 10 was not enough and
+  // resulted in not keeping up with the rate. The size of each
+  // uint16_t buffer is 100000, therefore the total impact on 
+  // the memory is: 100000 * (16bit) * 100 ~ 190 MB
+  size_t m_capacity_dest_queue = m_capacity_mpmc_queue+4; 
+  iomanager::FollyMPMCQueue<uint16_t*> m_dest_queue{"dest_queue", m_capacity_dest_queue};
+#else
   uint16_t* m_primfind_buffer[2];
   uint16_t* m_last_dest[2];
   uint16_t* m_next_dest;
   uint16_t m_current_buffer=0;
   std::atomic<bool> m_buffer_in_use[2];
   size_t m_buffer_max_level;
+#endif
 
   // Select the registers where to process the frame expansion
+  // AAA: TODO: automatically divide the registers based on the number of processing tasks
+  // E.g.: 0 --> divide registers by 2 (= 16/2) and select the first half
+  // E.g.: 1 --> divide registers by 2 (= 16/2) and select the second half
   int selection_of_register = 0; 
   std::unique_ptr<WIB2FrameHandler> m_wib2_frame_handler = std::make_unique<WIB2FrameHandler>(selection_of_register);
 
@@ -793,7 +833,7 @@ private:
   std::atomic<uint64_t> m_tps_dropped{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
-};
+  };
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
