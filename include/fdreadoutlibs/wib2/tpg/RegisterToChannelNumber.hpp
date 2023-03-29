@@ -24,11 +24,8 @@ namespace swtpg_wib2 {
 
 struct RegisterChannelMap
 {
-  // TODO: Make these the right size
-  uint channel[256];
+  uint channel[swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER];
 };
-
-
 
 /**
  * The code that expands ADCs from WIB2 frame format into AVX registers
@@ -51,7 +48,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
   for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->header.crate, frame->header.slot, frame->header.link, ich);
-    TLOG_DEBUG(0) << " offline_ch " << offline_ch; 
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << " offline_ch " << offline_ch; 
     min_ch = std::min(min_ch, offline_ch);
   }
   TLOG() << "get_register_to_offline_channel_map_wib2 for crate " << frame->header.crate << " slot "
@@ -78,7 +75,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
 
 
   RegisterChannelMap ret;
-  for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * SAMPLES_PER_REGISTER; ++i) {
+  for (size_t i = 0;  i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
     // expand_message_adcs_inplace reorders the output so
     // adjacent-in-time registers are adjacent in memory, hence the
     // need for this indexing. See the comment in that function for a
@@ -89,7 +86,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
 
   auto end_time = std::chrono::steady_clock::now();
   auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-  TLOG_DEBUG(0) << "get_register_to_offline_channel_map_wib2 built map in " << dur << "us";
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "get_register_to_offline_channel_map_wib2 built map in " << dur << "us";
   return ret;
 }
 

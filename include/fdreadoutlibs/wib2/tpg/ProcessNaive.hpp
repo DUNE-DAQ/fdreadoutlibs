@@ -83,7 +83,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       const size_t msg_index = itime / 12;
       const size_t msg_time_offset = itime % 12;
       // The index in uint16_t of the start of the message we want // NOLINT
-      const size_t msg_start_index = msg_index * sizeof(MessageADCs) / sizeof(uint16_t); // NOLINT
+      const size_t msg_start_index = msg_index * swtpg_wib2::ADCS_SIZE / sizeof(uint16_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
       const size_t index = msg_start_index + offset_within_msg;
 

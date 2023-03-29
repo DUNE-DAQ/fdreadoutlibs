@@ -8,9 +8,11 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_WIB2TPHANDLER_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_WIB2TPHANDLER_HPP_
 
+#include "logging/Logging.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
 #include "readoutlibs/ReadoutIssues.hpp"
+#include "readoutlibs/ReadoutLogging.hpp"
 #include "trigger/TPSet.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
@@ -20,6 +22,13 @@
 #include <vector>
 
 namespace dunedaq {
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                   TPHandlerTimestampIssue,
+                  "Continuity of timestamps broken. Start ts:  " << start_ts << " ts previous tpset: " << current_ts,
+                   ((uint64_t)start_ts)((uint64_t)current_ts))
+
+
 namespace fdreadoutlibs {
 
 class WIB2TPHandler
@@ -83,12 +92,17 @@ public:
         m_tp_buffer.pop();
       }
 
+      if (tpset.start_time < m_timestamp_counter) {
+        ers::warning(TPHandlerTimestampIssue(ERS_HERE, tpset.start_time, m_timestamp_counter));        
+        return;
+      }
       try {
         m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10));
         m_sent_tpsets++;
+        m_timestamp_counter = tpset.start_time;        
       } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
         ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tpset_sink"));
-      }
+      }      
     }
   }
 
@@ -113,8 +127,9 @@ private:
   uint64_t m_tp_timeout;           // NOLINT(build/unsigned)
   uint64_t m_tpset_window_size;    // NOLINT(build/unsigned)
   uint64_t m_next_tpset_seqno = 0; // NOLINT(build/unsigned)
-  daqdataformats::SourceID m_sourceid;
-  
+  daqdataformats::SourceID m_sourceid; 
+  uint64_t m_timestamp_counter = 0;
+
   std::atomic<size_t> m_sent_tps{ 0 };    // NOLINT(build/unsigned)
   std::atomic<size_t> m_sent_tpsets{ 0 }; // NOLINT(build/unsigned)
 

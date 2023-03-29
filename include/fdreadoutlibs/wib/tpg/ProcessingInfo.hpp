@@ -95,8 +95,8 @@ struct ProcessingInfo
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       const int16_t ped = first_tick_registers.uint16(j); // NOLINT
       chanState.pedestals[j] = ped;
-      chanState.quantile25[j] = ped - 3;
-      chanState.quantile75[j] = ped + 3;
+      chanState.quantile25[j] = ped - 50;
+      chanState.quantile75[j] = ped + 50;
     }
   }
 
