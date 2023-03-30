@@ -64,11 +64,6 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   ((int)sid))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  FailedOpeningFile,
-                  "Failed to open the ChannelMaskFile: " << mask_file << " . The file is not available.",
-                  ((std::string)mask_file))                  
-
-ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGAlgorithmInexistent,
                   "The selected algorithm does not exist: " << algorithm_selection << " . Check your configuration file and seelect either SWTPG or AbsRS.",
                   ((std::string)algorithm_selection))
@@ -83,29 +78,6 @@ struct swtpg_output{
   uint16_t* output_location;
   uint64_t timestamp;
 };
-
-
-// Utility to parse the channel mask file
-std::set<uint> channel_mask_parser(std::string file_input) {
-  
-  std::set<uint> channel_mask_set;
-
-  // Check if the input file is not empty otherwise return an empty set
-  if (!file_input.empty()) { 
-    std::ifstream inputFile(file_input);    
-    if (inputFile.is_open()) {
-        uint channel_val;
-        while (inputFile >> channel_val) {
-            channel_mask_set.insert(channel_val);
-        }
-        inputFile.close();
-    }
-    else {
-        ers::warning(FailedOpeningFile(ERS_HERE, file_input));
-    }    
-  }
-  return channel_mask_set; 
-}
 
 
 class WIB2FrameHandler {
@@ -295,10 +267,17 @@ public:
     m_sourceid.id = config.source_id;
     m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
     m_tpg_algorithm = config.software_tpg_algorithm;
-    m_channel_mask_file = config.channel_mask_file;
     TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
-    TLOG() << "Channel mask file: " << m_channel_mask_file;
-    m_channel_mask_set = channel_mask_parser(m_channel_mask_file);
+
+    m_channel_mask_vec = config.software_tpg_channel_mask; 
+    // Converting the input vector of channels masks into an std::set
+    // AAA: The set provides faster look up than a std::vector 
+    m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
+    for (int el : m_channel_mask_set) {        
+      TLOG() << "Software TPG channel mask: " << el;
+    }
+    
+
     m_tpg_threshold_selected = config.software_tpg_threshold;
     TLOG() << "Selected threshold value: " << m_tpg_threshold_selected;
 
@@ -670,7 +649,7 @@ protected:
 private:
   bool m_sw_tpg_enabled;
   std::string m_tpg_algorithm;
-  std::string m_channel_mask_file;
+  std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
 
