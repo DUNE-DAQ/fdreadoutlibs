@@ -13,7 +13,8 @@ Options:
   -f,--frame_file_path TEXT   Path to the input frame file
   -a,--algorithm TEXT         SWTPG Algorithm (SWTPG / RS)
   -i,--implementation TEXT    SWTPG implementation (AVX / NAIVE)
-  -n,--num_frames INT         Number of frames to read
+  -n,--num_frames INT         Number of frames to read. Default: select all frames.
+  -t,--swtpg_threshold INT    Value of the SWTPG threshold
   --save_adc_data BOOLEAN     Save ADC data (true/false)
   --save_hit_data BOOLEAN     Save hit data (true/false)
 
@@ -21,6 +22,10 @@ Options:
 
 The options `save_adc_data` and `save_hit_data` are quite useful. The former allows to save the raw ADC values in a txt file after the 14-bit to 16-bit expansion whereas the latter allows to save the in a file the Trigger Primitive object. 
 
+Example of usage: 
+```sh
+$ ./TestSWTPGAlgorithms --frame_file_path FRAMES_FILE --algorithm SWTPG --implementation NAIVE --num_frames 50 --swtpg_threshold 100
+```
 
 ## Tools 
 
