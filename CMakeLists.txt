@@ -70,6 +70,7 @@ daq_add_application(TDEFileCreator TDEFileCreator.cxx TEST LINK_LIBRARIES fdread
 daq_add_application(WIB2TestBench WIB2TestBench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 daq_add_application(WIB2AddFakeHits WIB2AddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(WIB2BinaryFrameReader WIB2BinaryFrameReader.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
+daq_add_application(TestSWTPGAlgorithms TestSWTPGAlgorithms.cxx TEST LINK_LIBRARIES fdreadoutlibs CLI11::CLI11)
 
 
 ##############################################################################
