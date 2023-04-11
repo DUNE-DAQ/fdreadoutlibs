@@ -14,7 +14,7 @@
 class SwtpgBase {
     
 public:
-   virtual void reset(bool first_hit) {};
+   virtual void reset(bool first_hit, int threshold_value) {};
    virtual void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool first_hit) {};
 
    // Total sum of the number of found hits. Just for debugging, to be removed later
@@ -22,7 +22,7 @@ public:
 
 
 protected:
-  const uint16_t m_tpg_threshold = 5; // units of sigma 
+  uint16_t m_tpg_threshold = 5; // units of sigma 
   const uint8_t m_tpg_tap_exponent = 6; 
   const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
   std::vector<int16_t> m_tpg_taps;  // firwin_int(7, 0.1, multiplier)

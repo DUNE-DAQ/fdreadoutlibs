@@ -155,7 +155,7 @@ main(int argc, char** argv)
       auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter*>(source.data() + superchunk_index*swtpg_wib2::SUPERCHUNK_FRAME_SIZE);
 
       // Reset the memory buffers
-      algo->reset(first_hit);
+      algo->reset(first_hit, swtpg_threshold);
       // Find the SWTPG hits
       algo->find_hits(fp, first_hit);
       first_hit = false;        

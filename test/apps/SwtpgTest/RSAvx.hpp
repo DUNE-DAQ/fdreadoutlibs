@@ -60,7 +60,7 @@ public:
   RSAvx(const RSAvx&) = delete;
   RSAvx& operator=(const RSAvx&) = delete;
 
-  void reset(bool first_hit) {
+  void reset(bool first_hit, int threshold_value) {
     if (first_hit){
       m_tpg_taps = swtpg_wib2::firwin_int(7, 0.1, m_tpg_multiplier); //coefficients associated with nf 
       m_tpg_taps.push_back(0);
@@ -73,6 +73,8 @@ public:
       for (size_t i = 0; i < m_tpg_taps.size(); ++i) {
         m_tpg_taps_p[i] = m_tpg_taps[i];
       }
+
+    m_tpg_threshold = threshold_value;  
         
     //Initialise the TPG processing info struct ready for next WIB Superchunk
     m_tpg_processing_info = std::make_unique<swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>>(
