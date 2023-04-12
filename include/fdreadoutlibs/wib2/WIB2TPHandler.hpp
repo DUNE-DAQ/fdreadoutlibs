@@ -114,6 +114,7 @@ public:
     m_next_tpset_seqno = 0;
     m_sent_tps = 0;
     m_sent_tpsets = 0;
+    m_timestamp_counter = 0;
   }
 
   size_t get_and_reset_num_sent_tps() { return m_sent_tps.exchange(0); }

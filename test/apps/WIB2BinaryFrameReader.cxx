@@ -138,7 +138,7 @@ int main(int argc, char** argv)
   
  
   dunedaq::detdataformats::wib2::WIB2Frame* output_frame; 
-  for (int i=0; i<input_file.num_frames(); i++) {
+  for (size_t i=0; i<input_file.num_frames(); i++) {
      output_frame = input_file.frame(i);
      auto val_to_check = output_frame->get_adc(input_ch);
      std::cout << "Output ADC value: " << val_to_check << " for frame " << i << " and channel number " << input_ch << std::endl;

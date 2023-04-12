@@ -111,7 +111,7 @@ struct ProcessingInfo
       const size_t register_index = j / SAMPLES_PER_REGISTER;
       const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * FRAMES_PER_MSG;
 
-      int16_t ped;
+      int16_t ped=0;
       for (size_t itime = 0; itime < timeWindowNumFrames; ++itime) {
         const size_t msg_index = itime / 12;
         const size_t msg_time_offset = itime % 12;

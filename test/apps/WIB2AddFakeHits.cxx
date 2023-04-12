@@ -150,7 +150,7 @@ int main(int argc, char** argv)
   output_file.open("modified_output.bin", std::ios::app | std::ios::binary);
 
   dunedaq::detdataformats::wib2::WIB2Frame* output_frame; 
-  for (int i=0; i<input_file.num_frames(); i++) {
+  for (size_t i=0; i<input_file.num_frames(); i++) {
 
      
      output_frame = input_file.frame(i);

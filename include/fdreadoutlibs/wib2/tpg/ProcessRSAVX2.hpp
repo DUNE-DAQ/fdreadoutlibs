@@ -162,7 +162,10 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
       // Update the medianRS itself in all channels
       //printf("MedianRS:\t\t\t\t"); print256_as16_dec(medianRS);         printf("\n"); 
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverflow"
       swtpg_wib2::frugal_accum_update_avx2(medianRS, RS, accumRS, 10, _mm256_set1_epi16(0xffff));
+#pragma GCC diagnostic pop
 
       // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
       RS = _mm256_sub_epi16(RS, medianRS);
