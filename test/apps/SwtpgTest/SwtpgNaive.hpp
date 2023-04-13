@@ -109,11 +109,8 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
     size_t i = 0;
     while (*primfind_it != swtpg_wib2::MAGIC) {
       chan   = *primfind_it++;
-
       hit_end    = *primfind_it++;
-
       hit_charge  = *primfind_it++;
-
       hit_tover     = *primfind_it++;
 
       i += 1;

@@ -25,7 +25,7 @@
 #include "SwtpgTest/SwtpgBase.hpp"
 #include "SwtpgTest/SwtpgNaive.hpp"
 #include "SwtpgTest/SwtpgAvx.hpp"
-//#include "SwtpgTest/RSNaive.hpp"
+#include "SwtpgTest/RSNaive.hpp"
 #include "SwtpgTest/RSAvx.hpp"
 
 
@@ -96,7 +96,7 @@ main(int argc, char** argv)
       }
     } else if (select_algorithm == "RS") {
       if (select_implementation == "NAIVE") {
-        //algo = std::make_unique<RSNaive>(save_adc_data, save_hit_data);
+        algo = std::make_unique<RSNaive>(save_adc_data, save_hit_data);
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else if (select_implementation == "AVX") {
         algo = std::make_unique<RSAvx>(save_adc_data, save_hit_data);

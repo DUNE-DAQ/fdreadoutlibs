@@ -77,7 +77,7 @@ public:
     m_tpg_threshold = threshold_value;  
         
     //Initialise the TPG processing info struct ready for next WIB Superchunk
-    m_tpg_processing_info = std::make_unique<swtpg_wib2::ProcessingInfoRS<swtpg_wib2::NUM_REGISTERS_PER_FRAME>>(
+    m_tpg_processing_info = std::make_unique<swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>>(
 										       nullptr, //input                                        
 										       swtpg_wib2::FRAMES_PER_MSG, //timeWindowNumFrames = 12
 										       0, //first register in frame      
@@ -96,42 +96,35 @@ public:
   }
 
 
-unsigned int extract_rs_hits_naive(uint16_t* primfind_it, timestamp_t timestamp, size_t nhits)   {
+unsigned int extract_rs_hits_naive(uint16_t* primfind_it, timestamp_t timestamp)   {
+
 
 
     constexpr int clocksPerTPCTick = 32;
-    unsigned int nhits_counted = 0;
+    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
+    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    unsigned int nhits = 0;
 
-    //saving output to arrays 
-    uint16_t hit_chan[1000], hit_end[1000], hit_charge[1000], hit_tover[1000]; 
-    
-    for (size_t i = 0; i < nhits; i++){
-      if(*primfind_it != swtpg_wib2::MAGIC){ 
-        hit_chan[i]   = *primfind_it++;
-        hit_end[i]   = *primfind_it++;
-        hit_charge[i] = *primfind_it++;
-        hit_tover[i]    = *primfind_it++;
-      }
-    }
+    size_t i = 0;
+    while (*primfind_it != swtpg_wib2::MAGIC) {
+      chan   = *primfind_it++;
+      hit_end    = *primfind_it++;
+      hit_charge  = *primfind_it++;
+      hit_tover     = *primfind_it++;
 
-    
-    for (int i = 0; i<nhits; i++){
-      if (hit_charge[i]>0) {
-      //std::cout << "Chan: " << hit_chan[i] << " hit_charge: " << hit_charge[i] << std::endl;
-      const uint16_t offline_channel = m_register_channel_map.channel[hit_chan[i]];
+      i += 1;
+      const uint16_t offline_channel = m_register_channel_map.channel[chan ];
       uint64_t tp_t_begin =                                                        
-        timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       
-      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      
-
-      //TLOG() << "Hit: " << tp_t_begin << " " << offline_channel;
+        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
+      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
       trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
-      trigprim.time_over_threshold = hit_tover[i]   * clocksPerTPCTick;
+      trigprim.time_over_threshold = hit_tover * clocksPerTPCTick;
       trigprim.channel = offline_channel;
-      trigprim.adc_integral = hit_charge[i]  ;
-      trigprim.adc_peak = hit_charge[i]   / 20;
+      trigprim.adc_integral = hit_charge  ;
+      trigprim.adc_peak = hit_charge   / 20;
       trigprim.detid =
         m_link_no; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
@@ -141,13 +134,13 @@ unsigned int extract_rs_hits_naive(uint16_t* primfind_it, timestamp_t timestamp,
       if (m_dump_hit_data) {
         save_hit_data(trigprim, "RSNaive");
       }
-      ++nhits_counted;
+      ++nhits;
       
-      }
+      
 
     }
 
-    return nhits_counted;
+    return nhits;
   }
 
 
@@ -208,7 +201,7 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
 
     std::cout << "Finished processing window " << std::endl;
     
-    unsigned int nhits = extract_rs_hits_naive(m_primfind_dest, timestamp, m_tpg_processing_info->nhits);
+    unsigned int nhits = extract_rs_hits_naive(m_primfind_dest, timestamp);
 
     if ( nhits > 0 ) {
       std::cout << "Non null hits: " << nhits << " for ts: " << timestamp << std::endl;    
@@ -223,11 +216,13 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
 
 private: 
 
-  std::unique_ptr<swtpg_wib2::ProcessingInfoRS<swtpg_wib2::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
+  std::unique_ptr<swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
 
   bool m_dump_adc_data;
   bool m_dump_hit_data;
 
 };
+
+
 
 #endif // TEST_RS_NAIVE_HPPP_
