@@ -191,7 +191,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
     tpset_sourceid.id = config.tpset_sourceid;
     tpset_sourceid.subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
 
-    m_tphandler.reset(new WIB2TPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
+    m_tphandler.reset(new WIB2TPHandler(m_tp_sink, m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
 
     TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));
 

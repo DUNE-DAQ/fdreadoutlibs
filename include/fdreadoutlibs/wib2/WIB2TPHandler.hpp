@@ -35,10 +35,10 @@ class WIB2TPHandler
 {
 public:
   explicit WIB2TPHandler(std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> tp_sink,
-                        std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> tpset_sink,
-                        uint64_t tp_timeout,        // NOLINT(build/unsigned)
-                        uint64_t tpset_window_size, // NOLINT(build/unsigned)
-                        daqdataformats::SourceID sourceId);
+                         std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> tpset_sink,
+                         uint64_t tp_timeout,        // NOLINT(build/unsigned)
+                         uint64_t tpset_window_size, // NOLINT(build/unsigned)
+                         daqdataformats::SourceID sourceId);
 
   void set_run_number(daqdataformats::run_number_t run_number);
 
