@@ -34,8 +34,8 @@ namespace fdreadoutlibs {
 class WIB2TPHandler
 {
 public:
-  explicit WIB2TPHandler(iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>& tp_sink,
-                        iomanager::SenderConcept<trigger::TPSet>& tpset_sink,
+  explicit WIB2TPHandler(std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> tp_sink,
+                        std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> tpset_sink,
                         uint64_t tp_timeout,        // NOLINT(build/unsigned)
                         uint64_t tpset_window_size, // NOLINT(build/unsigned)
                         daqdataformats::SourceID sourceId)
@@ -77,32 +77,36 @@ public:
       tpset.type = trigger::TPSet::Type::kPayload;
       tpset.origin = m_sourceid;
       
-      while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
-        triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
-        types::TriggerPrimitiveTypeAdapter* tp_readout_type =
-          reinterpret_cast<types::TriggerPrimitiveTypeAdapter*>(&tp); // NOLINT
-        try {
-            types::TriggerPrimitiveTypeAdapter tp_copy(*tp_readout_type);
-          m_tp_sink.send(std::move(tp_copy), std::chrono::milliseconds(10));
-          m_sent_tps++;
-        } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tp_sink"));
+      if (m_tp_sink) {
+        while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
+          triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
+          types::TriggerPrimitiveTypeAdapter* tp_readout_type =
+            reinterpret_cast<types::TriggerPrimitiveTypeAdapter*>(&tp); // NOLINT
+          try {
+              types::TriggerPrimitiveTypeAdapter tp_copy(*tp_readout_type);
+            m_tp_sink->send(std::move(tp_copy), std::chrono::milliseconds(10));
+            m_sent_tps++;
+          } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
+            ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tp_sink"));
+          }
+          tpset.objects.emplace_back(std::move(tp));
+          m_tp_buffer.pop();
         }
-        tpset.objects.emplace_back(std::move(tp));
-        m_tp_buffer.pop();
       }
 
-      if (tpset.start_time < m_timestamp_counter) {
-        ers::warning(TPHandlerTimestampIssue(ERS_HERE, tpset.start_time, m_timestamp_counter));        
-        return;
-      }
-      try {
-        m_tpset_sink.send(std::move(tpset), std::chrono::milliseconds(10));
-        m_sent_tpsets++;
-        m_timestamp_counter = tpset.start_time;        
-      } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
-        ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tpset_sink"));
-      }      
+      if (m_tpset_sink) {
+        if (tpset.start_time < m_timestamp_counter) {
+          ers::warning(TPHandlerTimestampIssue(ERS_HERE, tpset.start_time, m_timestamp_counter));        
+          return;
+        }
+        try {
+          m_tpset_sink->send(std::move(tpset), std::chrono::milliseconds(10));
+          m_sent_tpsets++;
+          m_timestamp_counter = tpset.start_time;        
+        } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
+          ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tpset_sink"));
+        }    
+      }  
     }
   }
 
@@ -122,8 +126,8 @@ public:
   size_t get_and_reset_num_sent_tpsets() { return m_sent_tpsets.exchange(0); }
 
 private:
-  iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>& m_tp_sink;
-  iomanager::SenderConcept<trigger::TPSet>& m_tpset_sink;
+  std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> m_tpset_sink;
   daqdataformats::run_number_t m_run_number{ daqdataformats::TypeDefaults::s_invalid_run_number };
   uint64_t m_tp_timeout;           // NOLINT(build/unsigned)
   uint64_t m_tpset_window_size;    // NOLINT(build/unsigned)
