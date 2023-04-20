@@ -8,6 +8,47 @@
  */
 #include "fdreadoutlibs/wib2/WIB2FrameProcessor.hpp" // NOLINT(build/include)
 
+#include "appfwk/DAQModuleHelper.hpp"
+#include "iomanager/Sender.hpp"
+#include "logging/Logging.hpp"
+
+#include "readoutlibs/FrameErrorRegistry.hpp"
+#include "readoutlibs/ReadoutIssues.hpp"
+#include "readoutlibs/ReadoutLogging.hpp"
+#include "readoutlibs/models/IterableQueueModel.hpp"
+#include "readoutlibs/readoutconfig/Nljs.hpp"
+#include "readoutlibs/readoutinfo/InfoNljs.hpp"
+#include "readoutlibs/utils/ReusableThread.hpp"
+
+#include "detchannelmaps/TPCChannelMap.hpp"
+#include "detdataformats/wib2/WIB2Frame.hpp"
+
+
+#include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
+
+#include "fdreadoutlibs/wib2/WIB2TPHandler.hpp"
+#include "rcif/cmd/Nljs.hpp"
+#include "trigger/TPSet.hpp"
+#include "triggeralgs/TriggerPrimitive.hpp"
+
+#include "fdreadoutlibs/wib2/tpg/DesignFIR.hpp"
+#include "fdreadoutlibs/wib2/tpg/FrameExpand.hpp"
+#include "fdreadoutlibs/wib2/tpg/ProcessAVX2.hpp"
+#include "fdreadoutlibs/wib2/tpg/ProcessRSAVX2.hpp"
+#include "fdreadoutlibs/wib2/tpg/TPGConstants_wib2.hpp"
+
+#include <atomic>
+#include <bitset>
+#include <functional>
+#include <future>
+#include <memory>
+#include <pthread.h>
+#include <queue>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 

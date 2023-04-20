@@ -10,6 +10,15 @@
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "logging/Logging.hpp"
 
+#include "readoutlibs/ReadoutTypes.hpp"
+#include "fdreadoutlibs/wib2/tpg/FrameExpand.hpp"
+#include "fdreadoutlibs/wib2/tpg/TPGConstants_wib2.hpp"
+
+#include <boost/chrono/duration.hpp>
+#include <chrono>
+#include <sys/types.h>
+#include <vector>
+
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 

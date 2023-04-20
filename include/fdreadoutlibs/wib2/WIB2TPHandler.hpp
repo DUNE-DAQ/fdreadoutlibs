@@ -9,12 +9,8 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_WIB2TPHANDLER_HPP_
 
 #include "logging/Logging.hpp"
-#include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
 #include "trigger/TPSet.hpp"
-#include "triggeralgs/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
 #include <queue>

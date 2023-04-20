@@ -11,14 +11,7 @@
 
 #include "detchannelmaps/TPCChannelMap.hpp"
 #include "detdataformats/wib2/WIB2Frame.hpp"
-#include "readoutlibs/ReadoutTypes.hpp"
-#include "FrameExpand.hpp"
-#include "TPGConstants_wib2.hpp"
 
-#include <boost/chrono/duration.hpp>
-#include <chrono>
-#include <sys/types.h>
-#include <vector>
 
 namespace swtpg_wib2 {
 

@@ -7,6 +7,11 @@
  */
 #include "fdreadoutlibs/wib2/WIB2TPHandler.hpp" // NOLINT(build/include)
 
+#include "appfwk/DAQModuleHelper.hpp"
+#include "readoutlibs/ReadoutIssues.hpp"
+#include "readoutlibs/ReadoutLogging.hpp"
+#include "triggeralgs/TriggerPrimitive.hpp"
+
 namespace dunedaq {
 namespace fdreadoutlibs {
 

@@ -9,39 +9,20 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_WIBFRAMEPROCESSOR_HPP_
 
-#include "appfwk/DAQModuleHelper.hpp"
+// #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/IterableQueueModel.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
-#include "readoutlibs/readoutconfig/Nljs.hpp"
-#include "readoutlibs/readoutinfo/InfoNljs.hpp"
-#include "readoutlibs/utils/ReusableThread.hpp"
 
-#include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
-
-
-#include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fdreadoutlibs/wib2/WIB2TPHandler.hpp"
-#include "rcif/cmd/Nljs.hpp"
 #include "trigger/TPSet.hpp"
-#include "triggeralgs/TriggerPrimitive.hpp"
 
-#include "tpg/DesignFIR.hpp"
-#include "tpg/FrameExpand.hpp"
-#include "tpg/ProcessAVX2.hpp"
-#include "tpg/ProcessRSAVX2.hpp"
 #include "tpg/ProcessingInfo.hpp"
 #include "tpg/RegisterToChannelNumber.hpp"
-#include "tpg/TPGConstants_wib2.hpp"
 
 #include <atomic>
 #include <bitset>
