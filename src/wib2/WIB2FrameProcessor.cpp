@@ -189,12 +189,19 @@ WIB2FrameProcessor::init(const nlohmann::json& args)
     if (queue_index.find("tp_out") != queue_index.end()) {
       m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
     }
+  } catch (const ers::Issue& excpt) {
+    throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
+  }
+
+  try {
+    auto queue_index = appfwk::connection_index(args, {});
     if (queue_index.find("tpset_out") != queue_index.end()) {
       m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
     }
   } catch (const ers::Issue& excpt) {
     throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
   }
+
 }
 
 void
