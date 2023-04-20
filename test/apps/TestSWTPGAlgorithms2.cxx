@@ -53,12 +53,28 @@
 // =================================================================
 //                       PUBLIC VARIABLES
 // =================================================================
+
+struct swtpg_output{
+  uint16_t* output_location;
+  uint64_t timestamp;
+};
+
+
 int m_capacity_dest_queue = 100;
 dunedaq::iomanager::FollyMPMCQueue<uint16_t*> m_dest_queue{"dest_queue", m_capacity_dest_queue};
 dunedaq::fdreadoutlibs::WIB2FrameHandler fh(0, m_dest_queue);
 
+
+size_t m_capacity_mpmc_queue = 300000; 
+dunedaq::iomanager::FollyMPMCQueue<swtpg_output> m_tphandler_queue{"tphandler_queue", m_capacity_mpmc_queue};
+
+
 unsigned int total_hits = 0;
 bool first_hit = true;
+
+
+
+
 
 
 // =================================================================
@@ -81,53 +97,61 @@ void SetAffinityThread(int executorId) {
 //                       TPG FUNCTIONS
 // =================================================================
 
-void extract_nhits(uint16_t* primfind_it) {
+void extract_nhits() {
   SetAffinityThread(1);
 
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
-  unsigned int nhits = 0;
+  swtpg_output result_from_swtpg; 
+  while(m_tphandler_queue.can_pop()) {
+    if(m_tphandler_queue.try_pop(result_from_swtpg, std::chrono::milliseconds(0))) {
 
-  while (*primfind_it != swtpg_wib2::MAGIC) {
-    for (int i = 0; i < 16; ++i) {
-      chan[i] = *primfind_it++; 
-    }
-    for (int i = 0; i < 16; ++i) {
-      hit_end[i] = *primfind_it++; 
-    }
-    for (int i = 0; i < 16; ++i) {
-      hit_charge[i] = *primfind_it++;
-    }
-    for (int i = 0; i < 16; ++i) {        
-      hit_tover[i] = *primfind_it++; 
-    }  
-    
-    // Now that we have all the register values in local
-    // variables, loop over the register index (ie, channel) and
-    // find the channels which actually had a hit, as indicated by
-    // nonzero value of hit_charge
-    for (int i = 0; i < 16; ++i) {
-      if (hit_charge[i] && chan[i] != swtpg_wib2::MAGIC) 
-        //std::cout << "Channel number: " << chan[i] << std::endl;
-        //std::cout << "Hit charge: " << hit_charge[i] << std::endl
-        ++nhits;
-      }
-    }    
 
+    uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
+    //unsigned int nhits = 0;
+  
+      while (*result_from_swtpg.output_location != swtpg_wib2::MAGIC) {
+        for (int i = 0; i < 16; ++i) {
+          chan[i] = *result_from_swtpg.output_location++; 
+        }
+        for (int i = 0; i < 16; ++i) {
+          hit_end[i] = *result_from_swtpg.output_location++; 
+        }
+        for (int i = 0; i < 16; ++i) {
+          hit_charge[i] = *result_from_swtpg.output_location++;
+        }
+        for (int i = 0; i < 16; ++i) {        
+          hit_tover[i] = *result_from_swtpg.output_location++; 
+        }  
+        
+        // Now that we have all the register values in local
+        // variables, loop over the register index (ie, channel) and
+        // find the channels which actually had a hit, as indicated by
+        // nonzero value of hit_charge
+        for (int i = 0; i < 16; ++i) {
+          if (hit_charge[i] && chan[i] != swtpg_wib2::MAGIC) {
+            //std::cout << "Channel number: " << chan[i] << std::endl;
+            //std::cout << "Hit charge: " << hit_charge[i] << std::endl
+            //++nhits;
+          }
+        } // loop over 16 registers   
+      } // while not magic        
+    } // try_pop tphandler  
+  } // can_pop tphandler  
+      
   //std::cout << "Found " << nhits << " hits " << std::endl;
   //total_hits += nhits;
 
-  m_dest_queue.push(std::move(primfind_it), std::chrono::milliseconds(0));    
+  m_dest_queue.push(std::move(result_from_swtpg.output_location), std::chrono::milliseconds(0));    
   
 }
 
 
-uint16_t* execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool save_adc_data) {
+void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool save_adc_data) {
 
   SetAffinityThread(0);
 
   // Parse the DUNEWIB frames
-  //auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp);
-  //uint64_t timestamp = wfptr->get_timestamp();      
+  auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp);
+  uint64_t timestamp = wfptr->get_timestamp();      
   swtpg_wib2::MessageRegisters registers_array;
   swtpg_wib2::expand_wib2_adcs(fp, &registers_array, 0);
 
@@ -149,9 +173,17 @@ uint16_t* execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkType
   uint16_t* destination_ptr = fh.get_primfind_dest();
   *destination_ptr = swtpg_wib2::MAGIC;
   fh.m_tpg_processing_info->output = destination_ptr;
-  swtpg_wib2::process_window_avx2(*fh.m_tpg_processing_info, 0);                  
+  swtpg_wib2::process_window_avx2(*fh.m_tpg_processing_info, 0);       
 
-  return destination_ptr;
+  // Insert output of the AVX processing into the swtpg_output 
+  swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
+
+  if(!m_tphandler_queue.try_push(std::move(swtpg_processing_result), std::chrono::milliseconds(0))) {
+        // Canno push to tphandler queue
+        throw "Cannot push to tp_handler_queue";
+  }             
+
+  //return destination_ptr;
 
 }
 
@@ -255,7 +287,7 @@ main(int argc, char** argv)
       m_dest_queue.push(std::move(dest), std::chrono::milliseconds(0));    
     }
 
-    auto limiter = dunedaq::readoutlibs::RateLimiter(166);
+    auto limiter = dunedaq::readoutlibs::RateLimiter(1);
     limiter.init();
 
     fh.initialize(swtpg_threshold);
@@ -263,23 +295,34 @@ main(int argc, char** argv)
     // =================================================================
     //                       Process the DUNEWIB superchunks
     // =================================================================
-    int superchunk_index = 0;   
+    int superchunk_index = 0; 
+    auto start_test = std::chrono::high_resolution_clock::now();  
     // Loop over the DUNEWIB superchunks in the file
     //while (superchunk_index < num_frames ){      
     while (true){        
       
       // current superchunk
       auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter*>(source.data() + superchunk_index*swtpg_wib2::SUPERCHUNK_FRAME_SIZE);
-      uint16_t* destination_ptr = execute_tpg(fp, save_adc_data);
-      extract_nhits(destination_ptr);
+
+      execute_tpg(fp, save_adc_data);
+      extract_nhits();
 
 
       ++superchunk_index;
-      if (superchunk_index % 1000 == 0) {
-        std::cout << "Executing superchunk number " << superchunk_index << " out of " << num_superchunks << std::endl;
-      }
+      //if (superchunk_index % 10000 == 0) {
+        //std::cout << "Executing superchunk number " << superchunk_index << " out of " << num_superchunks << std::endl;
+        
+      //}
+
+      // Restart from the beginning of the file and measure the elapsed time
       if (superchunk_index == num_frames) {
         superchunk_index = 0;
+
+        // Calculate elapsed time in seconds  
+        auto now = std::chrono::high_resolution_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
+        std::cout << "Elapsed time: " << elapsed_seconds << std::endl;
+
       }
       limiter.limit();
 
