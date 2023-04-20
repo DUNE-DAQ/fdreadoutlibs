@@ -12,6 +12,7 @@
 
 #include "iomanager/IOManager.hpp"
 
+#include "readoutlibs/utils/RateLimiter.hpp"
 #include "readoutlibs/utils/FileSourceBuffer.hpp"
 #include "readoutlibs/utils/BufferedFileWriter.hpp"
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
@@ -48,6 +49,116 @@
 #include <memory>
 
 
+
+// =================================================================
+//                       PUBLIC VARIABLES
+// =================================================================
+int m_capacity_dest_queue = 100;
+dunedaq::iomanager::FollyMPMCQueue<uint16_t*> m_dest_queue{"dest_queue", m_capacity_dest_queue};
+dunedaq::fdreadoutlibs::WIB2FrameHandler fh(0, m_dest_queue);
+
+unsigned int total_hits = 0;
+bool first_hit = true;
+
+
+// =================================================================
+//                       FUNCTIONS
+// =================================================================
+
+// Set CPU affinity of the processing thread
+void SetAffinityThread(int executorId) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(executorId, &cpuset);
+    int rc = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (rc != 0) {
+       std::cerr << "Error calling pthread_setaffinity_np Readout: " << rc << "\n";
+    }
+}
+
+
+// =================================================================
+//                       TPG FUNCTIONS
+// =================================================================
+
+void extract_nhits(uint16_t* primfind_it) {
+  SetAffinityThread(1);
+
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
+  unsigned int nhits = 0;
+
+  while (*primfind_it != swtpg_wib2::MAGIC) {
+    for (int i = 0; i < 16; ++i) {
+      chan[i] = *primfind_it++; 
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_end[i] = *primfind_it++; 
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_charge[i] = *primfind_it++;
+    }
+    for (int i = 0; i < 16; ++i) {        
+      hit_tover[i] = *primfind_it++; 
+    }  
+    
+    // Now that we have all the register values in local
+    // variables, loop over the register index (ie, channel) and
+    // find the channels which actually had a hit, as indicated by
+    // nonzero value of hit_charge
+    for (int i = 0; i < 16; ++i) {
+      if (hit_charge[i] && chan[i] != swtpg_wib2::MAGIC) 
+        //std::cout << "Channel number: " << chan[i] << std::endl;
+        //std::cout << "Hit charge: " << hit_charge[i] << std::endl
+        ++nhits;
+      }
+    }    
+
+  //std::cout << "Found " << nhits << " hits " << std::endl;
+  //total_hits += nhits;
+
+  m_dest_queue.push(std::move(primfind_it), std::chrono::milliseconds(0));    
+  
+}
+
+
+uint16_t* execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool save_adc_data) {
+
+  SetAffinityThread(0);
+
+  // Parse the DUNEWIB frames
+  //auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp);
+  //uint64_t timestamp = wfptr->get_timestamp();      
+  swtpg_wib2::MessageRegisters registers_array;
+  swtpg_wib2::expand_wib2_adcs(fp, &registers_array, 0);
+
+  
+  if (first_hit) {                     
+    fh.m_tpg_processing_info->setState(registers_array);
+    first_hit = false;    
+
+    //Save ADC info
+    //if (save_adc_data){
+    //  save_raw_data(registers_array, timestamp, -1, "SwtpgNaive");
+    //}
+
+
+  }  
+       
+  
+  fh.m_tpg_processing_info->input = &registers_array;
+  uint16_t* destination_ptr = fh.get_primfind_dest();
+  *destination_ptr = swtpg_wib2::MAGIC;
+  fh.m_tpg_processing_info->output = destination_ptr;
+  swtpg_wib2::process_window_avx2(*fh.m_tpg_processing_info, 0);                  
+
+  return destination_ptr;
+
+}
+
+
+// =================================================================
+//                       MAIN
+// =================================================================
 
 
 int 
@@ -137,40 +248,46 @@ main(int argc, char** argv)
     // =================================================================
     //                       Setup the SWTPG
     // =================================================================
-    
-    bool first_hit = true;
 
+    // Populate the queue of primfind destinations
+    for (size_t i=0; i<m_capacity_dest_queue; ++i) {
+      uint16_t* dest = new uint16_t[1000000];
+      m_dest_queue.push(std::move(dest), std::chrono::milliseconds(0));    
+    }
 
+    auto limiter = dunedaq::readoutlibs::RateLimiter(166);
+    limiter.init();
 
+    fh.initialize(swtpg_threshold);
 
     // =================================================================
     //                       Process the DUNEWIB superchunks
     // =================================================================
     int superchunk_index = 0;   
-
     // Loop over the DUNEWIB superchunks in the file
-    while (superchunk_index < num_frames ){
-
+    //while (superchunk_index < num_frames ){      
+    while (true){        
+      
       // current superchunk
       auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter*>(source.data() + superchunk_index*swtpg_wib2::SUPERCHUNK_FRAME_SIZE);
+      uint16_t* destination_ptr = execute_tpg(fp, save_adc_data);
+      extract_nhits(destination_ptr);
 
-      // Reset the memory buffers
-      algo->reset(first_hit, swtpg_threshold);
-      // Find the SWTPG hits
-      algo->find_hits(fp, first_hit);
-      first_hit = false;        
 
-      
       ++superchunk_index;
-      std::cout << "Executing superchunk number " << superchunk_index << " out of " << num_superchunks << std::endl;
+      if (superchunk_index % 1000 == 0) {
+        std::cout << "Executing superchunk number " << superchunk_index << " out of " << num_superchunks << std::endl;
+      }
+      if (superchunk_index == num_frames) {
+        superchunk_index = 0;
+      }
+      limiter.limit();
 
     }
 
     std::cout << "\n\n===============================" << std::endl;
-    std::cout << "Found in total " << algo->m_total_swtpg_hits << " hits." << std::endl;
+    std::cout << "Found in total " << total_hits << " hits." << std::endl;
     
-    
-
     std::cout << "\n\nFinished testing." << std::endl;
 
 
