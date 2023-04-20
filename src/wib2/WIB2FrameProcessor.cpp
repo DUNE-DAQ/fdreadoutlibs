@@ -199,7 +199,7 @@ WIB2FrameProcessor::init(const nlohmann::json& args)
       m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
     }
   } catch (const ers::Issue& excpt) {
-    throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
+    throw readoutlibs::ResourceQueueError(ERS_HERE, "tpset queue", "DefaultRequestHandlerModel", excpt);
   }
 
 }
