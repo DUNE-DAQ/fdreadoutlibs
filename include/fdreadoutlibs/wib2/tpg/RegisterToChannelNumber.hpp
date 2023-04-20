@@ -11,6 +11,7 @@
 
 #include "detchannelmaps/TPCChannelMap.hpp"
 #include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fdreadoutlibs/wib2/tpg/TPGConstants_wib2.hpp"
 
 
 namespace swtpg_wib2 {
