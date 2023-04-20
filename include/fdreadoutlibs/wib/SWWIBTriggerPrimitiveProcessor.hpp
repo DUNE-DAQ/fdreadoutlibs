@@ -19,7 +19,7 @@
 #include "trigger/TPSet.hpp"
 #include "triggeralgs/TriggerPrimitive.hpp"
 
-#include "detdataformats/wib/WIBFrame.hpp"
+#include "fddetdataformats/WIBFrame.hpp"
 
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
@@ -40,7 +40,7 @@ class SWWIBTriggerPrimitiveProcessor
 public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::TriggerPrimitiveTypeAdapter>;
   using frameptr = types::TriggerPrimitiveTypeAdapter*;
-  using wibframeptr = dunedaq::detdataformats::wib::WIBFrame*;
+  using wibframeptr = dunedaq::fddetdataformats::WIBFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   explicit SWWIBTriggerPrimitiveProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)

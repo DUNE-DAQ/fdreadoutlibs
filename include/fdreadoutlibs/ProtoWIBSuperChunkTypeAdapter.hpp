@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/wib/WIBFrame.hpp"
+#include "fddetdataformats/WIBFrame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -24,7 +24,7 @@ namespace types {
 const constexpr std::size_t kProtoWIBSuperChunkSize = 5568; // for 12: 5568
 struct ProtoWIBSuperChunkTypeAdapter
 {
-  using FrameType = dunedaq::detdataformats::wib::WIBFrame;
+  using FrameType = dunedaq::fddetdataformats::WIBFrame;
 
   // data
   char data[kProtoWIBSuperChunkSize];
@@ -38,20 +38,20 @@ struct ProtoWIBSuperChunkTypeAdapter
 
   uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
   {
-    return reinterpret_cast<const dunedaq::detdataformats::wib::WIBFrame*>(&data)->get_wib_header()->get_timestamp(); // NOLINT
+    return reinterpret_cast<const dunedaq::fddetdataformats::WIBFrame*>(&data)->get_wib_header()->get_timestamp(); // NOLINT
   }
 
   void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
-    reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>(&data)->get_wib_header()->set_timestamp(ts); // NOLINT
+    reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(&data)->get_wib_header()->set_timestamp(ts); // NOLINT
   }
 
   void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 25) // NOLINT(build/unsigned)
   {
     uint64_t ts_next = first_timestamp;                                               // NOLINT(build/unsigned)
-    auto wf = reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>(((uint8_t*)(&data))); // NOLINT
+    auto wf = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(((uint8_t*)(&data))); // NOLINT
     for (unsigned int i = 0; i < 12; ++i) {
-      auto wfh = const_cast<dunedaq::detdataformats::wib::WIBHeader*>(wf->get_wib_header());
+      auto wfh = const_cast<dunedaq::fddetdataformats::WIBHeader*>(wf->get_wib_header());
       wfh->set_timestamp(ts_next);
       ts_next += offset;
       wf++;
@@ -60,7 +60,7 @@ struct ProtoWIBSuperChunkTypeAdapter
 
   void fake_frame_errors(std::vector<uint16_t>* fake_errors) // NOLINT(build/unsigned)
   {
-    auto wf = reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>(((uint8_t*)(&data))); // NOLINT
+    auto wf = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(((uint8_t*)(&data))); // NOLINT
     for (int i = 0; i < 12; ++i) {
       wf->set_wib_errors((*fake_errors)[i]);
       wf++;
@@ -81,7 +81,7 @@ struct ProtoWIBSuperChunkTypeAdapter
 
   size_t get_num_frames() { return 12; }
 
-  size_t get_frame_size() { return sizeof(struct dunedaq::detdataformats::wib::WIBFrame); }
+  size_t get_frame_size() { return sizeof(struct dunedaq::fddetdataformats::WIBFrame); }
   
   static const constexpr size_t fixed_payload_size = 5568;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
@@ -89,7 +89,7 @@ struct ProtoWIBSuperChunkTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 25; // 2 MHz@50MHz clock // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::detdataformats::wib::WIBFrame)*12 == kProtoWIBSuperChunkSize,
+static_assert(sizeof(struct dunedaq::fddetdataformats::WIBFrame)*12 == kProtoWIBSuperChunkSize,
               "Check your assumptions on ProtoWIBSuperChunkTypeAdapter");
 
 } // namespace types

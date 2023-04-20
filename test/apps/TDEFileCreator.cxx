@@ -6,7 +6,7 @@
  * received with this code.
  */
 
-#include "detdataformats/tde/TDE16Frame.hpp"
+#include "fddetdataformats/TDE16Frame.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -28,13 +28,13 @@ int main()
 
   for (int batch = 0; batch < num_batches; batch++)
   {
-    std::vector<detdataformats::tde::TDE16Frame> v;
+    std::vector<fddetdataformats::TDE16Frame> v;
     uint64_t timestamp = batch;
     for (int amc = 0; amc < 12; amc++)
     {
       for (int i = 0; i < 64; i++)
       {
-        detdataformats::tde::TDE16Frame fr;
+        fddetdataformats::TDE16Frame fr;
         // Timestamp
         fr.set_timestamp(timestamp);
         // Channel
@@ -46,7 +46,7 @@ int main()
     }
     std::shuffle(v.begin(), v.end(), rng);
     for (auto& fr: v) {
-        out.write(reinterpret_cast<char*>(&fr), sizeof(detdataformats::tde::TDE16Frame));
+        out.write(reinterpret_cast<char*>(&fr), sizeof(fddetdataformats::TDE16Frame));
     }
   }
   out.close();

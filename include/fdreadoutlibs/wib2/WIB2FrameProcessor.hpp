@@ -23,7 +23,7 @@
 #include "readoutlibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 
 
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
@@ -175,7 +175,7 @@ public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>;
   using frameptr = types::DUNEWIBSuperChunkTypeAdapter*;
   using constframeptr = const types::DUNEWIBSuperChunkTypeAdapter*;
-  using wibframeptr = dunedaq::detdataformats::wib2::WIB2Frame*;
+  using wibframeptr = dunedaq::fddetdataformats::WIB2Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   // Channel map function type
@@ -414,7 +414,7 @@ protected:
       uint64_t ts_next = m_previous_ts + wib2_superchunk_tick_difference;                   // NOLINT(build/unsigned)
       auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));  // NOLINT
       for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
-        //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Header*>(wf->get_wib_header());
+        //auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
         wf->set_timestamp(ts_next);
         ts_next += wib2_tick_difference;
         wf++;
@@ -422,7 +422,7 @@ protected:
     }
 
     // Acquire timestamp
-    auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(fp); // NOLINT
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(fp); // NOLINT
     m_current_ts = wfptr->get_timestamp();
 
     // Check timestamp
@@ -458,7 +458,7 @@ protected:
     if (!fp)
       return;
 
-    auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp); // NOLINT
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp); // NOLINT
     uint64_t timestamp = wfptr->get_timestamp();                        // NOLINT(build/unsigned)
 
     // Frame expansion
@@ -675,7 +675,7 @@ private:
 
   std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> m_tpset_sink;
-  std::shared_ptr<iomanager::SenderConcept<detdataformats::wib2::WIB2Frame>> m_err_frame_sink;
+  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIB2Frame>> m_err_frame_sink;
 
   std::unique_ptr<WIB2TPHandler> m_tphandler;
 

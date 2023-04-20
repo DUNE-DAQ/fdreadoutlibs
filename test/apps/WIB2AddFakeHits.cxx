@@ -8,7 +8,7 @@
  * received with this code.
  */
 
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -52,7 +52,7 @@ public:
 
     FrameFile(const char* filename)
         : m_file(filename, std::ifstream::binary),
-          m_buffer(new char[sizeof(dunedaq::detdataformats::wib2::WIB2Frame)])
+          m_buffer(new char[sizeof(dunedaq::fddetdataformats::WIB2Frame)])
     {
         if(m_file.bad() || m_file.fail() || !m_file.is_open()){
             throw std::runtime_error(std::string("Bad file ")+std::string(filename));
@@ -64,15 +64,15 @@ public:
         if(m_length==0){
             throw std::runtime_error("Empty file");
         }
-        //if(m_length%sizeof(dunedaq::detdataformats::wib2::WIB2Frame)!=0){
+        //if(m_length%sizeof(dunedaq::fddetdataformats::WIB2Frame)!=0){
         //    throw std::runtime_error("File does not contain an integer number of frames");
         //}
-        m_n_frames=50;//m_length/sizeof(dunedaq::detdataformats::wib2::WIB2Frame);
+        m_n_frames=50;//m_length/sizeof(dunedaq::fddetdataformats::WIB2Frame);
 
 	// Reinterpret the frame as WIB2Frame
 	
 	m_file.read(m_buffer, m_file.eof());
-        m_wib2_frame = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(m_buffer);
+        m_wib2_frame = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(m_buffer);
     }
 
     ~FrameFile()
@@ -86,19 +86,19 @@ public:
     // Number of frames in the file
     size_t num_frames() const { return m_n_frames; }
 
-    dunedaq::detdataformats::wib2::WIB2Frame* get_wib2_frame() const { return m_wib2_frame; }
+    dunedaq::fddetdataformats::WIB2Frame* get_wib2_frame() const { return m_wib2_frame; }
 
-    dunedaq::detdataformats::wib2::WIB2Frame* frame(size_t i)
+    dunedaq::fddetdataformats::WIB2Frame* frame(size_t i)
     {
         if(i>=num_frames()) return nullptr;
         // Seek to the right place in the file
-        m_file.seekg(i*sizeof(dunedaq::detdataformats::wib2::WIB2Frame));
+        m_file.seekg(i*sizeof(dunedaq::fddetdataformats::WIB2Frame));
         // Check we didn't go past the end
         if(m_file.bad() || m_file.eof()) return nullptr;
         // Actually read the fragment into the buffer
-        m_file.read(m_buffer,sizeof(dunedaq::detdataformats::wib2::WIB2Frame));
+        m_file.read(m_buffer,sizeof(dunedaq::fddetdataformats::WIB2Frame));
         if(m_file.bad() || m_file.eof()) return nullptr;
-        return reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(m_buffer);
+        return reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(m_buffer);
     }
     
 
@@ -107,7 +107,7 @@ public:
 protected:
     std::ifstream m_file;
     char* m_buffer;
-    dunedaq::detdataformats::wib2::WIB2Frame* m_wib2_frame = nullptr;
+    dunedaq::fddetdataformats::WIB2Frame* m_wib2_frame = nullptr;
     size_t m_length;
     size_t m_n_frames;
 };
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
   size_t ch = input_ch;
 
   
-  dunedaq::detdataformats::wib2::WIB2Frame* frame = input_file.frame(frame_number);
+  dunedaq::fddetdataformats::WIB2Frame* frame = input_file.frame(frame_number);
   
   auto val_to_check = frame->get_adc(ch);
   std::cout << "Output adc value: " << val_to_check << " for frame " << frame_number << " and channel number " << ch << std::endl;
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
   std::fstream output_file;
   output_file.open("modified_output.bin", std::ios::app | std::ios::binary);
 
-  dunedaq::detdataformats::wib2::WIB2Frame* output_frame; 
+  dunedaq::fddetdataformats::WIB2Frame* output_frame; 
   for (size_t i=0; i<input_file.num_frames(); i++) {
 
      
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
        output_frame->set_adc(242, adc_val+500);
        output_frame->set_adc(12, adc_val2+500);
      } 
-     output_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::detdataformats::wib2::WIB2Frame) );
+     output_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::fddetdataformats::WIB2Frame) );
   
   } 
 

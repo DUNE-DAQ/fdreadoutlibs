@@ -10,7 +10,7 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPG_FRAMEEXPAND_HPP_
 
 #include "TPGConstants_wib2.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 #include "fdreadoutlibs/ProtoWIBSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
 
@@ -83,7 +83,7 @@ void
 print256_as16_dec(__m256i var);
 
 //==============================================================================
-inline __m256i unpack_one_register(const dunedaq::detdataformats::wib2::WIB2Frame::word_t* first_word)
+inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIB2Frame::word_t* first_word)
 {
     __m256i reg=_mm256_lddqu_si256((__m256i*)first_word);
     // printf("Input:      ");
@@ -198,8 +198,8 @@ expand_wib2_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapt
                             )
 {
   for (size_t iframe = 0; iframe < swtpg_wib2::FRAMES_PER_MSG; ++iframe) {
-    const dunedaq::detdataformats::wib2::WIB2Frame* frame =
-      reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(ucs) + iframe; // NOLINT
+    const dunedaq::fddetdataformats::WIB2Frame* frame =
+      reinterpret_cast<const dunedaq::fddetdataformats::WIB2Frame*>(ucs) + iframe; // NOLINT
 
     for (size_t iblock = 0; iblock < swtpg_wib2::NUM_REGISTERS_PER_FRAME ; ++iblock) {
       register_array->set_ymm(iframe + iblock * swtpg_wib2::FRAMES_PER_MSG, swtpg_wib2::unpack_one_register(frame->adc_words+7*(iblock+registers_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME)));

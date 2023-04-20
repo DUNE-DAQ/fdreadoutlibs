@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/daphne/DAPHNEStreamFrame.hpp"
+#include "fddetdataformats/DAPHNEStreamFrame.hpp"
 
 
 
@@ -17,7 +17,7 @@ namespace dunedaq::fdreadoutlibs::types {
 
   struct DAPHNEStreamSuperChunkTypeAdapter {
 
-    using FrameType = dunedaq::detdataformats::daphne::DAPHNEStreamFrame;
+    using FrameType = dunedaq::fddetdataformats::DAPHNEStreamFrame;
 
     char data[kDAPHNEStreamSuperChunkSize];
 

@@ -10,7 +10,7 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB_TPG_REGISTERTOCHANNELNUMBER_HPP_
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib/WIBFrame.hpp"
+#include "fddetdataformats/WIBFrame.hpp"
 #include "readoutlibs/ReadoutTypes.hpp"
 #include "FrameExpand.hpp"
 #include "TPGConstants.hpp"
@@ -38,14 +38,14 @@ struct RegisterChannelMap
  * creates that map
  */
 RegisterChannelMap
-get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame* frame,
+get_register_to_offline_channel_map(const dunedaq::fddetdataformats::WIBFrame* frame,
                                     std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map)
 {
   auto start_time = std::chrono::steady_clock::now();
 
   // Find the lowest offline channel number of all the channels in the input frame
   uint min_ch = UINT_MAX;
-  for (size_t ich = 0; ich < dunedaq::detdataformats::wib::WIBFrame::s_num_ch_per_frame; ++ich) {
+  for (size_t ich = 0; ich < dunedaq::fddetdataformats::WIBFrame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->get_wib_header()->crate_no, frame->get_wib_header()->slot_no, frame->get_wib_header()->fiber_no, ich);
     min_ch = std::min(min_ch, offline_ch);
@@ -60,9 +60,9 @@ get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame
   dunedaq::fdreadoutlibs::types::ProtoWIBSuperChunkTypeAdapter superchunk;
   memset(superchunk.data, 0, sizeof(dunedaq::fdreadoutlibs::types::ProtoWIBSuperChunkTypeAdapter));
 
-  dunedaq::detdataformats::wib::WIBFrame* test_frame =
-    reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>(&superchunk);
-  for (size_t ich = 0; ich < dunedaq::detdataformats::wib::WIBFrame::s_num_ch_per_frame; ++ich) {
+  dunedaq::fddetdataformats::WIBFrame* test_frame =
+    reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(&superchunk);
+  for (size_t ich = 0; ich < dunedaq::fddetdataformats::WIBFrame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->get_wib_header()->crate_no, frame->get_wib_header()->slot_no, frame->get_wib_header()->fiber_no, ich);
     test_frame->set_channel(ich, offline_ch - min_ch);
@@ -98,7 +98,7 @@ get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame
 }
 
 RegisterChannelMap
-get_register_to_offline_channel_map(const dunedaq::detdataformats::wib::WIBFrame* frame, std::string channel_map_name)
+get_register_to_offline_channel_map(const dunedaq::fddetdataformats::WIBFrame* frame, std::string channel_map_name)
 {
   auto ch_map = dunedaq::detchannelmaps::make_map(channel_map_name);
   return get_register_to_offline_channel_map(frame, ch_map);

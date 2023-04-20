@@ -111,7 +111,7 @@ public:
       if (queue_index.find("tpset_out") != queue_index.end()) {
         m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
       }
-      m_err_frame_sink = get_iom_sender<detdataformats::wib::WIBFrame>(queue_index["errored_frames"]);
+      m_err_frame_sink = get_iom_sender<fddetdataformats::WIBFrame>(queue_index["errored_frames"]);
     } catch (const ers::Issue& excpt) {
       throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
     }

@@ -22,7 +22,7 @@
 #include "readoutlibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib/WIBFrame.hpp"
+#include "fddetdataformats/WIBFrame.hpp"
 
 
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
@@ -74,7 +74,7 @@ public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::ProtoWIBSuperChunkTypeAdapter>;
   using frameptr = types::ProtoWIBSuperChunkTypeAdapter*;
   using constframeptr = const types::ProtoWIBSuperChunkTypeAdapter*;
-  using wibframeptr = dunedaq::detdataformats::wib::WIBFrame*;
+  using wibframeptr = dunedaq::fddetdataformats::WIBFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   // Channel map function type
@@ -232,7 +232,7 @@ public:
       if (queue_index.find("tpset_out") != queue_index.end()) {
         m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
       }
-      m_err_frame_sink = get_iom_sender<detdataformats::wib::WIBFrame>(queue_index["errored_frames"]);
+      m_err_frame_sink = get_iom_sender<fddetdataformats::WIBFrame>(queue_index["errored_frames"]);
     } catch (const ers::Issue& excpt) {
       throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
     }
@@ -356,7 +356,7 @@ protected:
       uint64_t ts_next = m_previous_ts + 300;                   // NOLINT(build/unsigned)
       auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));  // NOLINT
       for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
-        auto wfh = const_cast<dunedaq::detdataformats::wib::WIBHeader*>(wf->get_wib_header());
+        auto wfh = const_cast<dunedaq::fddetdataformats::WIBHeader*>(wf->get_wib_header());
         wfh->set_timestamp(ts_next);
         ts_next += 25;
         wf++;
@@ -364,7 +364,7 @@ protected:
     }
 
     // Acquire timestamp
-    auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>(fp); // NOLINT
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(fp); // NOLINT
     auto wfhdrptr = wfptr->get_wib_header();
     m_current_ts = wfhdrptr->get_timestamp();
     TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received ProtoWIB frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (m_clock_frequency*1000)) / static_cast<double>(m_clock_frequency)) << " sec), crate " << wfhdrptr->crate_no << ", slot " << wfhdrptr->slot_no; // NOLINT
@@ -410,7 +410,7 @@ protected:
         }
       }
 
-      auto wfh = const_cast<dunedaq::detdataformats::wib::WIBHeader*>(wf->get_wib_header());
+      auto wfh = const_cast<dunedaq::fddetdataformats::WIBHeader*>(wf->get_wib_header());
       if (wfh->wib_errors) {
         m_frame_error_count += std::bitset<16>(wfh->wib_errors).count();
       }
@@ -422,7 +422,7 @@ protected:
             m_error_occurrence_counters[j]++;
             if (!m_current_frame_pushed) {
               try {
-                  dunedaq::detdataformats::wib::WIBFrame wf_copy(*wf);
+                  dunedaq::fddetdataformats::WIBFrame wf_copy(*wf);
                 m_err_frame_sink->send(std::move(wf_copy), std::chrono::milliseconds(10));
                 m_current_frame_pushed = true;
               } catch (const ers::Issue& excpt) {
@@ -445,7 +445,7 @@ protected:
     if (!fp)
       return;
 
-    auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib::WIBFrame*>((uint8_t*)fp); // NOLINT
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>((uint8_t*)fp); // NOLINT
     uint64_t timestamp = wfptr->get_wib_header()->get_timestamp();                        // NOLINT(build/unsigned)
 
     // First, expand the frame ADCs into 16-bit values in AVX2
@@ -741,7 +741,7 @@ private:
 
   std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> m_tpset_sink;
-  std::shared_ptr<iomanager::SenderConcept<detdataformats::wib::WIBFrame>> m_err_frame_sink;
+  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBFrame>> m_err_frame_sink;
 
   std::unique_ptr<WIBTPHandler> m_tphandler;
 

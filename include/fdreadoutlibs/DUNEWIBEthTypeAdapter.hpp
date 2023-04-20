@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/wibeth/WIBEthFrame.hpp"
+#include "fddetdataformats/WIBEthFrame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -22,7 +22,7 @@ namespace types {
 const constexpr std::size_t kDUNEWIBEthSize = 7200; 
 struct DUNEWIBEthTypeAdapter
 {
-  using FrameType = dunedaq::detdataformats::wibeth::WIBEthFrame;
+  using FrameType = dunedaq::fddetdataformats::WIBEthFrame;
   // data
   char data[kDUNEWIBEthSize];
   // comparable based on first timestamp
@@ -76,7 +76,7 @@ struct DUNEWIBEthTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 2048; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::detdataformats::wibeth::WIBEthFrame) == kDUNEWIBEthSize,
+static_assert(sizeof(struct dunedaq::fddetdataformats::WIBEthFrame) == kDUNEWIBEthSize,
               "Check your assumptions on DUNEWIBEthTypeAdapter");
 
 

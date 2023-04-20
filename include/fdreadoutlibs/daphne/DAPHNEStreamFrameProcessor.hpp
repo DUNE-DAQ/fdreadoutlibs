@@ -16,7 +16,7 @@
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 
-#include "detdataformats/daphne/DAPHNEStreamFrame.hpp"
+#include "fddetdataformats/DAPHNEStreamFrame.hpp"
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
 
 #include <atomic>
@@ -35,7 +35,7 @@ class DAPHNEStreamFrameProcessor : public readoutlibs::TaskRawDataProcessorModel
 public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>;
   using frameptr = types::DAPHNEStreamSuperChunkTypeAdapter*;
-  using daphneframeptr = dunedaq::detdataformats::daphne::DAPHNEStreamFrame*;
+  using daphneframeptr = dunedaq::fddetdataformats::DAPHNEStreamFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   explicit DAPHNEStreamFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
