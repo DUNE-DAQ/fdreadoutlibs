@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr

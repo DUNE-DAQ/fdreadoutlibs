@@ -15,7 +15,7 @@
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
