@@ -52,6 +52,9 @@
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
+// THIS SHOULDN'T BE HERE!!!!!
+DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+
 namespace dunedaq {
 namespace fdreadoutlibs {
 
