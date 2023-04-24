@@ -61,11 +61,10 @@ void save_raw_data(swtpg_wib2::MessageRegisters register_array,
     file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_data" + date_time_str + ".txt";
   }
   out_file.open(file_name.c_str(), std::ofstream::app);
-
-  uint64_t t_current= t0 ; 
   
   const uint16_t* input16 = register_array.data();
   for (size_t ichan = 0; ichan < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++ichan) {
+    uint64_t t_current= t0 ; 
     const size_t register_index = ichan / swtpg_wib2::SAMPLES_PER_REGISTER;
     if (register_index < 0 || register_index >= swtpg_wib2::NUM_REGISTERS_PER_FRAME)
        continue;
