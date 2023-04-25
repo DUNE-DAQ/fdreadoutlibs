@@ -21,7 +21,7 @@
 #include "readoutlibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 
 
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
@@ -349,7 +349,7 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
     uint64_t ts_next = m_previous_ts + wib2_superchunk_tick_difference; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      // auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Header*>(wf->get_wib_header());
+      // auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
       wf->set_timestamp(ts_next);
       ts_next += wib2_tick_difference;
       wf++;
@@ -357,7 +357,7 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
   }
 
   // Acquire timestamp
-  auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(fp); // NOLINT
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(fp); // NOLINT
   m_current_ts = wfptr->get_timestamp();
 
   // Check timestamp
@@ -391,7 +391,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
   if (!fp)
     return;
 
-  auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp); // NOLINT
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp); // NOLINT
   uint64_t timestamp = wfptr->get_timestamp();                                            // NOLINT(build/unsigned)
 
   // Frame expansion

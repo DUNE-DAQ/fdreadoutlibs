@@ -33,7 +33,7 @@ namespace swtpg_wib2 {
  * creates that map
  */
 RegisterChannelMap
-get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WIB2Frame* frame,
+get_register_to_offline_channel_map_wib2(const dunedaq::fddetdataformats::WIB2Frame* frame,
                                     std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map,
                                     int registers_selection
                                     )
@@ -46,7 +46,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
 
   // Find the lowest offline channel number of all the channels in the input frame
   uint min_ch = UINT_MAX;
-  for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
+  for (size_t ich = 0; ich < dunedaq::fddetdataformats::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->header.crate, frame->header.slot, frame->header.link, ich);
     TLOG_DEBUG(TLVL_BOOKKEEPING) << " offline_ch " << offline_ch; 
@@ -62,9 +62,9 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
   dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter superchunk;
   memset(superchunk.data, 0, sizeof(dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter));
 
-  dunedaq::detdataformats::wib2::WIB2Frame* test_frame =
-    reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(&superchunk);
-  for (size_t ich = 0; ich < dunedaq::detdataformats::wib2::WIB2Frame::s_num_ch_per_frame; ++ich) {
+  dunedaq::fddetdataformats::WIB2Frame* test_frame =
+    reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(&superchunk);
+  for (size_t ich = 0; ich < dunedaq::fddetdataformats::WIB2Frame::s_num_ch_per_frame; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_fiber_chan(
       frame->header.crate, frame->header.slot, frame->header.link, ich);
       test_frame->set_adc(ich, offline_ch - min_ch);
@@ -93,7 +93,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WI
 
 RegisterChannelMap
 get_register_to_offline_channel_map_wib2(
-  const dunedaq::detdataformats::wib2::WIB2Frame* frame,
+  const dunedaq::fddetdataformats::WIB2Frame* frame,
   std::string channel_map_name,
   int registers_selection
   )

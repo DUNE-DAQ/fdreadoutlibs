@@ -38,7 +38,7 @@ get_register_to_offline_channel_map_wib2(const dunedaq::fddetdataformats::WIB2Fr
 
 RegisterChannelMap
 get_register_to_offline_channel_map_wib2(
-  const dunedaq::detdataformats::wib2::WIB2Frame* frame,
+  const dunedaq::fddetdataformats::WIB2Frame* frame,
   std::string channel_map_name,
   int registers_selection
   );
