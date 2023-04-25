@@ -76,7 +76,7 @@ public:
       tpset_sourceid.id = config.tpset_sourceid;
       tpset_sourceid.subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
       m_tphandler.reset(
-            new WIB2TPHandler(*m_tp_sink, *m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
+            new WIB2TPHandler(m_tp_sink, m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
