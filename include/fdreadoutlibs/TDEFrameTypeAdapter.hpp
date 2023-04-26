@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/tde/TDE16Frame.hpp"
+#include "fddetdataformats/TDE16Frame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -15,11 +15,11 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 namespace types {
 
-const constexpr std::size_t kTDEFrameSize = sizeof(dunedaq::detdataformats::tde::TDE16Frame);
+const constexpr std::size_t kTDEFrameSize = sizeof(dunedaq::fddetdataformats::TDE16Frame);
 struct TDEFrameTypeAdapter
 
 {
-  using FrameType = dunedaq::detdataformats::tde::TDE16Frame;
+  using FrameType = dunedaq::fddetdataformats::TDE16Frame;
 
   //char data[kTDEFrameSize];
   FrameType data;
@@ -71,11 +71,11 @@ struct TDEFrameTypeAdapter
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTDE_AMC;
-  static const constexpr uint64_t expected_tick_difference = dunedaq::detdataformats::tde::ticks_between_adc_samples * dunedaq::detdataformats::tde::tot_adc16_samples; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples; // NOLINT(build/unsigned)
 
 };
 
-static_assert(sizeof(dunedaq::detdataformats::tde::TDE16Frame) == kTDEFrameSize,
+static_assert(sizeof(dunedaq::fddetdataformats::TDE16Frame) == kTDEFrameSize,
               "Check your assumptions on TDEFrameTypeAdapter");
 
 } // namespace types

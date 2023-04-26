@@ -11,7 +11,7 @@
 #include "readoutlibs/ReadoutIssues.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 
-#include "detdataformats/tde/TDE16Frame.hpp"
+#include "fddetdataformats/TDE16Frame.hpp"
 
 #include "fdreadoutlibs/TDEFrameTypeAdapter.hpp"
 
@@ -38,7 +38,7 @@ public:
 >;
   using frameptr = types::TDEFrameTypeAdapter
 *;
-  using tdeframeptr = dunedaq::detdataformats::tde::TDE16Frame*;
+  using tdeframeptr = dunedaq::fddetdataformats::TDE16Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   explicit TDEFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)

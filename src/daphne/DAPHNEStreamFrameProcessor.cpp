@@ -6,7 +6,7 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#include "detdataformats/daphne/DAPHNEStreamFrame.hpp"
+#include "fddetdataformats/DAPHNEStreamFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEStreamFrameProcessor.hpp"
 
 #include <atomic>
@@ -39,7 +39,7 @@ DAPHNEStreamFrameProcessor::timestamp_check(frameptr fp)
     uint64_t ts_next = m_previous_ts + 64; // NOLINT(build/unsigned)
     auto df = reinterpret_cast<daphneframeptr>(((uint8_t*)fp));  // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
-      //auto wfh = const_cast<dunedaq::detdataformats::wib2::WIB2Header*>(wf->get_wib_header());
+      //auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
       df->set_timestamp(ts_next);
       ts_next += 64;
       df++;

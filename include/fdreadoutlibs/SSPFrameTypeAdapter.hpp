@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/ssp/SSPTypes.hpp"
+#include "fddetdataformats/SSPTypes.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -21,7 +21,7 @@ struct SSPFrameTypeAdapter
   using FrameType = SSPFrameTypeAdapter;
 
   // header
-  detdataformats::ssp::EventHeader header;
+  fddetdataformats::ssp::EventHeader header;
 
   // data
   char data[kSSPFrameSize];
@@ -82,7 +82,7 @@ struct SSPFrameTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 25; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct SSPFrameTypeAdapter) == sizeof(detdataformats::ssp::EventHeader) + kSSPFrameSize,
+static_assert(sizeof(struct SSPFrameTypeAdapter) == sizeof(fddetdataformats::ssp::EventHeader) + kSSPFrameSize,
               "Check your assumptions on SSPFrameTypeAdapter");
 
 

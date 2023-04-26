@@ -42,7 +42,7 @@ namespace fdreadoutlibs {
 class TPEmulatorModel : public readoutlibs::SourceEmulatorConcept
 {
 public:
-  using sink_t = iomanager::SenderConcept<detdataformats::wib::RawWIBTp>;
+  using sink_t = iomanager::SenderConcept<fddetdataformats::RawWIBTp>;
 
 
   // Raw WIB TP

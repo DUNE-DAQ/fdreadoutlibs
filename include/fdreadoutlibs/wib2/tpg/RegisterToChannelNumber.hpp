@@ -10,7 +10,8 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPG_REGISTERTOCHANNELNUMBER_HPP_
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
+
+#include "fddetdataformats/WIB2Frame.hpp"
 #include "fdreadoutlibs/wib2/tpg/TPGConstants_wib2.hpp"
 
 
@@ -30,14 +31,14 @@ struct RegisterChannelMap
  * creates that map
  */
 RegisterChannelMap
-get_register_to_offline_channel_map_wib2(const dunedaq::detdataformats::wib2::WIB2Frame* frame,
+get_register_to_offline_channel_map_wib2(const dunedaq::fddetdataformats::WIB2Frame* frame,
                                     std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map,
                                     int registers_selection
                                     );
 
 RegisterChannelMap
 get_register_to_offline_channel_map_wib2(
-  const dunedaq::detdataformats::wib2::WIB2Frame* frame,
+  const dunedaq::fddetdataformats::WIB2Frame* frame,
   std::string channel_map_name,
   int registers_selection
   );

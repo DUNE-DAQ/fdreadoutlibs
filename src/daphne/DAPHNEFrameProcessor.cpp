@@ -6,7 +6,7 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
 
 #include <atomic>

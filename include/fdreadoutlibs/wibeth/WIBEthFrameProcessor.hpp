@@ -23,7 +23,7 @@
 #include "readoutlibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
-#include "detdataformats/wibeth/WIBEthFrame.hpp"
+#include "fddetdataformats/WIBEthFrame.hpp"
 
 
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
@@ -86,7 +86,7 @@ public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>;
   using frameptr = types::DUNEWIBEthTypeAdapter*;
   using constframeptr = const types::DUNEWIBEthTypeAdapter*;
-  using wibframeptr = dunedaq::detdataformats::wibeth::WIBEthFrame*;
+  using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   explicit WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
@@ -166,7 +166,7 @@ protected:
     uint16_t wibeth_tick_difference = types::DUNEWIBEthTypeAdapter::expected_tick_difference;
 
 
-    auto wfptr = reinterpret_cast<dunedaq::detdataformats::wibeth::WIBEthFrame*>(fp); // NOLINT
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
 
     // If EMU data, emulate perfectly incrementing timestamp
     if (inherited::m_emulator_mode) {                           // emulate perfectly incrementing timestamp

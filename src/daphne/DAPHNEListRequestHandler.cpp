@@ -6,7 +6,7 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEListRequestHandler.hpp"
 
 using dunedaq::readoutlibs::logging::TLVL_WORK_STEPS;
@@ -26,8 +26,8 @@ DAPHNEListRequestHandler::daphne_cleanup_request()
     auto tail = acc.last();
     auto head = acc.first();
     if (tail && head) {
-      // auto tailptr = reinterpret_cast<const detdataformats::daphne::DAPHNEFrame*>(tail); // NOLINT
-      // auto headptr = reinterpret_cast<const detdataformats::daphne::DAPHNEFrame*>(head); // NOLINT
+      // auto tailptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(tail); // NOLINT
+      // auto headptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(head); // NOLINT
       tailts = (*tail).get_first_timestamp(); // tailptr->get_timestamp();
       headts = (*head).get_first_timestamp(); // headptr->get_timestamp();
       TLOG_DEBUG(TLVL_WORK_STEPS) << "Cleanup REQUEST with "
@@ -44,7 +44,7 @@ DAPHNEListRequestHandler::daphne_cleanup_request()
             ++removed_ctr;
           }
           head = acc.first();
-          // headptr = reinterpret_cast<const detdataformats::daphne::DAPHNEFrame*>(head);
+          // headptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(head);
           headts = (*head).get_first_timestamp(); // headptr->get_timestamp();
           timediff = tailts - headts;
         }

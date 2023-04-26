@@ -17,7 +17,7 @@
 #include "readoutlibs/models/DefaultRequestHandlerModel.hpp"
 #include "readoutlibs/models/SkipListLatencyBufferModel.hpp"
 
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 

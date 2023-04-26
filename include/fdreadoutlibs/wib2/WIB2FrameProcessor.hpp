@@ -103,7 +103,7 @@ public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>;
   using frameptr = types::DUNEWIBSuperChunkTypeAdapter*;
   using constframeptr = const types::DUNEWIBSuperChunkTypeAdapter*;
-  using wibframeptr = dunedaq::detdataformats::wib2::WIB2Frame*;
+  using wibframeptr = dunedaq::fddetdataformats::WIB2Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   // Channel map function type
@@ -136,12 +136,16 @@ protected:
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
    * */
+
+
   void timestamp_check(frameptr fp);
 
   /**
    * Pipeline Stage 2.: Do software TPG
    * */
+
   void find_hits(constframeptr fp, WIB2FrameHandler* frame_handler);
+
 
   unsigned int process_swtpg_hits(uint16_t* primfind_it, timestamp_t timestamp);
 
@@ -182,7 +186,7 @@ private:
 
   std::shared_ptr<iomanager::SenderConcept<types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<trigger::TPSet>> m_tpset_sink;
-  std::shared_ptr<iomanager::SenderConcept<detdataformats::wib2::WIB2Frame>> m_err_frame_sink;
+  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIB2Frame>> m_err_frame_sink;
 
   std::unique_ptr<WIB2TPHandler> m_tphandler;
 

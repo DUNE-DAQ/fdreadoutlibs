@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -22,25 +22,25 @@ namespace types {
 const constexpr std::size_t kDUNEWIBSuperChunkSize = 5664; // for 12: 5664
 struct DUNEWIBSuperChunkTypeAdapter
 {
-  using FrameType = dunedaq::detdataformats::wib2::WIB2Frame;
+  using FrameType = dunedaq::fddetdataformats::WIB2Frame;
   // data
   char data[kDUNEWIBSuperChunkSize];
   // comparable based on first timestamp
   bool operator<(const DUNEWIBSuperChunkTypeAdapter& other) const
   {
-    auto thisptr = reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(&data);        // NOLINT
-    auto otherptr = reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(&other.data); // NOLINT
+    auto thisptr = reinterpret_cast<const dunedaq::fddetdataformats::WIB2Frame*>(&data);        // NOLINT
+    auto otherptr = reinterpret_cast<const dunedaq::fddetdataformats::WIB2Frame*>(&other.data); // NOLINT
     return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
   }
 
   uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
   {
-    return reinterpret_cast<const dunedaq::detdataformats::wib2::WIB2Frame*>(&data)->get_timestamp(); // NOLINT
+    return reinterpret_cast<const dunedaq::fddetdataformats::WIB2Frame*>(&data)->get_timestamp(); // NOLINT
   }
 
   void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
-    auto frame = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(&data); // NOLINT
+    auto frame = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(&data); // NOLINT
     frame->header.timestamp_1 = ts;
     frame->header.timestamp_2 = ts >> 32;
   }
@@ -49,7 +49,7 @@ struct DUNEWIBSuperChunkTypeAdapter
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < 12; ++i) {
-      auto w2f = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>(((uint8_t*)(&data)) + i * 472); // NOLINT
+      auto w2f = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(((uint8_t*)(&data)) + i * 472); // NOLINT
       w2f->header.timestamp_1 = ts_next;
       w2f->header.timestamp_2 = ts_next >> 32;
       ts_next += offset;
@@ -75,14 +75,14 @@ struct DUNEWIBSuperChunkTypeAdapter
 
   size_t get_num_frames() { return 12; }
 
-  size_t get_frame_size() { return sizeof(struct dunedaq::detdataformats::wib2::WIB2Frame); }
+  size_t get_frame_size() { return sizeof(struct dunedaq::fddetdataformats::WIB2Frame); }
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIB;
   static const constexpr uint64_t expected_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::detdataformats::wib2::WIB2Frame)*12 == kDUNEWIBSuperChunkSize,
+static_assert(sizeof(struct dunedaq::fddetdataformats::WIB2Frame)*12 == kDUNEWIBSuperChunkSize,
               "Check your assumptions on DUNEWIBSuperChunkTypeAdapter");
 
 

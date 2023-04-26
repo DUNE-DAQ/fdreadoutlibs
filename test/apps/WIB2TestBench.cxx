@@ -6,7 +6,7 @@
  * received with this code.
  */
 
-#include "detdataformats/wib2/WIB2Frame.hpp"
+#include "fddetdataformats/WIB2Frame.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -65,7 +65,7 @@ void print256(__m256i var)
 }
 
 //==============================================================================
-__m256i unpack_one_register( dunedaq::detdataformats::wib2::WIB2Frame::word_t* first_word)
+__m256i unpack_one_register( dunedaq::fddetdataformats::WIB2Frame::word_t* first_word)
 {
     __m256i reg=_mm256_lddqu_si256((__m256i*)first_word);
     // printf("Input:      ");
@@ -169,7 +169,7 @@ __m256i unpack_one_register( dunedaq::detdataformats::wib2::WIB2Frame::word_t* f
     return both;
 }
 
-RegisterArray<16> unpack( dunedaq::detdataformats::wib2::WIB2Frame& frame)
+RegisterArray<16> unpack( dunedaq::fddetdataformats::WIB2Frame& frame)
 {
     RegisterArray<16> ret;
     for(size_t i=0; i<ret.size(); ++i){
@@ -181,9 +181,9 @@ RegisterArray<16> unpack( dunedaq::detdataformats::wib2::WIB2Frame& frame)
 
 bool in_out_test(const std::array<uint16_t, 256>& vals)
 {
-    dunedaq::detdataformats::wib2::WIB2Frame frame;
+    dunedaq::fddetdataformats::WIB2Frame frame;
     // Zero it out first
-    std::memset(&frame, 0, sizeof(dunedaq::detdataformats::wib2::WIB2Frame));
+    std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIB2Frame));
 
     for(size_t i=0; i<vals.size(); ++i){
         frame.set_adc(i, vals[i]);
@@ -225,10 +225,10 @@ int main()
     
     // Test WIB unpacking
 
-    dunedaq::detdataformats::wib2::WIB2Frame frame;
+    dunedaq::fddetdataformats::WIB2Frame frame;
 
     // Zero it out first
-    std::memset(&frame, 0, sizeof(dunedaq::detdataformats::wib2::WIB2Frame));
+    std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIB2Frame));
 
     for(int i=0; i<256; ++i){
         frame.set_adc(i, 0x3a0+i);

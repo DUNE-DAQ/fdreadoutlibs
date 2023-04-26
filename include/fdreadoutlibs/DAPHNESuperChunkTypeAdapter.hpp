@@ -3,7 +3,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "detdataformats/daphne/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEFrame.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -22,25 +22,25 @@ namespace types {
 const constexpr std::size_t kDAPHNESuperChunkSize = 7008; // for 12: 7008
 struct DAPHNESuperChunkTypeAdapter
 {
-  using FrameType = dunedaq::detdataformats::daphne::DAPHNEFrame;
+  using FrameType = dunedaq::fddetdataformats::DAPHNEFrame;
   // data
   char data[kDAPHNESuperChunkSize];
   // comparable based on first timestamp
   bool operator<(const DAPHNESuperChunkTypeAdapter& other) const
   {
-    auto thisptr = reinterpret_cast<const dunedaq::detdataformats::daphne::DAPHNEFrame*>(&data);        // NOLINT
-    auto otherptr = reinterpret_cast<const dunedaq::detdataformats::daphne::DAPHNEFrame*>(&other.data); // NOLINT
+    auto thisptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&data);        // NOLINT
+    auto otherptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&other.data); // NOLINT
     return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
   }
 
   uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
   {
-    return reinterpret_cast<const dunedaq::detdataformats::daphne::DAPHNEFrame*>(&data)->get_timestamp(); // NOLINT
+    return reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&data)->get_timestamp(); // NOLINT
   }
 
   void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
-    auto frame = reinterpret_cast<dunedaq::detdataformats::daphne::DAPHNEFrame*>(&data); // NOLINT
+    auto frame = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(&data); // NOLINT
     frame->header.timestamp_wf_1 = ts;
     frame->header.timestamp_wf_2 = ts >> 32;
   }
@@ -49,7 +49,7 @@ struct DAPHNESuperChunkTypeAdapter
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < 12; ++i) {
-      auto df = reinterpret_cast<dunedaq::detdataformats::daphne::DAPHNEFrame*>(((uint8_t*)(&data)) + i * 584); // NOLINT
+      auto df = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * 584); // NOLINT
       df->header.timestamp_wf_1 = ts_next;
       df->header.timestamp_wf_2 = ts_next >> 32;
       ts_next += offset;

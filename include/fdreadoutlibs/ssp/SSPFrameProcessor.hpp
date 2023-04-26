@@ -18,7 +18,7 @@
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 #include "readoutlibs/utils/ReusableThread.hpp"
 
-#include "detdataformats/ssp/SSPTypes.hpp"
+#include "fddetdataformats/SSPTypes.hpp"
 
 #include "fdreadoutlibs/SSPFrameTypeAdapter.hpp"
 
