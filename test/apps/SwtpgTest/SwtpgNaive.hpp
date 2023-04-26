@@ -103,7 +103,7 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
 
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
-    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time; 
     unsigned int nhits = 0;
 
     size_t i = 0;
@@ -112,6 +112,8 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       hit_end    = *primfind_it++;
       hit_charge  = *primfind_it++;
       hit_tover     = *primfind_it++;
+      hit_peak_adc  = *primfind_it++;
+      hit_peak_time = *primfind_it++;
 
       i += 1;
       const uint16_t offline_channel = m_register_channel_map.channel[chan ];
