@@ -120,17 +120,19 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       uint64_t tp_t_begin =                                                        
         timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
       uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
+      uint64_t tp_t_peak = 
+	timestamp + clocksPerTPCTick * int64_t(hit_peak_time);
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
-      trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+      trigprim.time_peak = tp_t_peak;
 
       trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
 
 
       trigprim.channel = offline_channel;
-      trigprim.adc_integral = hit_charge ;
-      trigprim.adc_peak = hit_charge  / 20;
+      trigprim.adc_integral = hit_charge;
+      trigprim.adc_peak = hit_peak_adc;
       trigprim.detid =
         m_link_no; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
