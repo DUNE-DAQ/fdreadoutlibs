@@ -14,7 +14,7 @@
 class SwtpgBase {
     
 public:
-   virtual void reset(bool first_hit, int threshold_value) {};
+   virtual void reset(bool first_hit, int threshold_value, std::string channel_map_name) {};
    virtual void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool first_hit) {};
 
    // Total sum of the number of found hits. Just for debugging, to be removed later

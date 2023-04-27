@@ -72,6 +72,9 @@ main(int argc, char** argv)
     int swtpg_threshold = 100;
     app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the SWTPG threshold");
 
+    std::string swtpg_channel_map = "VDColdboxChannelMap";
+    app.add_option("-m,--swtpg_channel_map", swtpg_channel_map, "Name of the SWTPG offline channel map");
+
     bool save_adc_data{false};
     app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
 
@@ -155,7 +158,7 @@ main(int argc, char** argv)
       auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter*>(source.data() + superchunk_index*swtpg_wib2::SUPERCHUNK_FRAME_SIZE);
 
       // Reset the memory buffers
-      algo->reset(first_hit, swtpg_threshold);
+      algo->reset(first_hit, swtpg_threshold, swtpg_channel_map);
       // Find the SWTPG hits
       algo->find_hits(fp, first_hit);
       first_hit = false;        

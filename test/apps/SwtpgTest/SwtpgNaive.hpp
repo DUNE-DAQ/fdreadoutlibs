@@ -60,7 +60,7 @@ public:
   SwtpgNaive(const SwtpgNaive&) = delete;
   SwtpgNaive& operator=(const SwtpgNaive&) = delete;
 
-  void reset(bool first_hit, int threshold_value) {
+  void reset(bool first_hit, int threshold_value, std::string channel_map_name = "HDColdboxChannelMap") {
     if (first_hit){
       m_tpg_taps = swtpg_wib2::firwin_int(7, 0.1, m_tpg_multiplier); //coefficients associated with nf 
       m_tpg_taps.push_back(0);
@@ -75,7 +75,9 @@ public:
       }
     
     m_tpg_threshold = threshold_value;  
-        
+    m_ch_map_name = channel_map_name;    
+    std::cout << "Using offline channel map: " << m_ch_map_name << std::endl;
+
     //Initialise the TPG processing info struct ready for next WIB Superchunk
     m_tpg_processing_info = std::make_unique<swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>>(
 										       nullptr, //input                                        
@@ -138,7 +140,7 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
       trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
       trigprim.version = 1;
-    
+   
       if (m_dump_hit_data) {
         save_hit_data(trigprim, "SwtpgNaive");
       }

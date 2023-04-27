@@ -89,6 +89,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
       // Subtract the baseline
       sample -= median;
+      sample = sample >> info.tap_exponent;
 
       // --------------------------------------------------------------
       // Hit finding
@@ -98,12 +99,10 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         // Simulate saturated add
         //int32_t tmp_charge = hit_charge; // IH: why not integral (i.e. sum) of ADCs  
 	int32_t tmp_charge = hit_charge;
-        int32_t tmp_peak_adc = hit_peak_adc;
-	int32_t tmp_peak_time = hit_peak_time;
-        tmp_charge += sample >> info.tap_exponent;
+        tmp_charge += sample;
         tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
-	if (sample > tmp_peak_adc) {
-	  hit_peak_adc = (int16_t)tmp_peak_adc;
+	if (sample > hit_peak_adc) {
+	  hit_peak_adc = (int16_t)sample;
 	  hit_peak_time = itime;
 	}
         hit_charge = (int16_t)tmp_charge;
@@ -117,7 +116,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = itime;           // NOLINT
+	if (itime == 0) itime = 12;
+        (*output_loc++) = itime;           // NOLINT // IH: handle edge case
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
 	(*output_loc++) = hit_peak_adc;    // NOLINT
