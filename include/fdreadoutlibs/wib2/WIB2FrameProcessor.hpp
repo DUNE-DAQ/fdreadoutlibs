@@ -60,6 +60,34 @@ struct swtpg_output{
   uint64_t timestamp;
 };
 
+// Pattern generator class for creating different types of TP patterns
+// AAA: at the moment the pattern generator is very simple: random source id and random channel
+class WIB2PatternGenerator {
+
+public:
+  WIB2PatternGenerator() {
+    m_size = 1000000;
+  };
+  ~WIB2PatternGenerator() {};
+
+  void generate();
+
+  std::vector<int> get_random_sourceids() {
+    return m_sourceid;
+  }
+
+  std::vector<int> get_random_channels() {
+    return m_channel;
+  }
+ 
+private: 
+  int m_size;
+  std::vector<int> m_sourceid;
+  std::vector<int> m_channel;
+  
+
+};
+
 
 class WIB2FrameHandler {
 
@@ -224,6 +252,8 @@ private:
   std::unique_ptr<WIB2FrameHandler> m_wib2_frame_handler = std::make_unique<WIB2FrameHandler>(selection_of_register, m_dest_queue);
   int selection_of_register_second_half = 1; 
   std::unique_ptr<WIB2FrameHandler> m_wib2_frame_handler_second_half = std::make_unique<WIB2FrameHandler>(selection_of_register_second_half, m_dest_queue);
+
+  WIB2PatternGenerator m_wib2_pattern_generator;
   
 
   std::thread m_add_hits_tphandler_thread;

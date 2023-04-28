@@ -58,6 +58,29 @@ DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
+
+
+void
+WIB2PatternGenerator::generate()
+{
+  for (int i = 0; i < m_size; i++) {
+      std::random_device rd;
+      std::default_random_engine rng(rd());
+      // Use a uniform distribution to equally select any of the 10 links 
+      // AAA: note the total number of links is hardcoded here!
+      std::uniform_int_distribution<int> dist_source_id(0, 10);
+      int random_source_id = dist_source_id(rng);
+      m_sourceid.push_back(random_source_id);
+  
+      std::uniform_int_distribution<int> dist_channel(0, 255);
+      int random_ch = dist_channel(rng);
+      m_channel.push_back(random_ch);
+
+  }
+}
+
+
+
 WIB2FrameHandler::WIB2FrameHandler(int register_selector_params, iomanager::FollyMPMCQueue<uint16_t*>& dest_queue)
   : m_dest_queue_frame_handler(dest_queue)
 {
@@ -256,6 +279,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 
   // Setup pre-processing pipeline
   if (m_emulator_mode_enabled && m_sw_tpg_enabled) {
+    m_wib2_pattern_generator.generate();
     TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::add_pattern_generator, this, std::placeholders::_1));
   }  
   TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
@@ -341,38 +365,34 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 }
 
 /**
- * Pattern generator for hit finding in emulated mode
+ * Add hits using the pattern generator only when using the emulated mode
  * */
 void
 WIB2FrameProcessor::add_pattern_generator(frameptr fp) 
 {
   // If we are not in the first superchunk then we start applying the pattern generator
-  // This is because we use the ADC values of the first wib frame as the baseline 
+  // This is because we use the ADC values of the first wib frame as the pedestal baseline
   if (m_current_ts != 0) {    
     auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp);
 
     m_pattern_generator_current_ts = wfptr->get_timestamp();
+
+    int random_source_id = 1;
+    int random_ch = 1;
  
-    // Adding a hit every 192000000 ns (192 ms) gives a TP rate of approx 5 Hz
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 192000000) {
-  
-    //std::random_device rd;
-    //std::default_random_engine rng(rd());
-    // Use a uniform distribution to equally select all the links 
-    //std::uniform_int_distribution<int> dist(0, 3);
-   
-    //if (dist(rng) == m_sourceid.id) {
-      int ch = 1;
-      auto adc_val = wfptr->get_adc(ch);
-      wfptr->set_adc(ch, 16383);
-      //auto adc_val = wfptr->get_adc(ch);
-      //TLOG() << "AAA: source id " << m_sourceid.id << " val modified " << adc_val;    
+    // Adding a hit every 6000 gives a TP rate of approx 100 kHz
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 6000) {
+      
+      if (random_source_id == m_sourceid.id) {
+        auto adc_val = wfptr->get_adc(random_ch);
+        // Set the ADC to the uint16 maximum value
+        wfptr->set_adc(random_ch, 16383);
+        //auto adc_val = wfptr->get_adc(ch);      
+      }
+      m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
 
 
-    //}
-
-    } // timestamp difference
-    m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
+    } // timestamp difference    
   } // if not first superchunk
 }
 
