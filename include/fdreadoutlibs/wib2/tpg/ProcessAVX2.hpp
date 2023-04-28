@@ -26,7 +26,7 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 {
-  const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
+  //const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
@@ -74,16 +74,25 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
       // The current sample
       __m256i s = info.input->ymm(index);
 
+      //if (ireg==0 && itime==0){      
+      //  printf("RAW ADC:             "); print256_as16_dec(s);             printf("\n\n");
+      //}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
       swtpg_wib2::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
-      s = _mm256_sub_epi16(s, median);
+      s = _mm256_sub_epi16(s, median);      
 
       // Don't let the sample exceed adcMax, which is the value
       // at which its filtered version might overflow
-      s = _mm256_min_epi16(s, adcMax);
+      //s = _mm256_min_epi16(s, adcMax);
+
+      //if (ireg==0 && itime==0){
+      //  printf("median:        "); print256_as16_dec(median);        printf("\n");        
+      //  printf("subtract:             "); print256_as16_dec(s);             printf("\n\n");
+      //}
 
       // --------------------------------------------------------------
       // Hit finding
@@ -116,7 +125,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
       //     printf("ADC value:             "); print256_as16_dec(s);             printf("\n\n");
       //     printf("median:        "); print256_as16_dec(median);        printf("\n");
       //     printf("sigma:         "); print256_as16_dec(sigma);         printf("\n");
-      //     printf("threshold:         "); print256_as16_dec(sigma * info.threshold);         printf("\n");
+      //     printf("threshold:         "); print256_as16_dec(threshold);         printf("\n");
       //     printf("to_add_charge: "); print256_as16_dec(to_add_charge); printf("\n");
       //     printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
       //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");

@@ -35,6 +35,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <random>
 
 
 
@@ -133,17 +134,23 @@ protected:
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
+  timestamp_t m_pattern_generator_previous_ts = 0;
+  timestamp_t m_pattern_generator_current_ts = 0;
+
+  /**
+   * Pattern generator for hit finding in emulated mode
+   * */
+  void add_pattern_generator(frameptr fp);
+
+
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
    * */
-
-
   void timestamp_check(frameptr fp);
 
   /**
    * Pipeline Stage 2.: Do software TPG
    * */
-
   void find_hits(constframeptr fp, WIB2FrameHandler* frame_handler);
 
 
@@ -163,6 +170,7 @@ private:
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
+  bool m_emulator_mode_enabled = false;
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 

@@ -217,6 +217,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   }
 
   auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+  m_emulator_mode_enabled = config.emulator_mode;
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
   m_tpg_algorithm = config.software_tpg_algorithm;
@@ -245,8 +246,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
     m_tphandler.reset(new WIB2TPHandler(m_tp_sink, m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
 
     TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));
-
-    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
+    //TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
 
     // Launch the thread for adding hits to tphandler
     m_add_hits_tphandler_thread_should_run.store(true);
@@ -255,7 +255,13 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   }
 
   // Setup pre-processing pipeline
+  if (m_emulator_mode_enabled && m_sw_tpg_enabled) {
+    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::add_pattern_generator, this, std::placeholders::_1));
+  }  
   TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
+
+
+
 
   TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::conf(cfg);
 }
@@ -333,6 +339,43 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::get_info(ci, level);
   ci.add(info);
 }
+
+/**
+ * Pattern generator for hit finding in emulated mode
+ * */
+void
+WIB2FrameProcessor::add_pattern_generator(frameptr fp) 
+{
+  // If we are not in the first superchunk then we start applying the pattern generator
+  // This is because we use the ADC values of the first wib frame as the baseline 
+  if (m_current_ts != 0) {    
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp);
+
+    m_pattern_generator_current_ts = wfptr->get_timestamp();
+ 
+    // Adding a hit every 192000000 ns (192 ms) gives a TP rate of approx 5 Hz
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 192000000) {
+  
+    //std::random_device rd;
+    //std::default_random_engine rng(rd());
+    // Use a uniform distribution to equally select all the links 
+    //std::uniform_int_distribution<int> dist(0, 3);
+   
+    //if (dist(rng) == m_sourceid.id) {
+      int ch = 1;
+      auto adc_val = wfptr->get_adc(ch);
+      wfptr->set_adc(ch, 16383);
+      //auto adc_val = wfptr->get_adc(ch);
+      //TLOG() << "AAA: source id " << m_sourceid.id << " val modified " << adc_val;    
+
+
+    //}
+
+    } // timestamp difference
+    m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
+  } // if not first superchunk
+}
+
 
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
