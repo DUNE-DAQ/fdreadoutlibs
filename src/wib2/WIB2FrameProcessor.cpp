@@ -269,7 +269,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
     m_tphandler.reset(new WIB2TPHandler(m_tp_sink, m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
 
     TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));
-    //TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
+    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
 
     // Launch the thread for adding hits to tphandler
     m_add_hits_tphandler_thread_should_run.store(true);
@@ -280,7 +280,9 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   // Setup pre-processing pipeline
   if (m_emulator_mode_enabled && m_sw_tpg_enabled) {
     m_wib2_pattern_generator.generate();
-    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::add_pattern_generator, this, std::placeholders::_1));
+    m_random_source_ids = m_wib2_pattern_generator.get_sourceids();
+    m_random_channels = m_wib2_pattern_generator.get_channels();
+    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
   }  
   TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
 
@@ -365,10 +367,10 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 }
 
 /**
- * Add hits using the pattern generator only when using the emulated mode
+ * Add hits using the pattern generator only when in emulated mode
  * */
 void
-WIB2FrameProcessor::add_pattern_generator(frameptr fp) 
+WIB2FrameProcessor::use_pattern_generator(frameptr fp) 
 {
   // If we are not in the first superchunk then we start applying the pattern generator
   // This is because we use the ADC values of the first wib frame as the pedestal baseline
@@ -377,18 +379,21 @@ WIB2FrameProcessor::add_pattern_generator(frameptr fp)
 
     m_pattern_generator_current_ts = wfptr->get_timestamp();
 
-    int random_source_id = 1;
-    int random_ch = 1;
- 
-    // Adding a hit every 6000 gives a TP rate of approx 100 kHz
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 6000) {
-      
-      if (random_source_id == m_sourceid.id) {
-        auto adc_val = wfptr->get_adc(random_ch);
-        // Set the ADC to the uint16 maximum value
-        wfptr->set_adc(random_ch, 16383);
-        //auto adc_val = wfptr->get_adc(ch);      
+    // Adding a hit every 6000 gives a total Sent TP rate of approx 5 kHz
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 6000) {      
+
+      // Reset the pattern from the beginning if it reaches the maximum
+      m_pattern_index++;
+      if (m_pattern_index == m_wib2_pattern_generator.get_total_size()) {
+        m_pattern_index = 0;
       }
+
+      if (m_random_source_ids[m_pattern_index] == m_sourceid.id) {
+        // Set the ADC to the uint16 maximum value
+        wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
+      }
+
+      // Update the previous timestamp of the pattern generator
       m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
 
 

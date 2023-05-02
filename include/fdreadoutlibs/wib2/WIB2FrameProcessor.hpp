@@ -66,18 +66,22 @@ class WIB2PatternGenerator {
 
 public:
   WIB2PatternGenerator() {
-    m_size = 1000000;
+    m_size = 100000;
   };
   ~WIB2PatternGenerator() {};
 
   void generate();
 
-  std::vector<int> get_random_sourceids() {
+  std::vector<int> get_sourceids() {
     return m_sourceid;
   }
 
-  std::vector<int> get_random_channels() {
+  std::vector<int> get_channels() {
     return m_channel;
+  }
+
+  int get_total_size() {
+    return m_size;
   }
  
 private: 
@@ -168,7 +172,7 @@ protected:
   /**
    * Pattern generator for hit finding in emulated mode
    * */
-  void add_pattern_generator(frameptr fp);
+  void use_pattern_generator(frameptr fp);
 
 
   /**
@@ -253,8 +257,11 @@ private:
   int selection_of_register_second_half = 1; 
   std::unique_ptr<WIB2FrameHandler> m_wib2_frame_handler_second_half = std::make_unique<WIB2FrameHandler>(selection_of_register_second_half, m_dest_queue);
 
+  // Pattern generator configs
   WIB2PatternGenerator m_wib2_pattern_generator;
-  
+  std::vector<int> m_random_source_ids;
+  std::vector<int> m_random_channels; 
+  int m_pattern_index = 0;
 
   std::thread m_add_hits_tphandler_thread;
 
