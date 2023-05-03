@@ -231,7 +231,7 @@ private:
   std::unique_ptr<WIB2TPHandler> m_tphandler;
 
   // AAA: TODO: make selection of the initial capacity of the queue configurable
-  size_t m_capacity_mpmc_queue = 300000; 
+  size_t m_capacity_mpmc_queue = 900000; 
   iomanager::FollyMPMCQueue<swtpg_output> m_tphandler_queue{"tphandler_queue", m_capacity_mpmc_queue};
 
 
