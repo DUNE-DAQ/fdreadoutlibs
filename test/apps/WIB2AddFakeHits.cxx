@@ -67,7 +67,8 @@ public:
         //if(m_length%sizeof(dunedaq::detdataformats::wib2::WIB2Frame)!=0){
         //    throw std::runtime_error("File does not contain an integer number of frames");
         //}
-        m_n_frames=50;//m_length/sizeof(dunedaq::detdataformats::wib2::WIB2Frame);
+        //m_n_frames=50;//m_length/sizeof(dunedaq::detdataformats::wib2::WIB2Frame);
+        m_n_frames=m_length/sizeof(dunedaq::detdataformats::wib2::WIB2Frame);
 
 	// Reinterpret the frame as WIB2Frame
 	
@@ -134,7 +135,7 @@ int main(int argc, char** argv)
   std::cout << "Size of the input file " << input_file.length() << std::endl;
   std::cout << "Number of frames " << input_file.num_frames() << std::endl;
    
-  size_t frame_number = 0; // frame chosen randomly
+  size_t frame_number = 6; // frame chosen randomly
   size_t ch = input_ch;
 
   

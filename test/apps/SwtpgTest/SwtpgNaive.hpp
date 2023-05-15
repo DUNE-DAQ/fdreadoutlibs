@@ -108,6 +108,8 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
     uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time; 
     unsigned int nhits = 0;
 
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
+
     size_t i = 0;
     while (*primfind_it != swtpg_wib2::MAGIC) {
       chan   = *primfind_it++;
@@ -118,7 +120,13 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       hit_peak_time = *primfind_it++;
 
       i += 1;
-      const uint16_t offline_channel = m_register_channel_map.channel[chan ];
+      chan = 16*(chan/16)+indices[chan%16];
+      const uint16_t offline_channel(m_ch_map_name != "None" ? m_register_channel_map.channel[chan ] : chan);
+      // const uint16_t offline_channel = m_register_channel_map.channel[chan ];
+      //const uint16_t offline_channel = chan; 
+      //if (m_ch_map_name != "None") {
+      //  offline_channel = m_register_channel_map.channel[chan ];
+      //}
       uint64_t tp_t_begin =                                                        
         timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
       uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
@@ -166,6 +174,7 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
 
     // Print ADCs before expansion    
     /*
+    std::cout << "Print ADCs before expansion" <<  std::endl;
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
     for (size_t iframe = 0; iframe < swtpg_wib2::FRAMES_PER_MSG; ++iframe) {
     const dunedaq::detdataformats::wib2::WIB2Frame* frame =
@@ -173,7 +182,7 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
       for(int i=0; i<256; ++i){        
           int in_index=16*(i/16)+indices[i%16];
           uint16_t in_val=frame->get_adc(in_index);
-          std::cout << "Index " << i << "  " <<  in_val  <<  std::endl;        
+          std::cout << "Index " << i << " " << in_index << "  " <<  in_val  <<  std::endl;        
       }
     }  
     */
@@ -197,9 +206,10 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
       //  save_raw_data(registers_array, timestamp, -1, "SwtpgNaive");
       //}
 
-
-      m_channel_map = dunedaq::detchannelmaps::make_map(m_ch_map_name);
-      m_register_channel_map = swtpg_wib2::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map, 0);
+      if (m_ch_map_name != "None") {
+        m_channel_map = dunedaq::detchannelmaps::make_map(m_ch_map_name);
+        m_register_channel_map = swtpg_wib2::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map, 0);
+      }
       m_tpg_processing_info->setState(registers_array);
 
       // Debugging statements 

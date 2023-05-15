@@ -73,7 +73,7 @@ main(int argc, char** argv)
     app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the SWTPG threshold");
 
     std::string swtpg_channel_map = "VDColdboxChannelMap";
-    app.add_option("-m,--swtpg_channel_map", swtpg_channel_map, "Name of the SWTPG offline channel map");
+    app.add_option("-m,--swtpg_channel_map", swtpg_channel_map, "Name of the SWTPG offline channel map (or None), default: VDColdboxChannelMap");
 
     bool save_adc_data{false};
     app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");

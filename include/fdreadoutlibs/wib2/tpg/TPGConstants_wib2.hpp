@@ -31,6 +31,7 @@ const constexpr std::size_t FRAMES_PER_MSG = 12;
 // How many AVX2 registers are returned per frame.
 // Maximum is 16
 const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 8;
+//const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 16;
 
 // How many bytes are in an AVX2 register
 const constexpr std::size_t BYTES_PER_REGISTER = 32;

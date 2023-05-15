@@ -84,12 +84,15 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       int16_t sample = input16[index];
 
-
+      printf("Sample before pedsub % 5d % 5d % 5d % 5d \n", itime, msg_index, (int16_t)sample, (uint16_t)ichan);
       frugal_accum_update(median, sample, accum, 10);
+      printf("Sample before pedsub % 5d % 5d % 5d \n", (int16_t)sample, median, accum);
 
       // Subtract the baseline
       sample -= median;
+      printf("Sample after pedsub % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
       sample = sample >> info.tap_exponent;
+      printf("Sample after shift % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
 
       // --------------------------------------------------------------
       // Hit finding

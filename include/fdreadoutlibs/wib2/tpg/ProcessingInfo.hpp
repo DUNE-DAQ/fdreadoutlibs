@@ -42,7 +42,7 @@ struct ChanState
   }
 
   // TODO: DRY July-22-2021 Philip Rodrigues (rodriges@fnal.gov)
-  static const int NTAPS = 8;
+  static const int NTAPS = 6; // IH: was 8
 
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
