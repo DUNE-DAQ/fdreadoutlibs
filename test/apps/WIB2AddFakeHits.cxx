@@ -42,7 +42,7 @@ using namespace dunedaq::daqdataformats;
 void
 print_usage()
 {
-  TLOG() << "Usage: WIB2AddFakeHits <input_file_name> <input_channel>";
+  TLOG() << "Usage: WIB2AddFakeHits <input_file_name> <input_channel> <input_frame>";
 }
 
 
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 {
  
 
-  if (argc != 3) {
+  if (argc != 4) {
     print_usage();
     return 1;
   }
@@ -128,6 +128,7 @@ int main(int argc, char** argv)
   const std::string ifile_name = std::string(argv[1]);
 
   const size_t input_ch = atoi(argv[2]);
+  const size_t input_fr = atoi(argv[3]);
 
   // Read file
   FrameFile input_file = FrameFile(ifile_name.c_str()); 
@@ -135,14 +136,14 @@ int main(int argc, char** argv)
   std::cout << "Size of the input file " << input_file.length() << std::endl;
   std::cout << "Number of frames " << input_file.num_frames() << std::endl;
    
-  size_t frame_number = 6; // frame chosen randomly
+  size_t frame_number = input_fr; // frame chosen randomly
   size_t ch = input_ch;
 
   
   dunedaq::detdataformats::wib2::WIB2Frame* frame = input_file.frame(frame_number);
   
   auto val_to_check = frame->get_adc(ch);
-  std::cout << "Output adc value: " << val_to_check << " for frame " << frame_number << " and channel number " << ch << std::endl;
+  std::cout << "Output adc value: " << val_to_check << " for frame " << frame_number << " and channel number " << ch << ", and frame " << frame_number << std::endl;
 
  
   // Write output file 
@@ -159,7 +160,8 @@ int main(int argc, char** argv)
      std::cout << "Output adc value: " << val_to_check2 << " for frame " << i << " and channel number " << ch << std::endl;
 
 
-     if (i==frame_number || i==frame_number+1 || i==frame_number+2) {
+     if (i==frame_number || i==frame_number+1 || i==frame_number+2 
+         || i==frame_number+12 || i==frame_number+12+1 || i==frame_number+12+2) {
        auto adc_val = output_frame->get_adc(242);
        auto adc_val2 = output_frame->get_adc(12);
        output_frame->set_adc(242, adc_val+500);

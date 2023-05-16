@@ -57,6 +57,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
     const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * FRAMES_PER_MSG;
 
+    printf("DBG ChanState ---------------------------------------------------------------------------------------------\n");
     // Get all the state variables by reference so they "automatically" get saved for the next go-round
     ChanState<NREGISTERS>& state = info.chanState;
     int16_t& median = state.pedestals[ichan];
@@ -70,6 +71,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     int16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     int16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
 
+    printf("DBG ChanState % 5d:prev_was_over \n", prev_was_over);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / 12;
@@ -112,7 +114,9 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         hit_tover++;
         prev_was_over = true;
       }
+      printf("DBG check % 5d:prev_was_over % 5d:is_over % 5d:itime \n", prev_was_over, is_over, itime);
       if (prev_was_over && !is_over) {
+        printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge \n", ichan, itime, hit_charge);
         // if(hit_tover==1){
         //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
         // }
