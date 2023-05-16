@@ -35,6 +35,7 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_adc[i] = 0;
       hit_peak_time[i] = 0;
+      hit_peak_offset[i] = 0;
       for (size_t j = 0; j < NTAPS; ++j) {
         prev_samp[i * NTAPS + j] = 0;
       }
@@ -69,6 +70,7 @@ struct ChanState
   alignas(32) int16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
   alignas(32) int16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
   alignas(32) int16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
+  alignas(32) int16_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 };
 
 template<size_t NREGISTERS>

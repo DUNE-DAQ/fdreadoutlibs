@@ -106,7 +106,7 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
 
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
-    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time; 
+    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset; 
     unsigned int nhits = 0;
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
@@ -119,6 +119,7 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       hit_tover     = *primfind_it++;
       hit_peak_adc  = *primfind_it++;
       hit_peak_time = *primfind_it++;
+      hit_peak_offset = *primfind_it++;
 
       i += 1;
       chan = 16*(chan/16)+indices[chan%16];
@@ -132,8 +133,8 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
         timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
       uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
       uint64_t tp_t_peak = 
-	timestamp + clocksPerTPCTick * int64_t(hit_peak_time);
-      std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
+	timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time - hit_peak_offset);
+      std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", hit_peak_offset: " << hit_peak_offset << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
