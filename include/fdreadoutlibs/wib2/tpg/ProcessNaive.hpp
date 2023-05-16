@@ -123,8 +123,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
-	if (itime == 0) itime = 12;
-        (*output_loc++) = itime;           // NOLINT // IH: handle edge case
+        (*output_loc++) = (itime != 0 ? itime : 12);           // NOLINT // IH: handle edge case
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
 	(*output_loc++) = hit_peak_adc;    // NOLINT
@@ -139,7 +138,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         prev_was_over = false;
 
       } // end if left hit
-
     } // end loop over samples
   }   // end loop over channels
 
