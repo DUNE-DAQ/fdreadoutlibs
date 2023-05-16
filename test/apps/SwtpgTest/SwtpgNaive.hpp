@@ -173,7 +173,9 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
     // Parse the DUNEWIB frames
     auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp);
     uint64_t timestamp = wfptr->get_timestamp();
-    timestamp = m_timestamp_ini + 12*32*superchunk_index;
+    if (timestamp == 0) {
+      timestamp = m_timestamp_ini + 12*32*superchunk_index;
+    }
     std::cout << "DBG Find hits for timestamp " << timestamp << " " << m_timestamp_ini << std::endl;
 
     // Print ADCs before expansion    

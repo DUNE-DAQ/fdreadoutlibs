@@ -139,7 +139,6 @@ int main(int argc, char** argv)
   size_t frame_number = input_fr; // frame chosen randomly
   size_t ch = input_ch;
 
-  
   dunedaq::detdataformats::wib2::WIB2Frame* frame = input_file.frame(frame_number);
   
   auto val_to_check = frame->get_adc(ch);
@@ -151,15 +150,21 @@ int main(int argc, char** argv)
   std::fstream output_file;
   output_file.open("modified_output.bin", std::ios::app | std::ios::binary);
 
+  uint64_t timestamp = 0;
+
   dunedaq::detdataformats::wib2::WIB2Frame* output_frame; 
   for (size_t i=0; i<input_file.num_frames(); i++) {
 
+     if (i%12 == 0) {
+       timestamp += 12*32;
+     }
      
      output_frame = input_file.frame(i);
      auto val_to_check2 = output_frame->get_adc(ch);
      std::cout << "Output adc value: " << val_to_check2 << " for frame " << i << " and channel number " << ch << std::endl;
 
 
+     output_frame->set_timestamp(timestamp);
      if (i==frame_number || i==frame_number+1 || i==frame_number+2 
          || i==frame_number+12 || i==frame_number+12+1 || i==frame_number+12+2) {
        auto adc_val = output_frame->get_adc(242);
