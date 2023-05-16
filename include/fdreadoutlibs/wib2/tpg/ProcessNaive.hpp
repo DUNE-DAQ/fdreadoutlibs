@@ -116,14 +116,14 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       }
       printf("DBG check % 5d:prev_was_over % 5d:is_over % 5d:itime \n", prev_was_over, is_over, itime);
       if (prev_was_over && !is_over) {
-        printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge \n", ichan, itime, hit_charge);
+        printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time \n", ichan, itime, hit_charge, hit_peak_time);
         // if(hit_tover==1){
         //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
         // }
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = (itime != 0 ? itime : 12);           // NOLINT // IH: handle edge case
+        (*output_loc++) = itime;           // NOLINT // IH: handle edge case
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
 	(*output_loc++) = hit_peak_adc;    // NOLINT

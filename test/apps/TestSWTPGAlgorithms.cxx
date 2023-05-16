@@ -160,7 +160,7 @@ main(int argc, char** argv)
       // Reset the memory buffers
       algo->reset(first_hit, swtpg_threshold, swtpg_channel_map);
       // Find the SWTPG hits
-      algo->find_hits(fp, first_hit);
+      algo->find_hits(fp, first_hit, superchunk_index);
       first_hit = false;        
 
       

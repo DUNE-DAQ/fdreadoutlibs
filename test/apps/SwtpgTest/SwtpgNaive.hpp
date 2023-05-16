@@ -95,6 +95,7 @@ public:
 
   // If not first hit then reset hits count to zero
   m_tpg_processing_info->nhits = 0;     
+  m_timestamp_ini = 12*32;    
   }
 
 
@@ -132,6 +133,7 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
       uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
       uint64_t tp_t_peak = 
 	timestamp + clocksPerTPCTick * int64_t(hit_peak_time);
+      std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
@@ -165,12 +167,13 @@ unsigned int extract_swtpg_hits_naive(uint16_t* primfind_it, timestamp_t timesta
 
 
 
-void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool first_hit) {
+void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* fp, bool first_hit, int superchunk_index) {
 
     // Parse the DUNEWIB frames
     auto wfptr = reinterpret_cast<dunedaq::detdataformats::wib2::WIB2Frame*>((uint8_t*)fp);
-    uint64_t timestamp = wfptr->get_timestamp();       
-
+    uint64_t timestamp = wfptr->get_timestamp();
+    timestamp = m_timestamp_ini + 12*32*superchunk_index;
+    std::cout << "DBG Find hits for timestamp " << timestamp << " " << m_timestamp_ini << std::endl;
 
     // Print ADCs before expansion    
     /*
@@ -235,6 +238,7 @@ void find_hits(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter
 
     std::cout << "Finished processing window " << std::endl;
     
+    std::cout << "DBG START find hits for timestamp " << timestamp << " " << m_timestamp_ini << std::endl;
     unsigned int nhits = extract_swtpg_hits_naive(m_primfind_dest, timestamp);
 
     if ( nhits > 0 ) {
@@ -254,6 +258,7 @@ private:
 
   bool m_dump_adc_data;
   bool m_dump_hit_data;
+  uint64_t m_timestamp_ini{12*32};
 
 };
 
