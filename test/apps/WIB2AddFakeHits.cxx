@@ -151,6 +151,8 @@ int main(int argc, char** argv)
   output_file.open("modified_output.bin", std::ios::app | std::ios::binary);
 
   uint64_t timestamp = 0;
+  bool pattern_square = false;
+  bool pattern_triangle = true;
 
   dunedaq::detdataformats::wib2::WIB2Frame* output_frame; 
   for (size_t i=0; i<input_file.num_frames(); i++) {
@@ -165,6 +167,8 @@ int main(int argc, char** argv)
 
 
      output_frame->set_timestamp(timestamp);
+
+     if (pattern_square) {
      if (i==frame_number || i==frame_number+1 || i==frame_number+2 
          || i==frame_number+12 || i==frame_number+12+1 || i==frame_number+12+2) {
        auto adc_val = output_frame->get_adc(242);
@@ -172,6 +176,29 @@ int main(int argc, char** argv)
        output_frame->set_adc(242, adc_val+500);
        output_frame->set_adc(12, adc_val2+500);
      } 
+     }
+
+     if (pattern_triangle) {
+       if (i==frame_number || i==frame_number+12) {
+         auto adc_val = output_frame->get_adc(242);
+         auto adc_val2 = output_frame->get_adc(12);
+         output_frame->set_adc(242, adc_val+500);
+         output_frame->set_adc(12, adc_val2+500);
+       }
+       if (i==frame_number+1 || i==frame_number+12+1) {
+         auto adc_val = output_frame->get_adc(242);
+         auto adc_val2 = output_frame->get_adc(12);
+         output_frame->set_adc(242, adc_val+1000);
+         output_frame->set_adc(12, adc_val2+1000);
+       }
+       if (i==frame_number+2 || i==frame_number+12+2) {
+         auto adc_val = output_frame->get_adc(242);
+         auto adc_val2 = output_frame->get_adc(12);
+         output_frame->set_adc(242, adc_val+500);
+         output_frame->set_adc(12, adc_val2+500);
+       }
+     }
+
      output_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::detdataformats::wib2::WIB2Frame) );
   
   } 

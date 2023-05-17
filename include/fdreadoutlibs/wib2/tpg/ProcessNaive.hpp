@@ -97,7 +97,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // Subtract the baseline
       sample -= median;
       printf("Sample after pedsub % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
-      sample = sample >> info.tap_exponent;
+      //sample = sample >> info.tap_exponent; 
       printf("Sample after shift % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
 
       // --------------------------------------------------------------

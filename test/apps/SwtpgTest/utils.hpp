@@ -75,7 +75,8 @@ void save_raw_data(swtpg_wib2::MessageRegisters register_array,
    
       const size_t register_offset = ichan % swtpg_wib2::SAMPLES_PER_REGISTER;
       const size_t register_t0_start = register_index * swtpg_wib2::SAMPLES_PER_REGISTER * swtpg_wib2::FRAMES_PER_MSG;
-  
+
+      t_current = t0;  
       for (size_t iframe = 0; iframe<swtpg_wib2::FRAMES_PER_MSG; ++iframe) {
     
         const size_t msg_index = iframe / 12;
