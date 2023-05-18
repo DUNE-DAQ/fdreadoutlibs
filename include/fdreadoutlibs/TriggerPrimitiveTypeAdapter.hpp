@@ -4,7 +4,7 @@
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
-#include "triggeralgs/TriggerPrimitive.hpp"
+#include "trgdataformats/TriggerPrimitive.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr
@@ -16,12 +16,12 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 namespace types {
 
-const constexpr std::size_t kTriggerPrimitive = sizeof(triggeralgs::TriggerPrimitive);
+const constexpr std::size_t kTriggerPrimitive = sizeof(trgdataformats::TriggerPrimitive);
 struct TriggerPrimitiveTypeAdapter
 {
   using FrameType = TriggerPrimitiveTypeAdapter;
   // data
-  triggeralgs::TriggerPrimitive tp;
+  trgdataformats::TriggerPrimitive tp;
   // comparable based on start timestamp
   bool operator<(const TriggerPrimitiveTypeAdapter& other) const
   {
@@ -60,10 +60,10 @@ struct TriggerPrimitiveTypeAdapter
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTriggerPrimitive;
-  static const constexpr uint64_t expected_tick_difference = 25; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = 1; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct TriggerPrimitiveTypeAdapter) == sizeof(triggeralgs::TriggerPrimitive),
+static_assert(sizeof(struct TriggerPrimitiveTypeAdapter) == sizeof(trgdataformats::TriggerPrimitive),
               "Check your assumptions on TriggerPrimitiveTypeAdapter");
 
 } // namespace types

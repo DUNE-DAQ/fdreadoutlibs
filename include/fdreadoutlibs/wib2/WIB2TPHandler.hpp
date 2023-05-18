@@ -24,7 +24,6 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   "Continuity of timestamps broken. Start ts:  " << start_ts << " ts previous tpset: " << current_ts,
                    ((uint64_t)start_ts)((uint64_t)current_ts))
 
-
 namespace fdreadoutlibs {
 
 class WIB2TPHandler
