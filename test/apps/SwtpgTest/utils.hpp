@@ -63,7 +63,9 @@ void save_raw_data(swtpg_wib2::MessageRegisters register_array,
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   uint64_t t_current= t0 ; 
-  
+  uint16_t chan = 0;
+  std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
+
   const uint16_t* input16 = register_array.data();
   for (size_t ichan = 0; ichan < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / swtpg_wib2::SAMPLES_PER_REGISTER;
@@ -85,10 +87,12 @@ void save_raw_data(swtpg_wib2::MessageRegisters register_array,
         const size_t msg_start_index = msg_index * swtpg_wib2::ADCS_SIZE / sizeof(uint16_t); // NOLINT
         const size_t offset_within_msg = register_t0_start + swtpg_wib2::SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
         const size_t index = msg_start_index + offset_within_msg;
-    
+  
+	chan = 16*(ichan/16)+indices[ichan%16];
+
         int16_t adc_value = input16[index];
         //std::cout << adc_value << std::endl;
-        out_file << ichan << "," <<  adc_value << "," << t_current << std::endl;
+        out_file << chan << "," <<  adc_value << "," << t_current << std::endl;
         t_current += 32;
       } 
 
