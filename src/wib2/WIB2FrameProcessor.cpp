@@ -25,6 +25,7 @@
 
 
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fdreadoutlibs/wib2/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wib2/tpg/FrameExpand.hpp"
@@ -47,7 +48,9 @@ using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!!
-//DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+//DUNE_DAQ_TYPESTRING(dunedaq::trgdataformats::TriggerPrimitive, "TriggerPrimitive")
+DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -198,11 +201,11 @@ WIB2FrameProcessor::stop(const nlohmann::json& args)
 void
 WIB2FrameProcessor::init(const nlohmann::json& args)
 {
-  inherited::init(args);
+//  inherited::init(args);
 
   try {
-    auto qi = appfwk::connection_index(args, {"tp_out"});
-    m_tp_sink = iomanager::IOManager::get()->get_sender<dunedaq::trgdataformats::TriggerPrimitive>(qi["tp_out"]);
+	  auto qi = appfwk::connection_index(args, {"tp_out"});
+	  m_tp_sink = iomanager::IOManager::get()->get_sender<dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>(qi["tp_out"]);
   } catch (const ers::Issue& excpt) {
 	  ers::warning(readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt));
   }
@@ -213,7 +216,6 @@ void
 WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 {
   auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-
 
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
@@ -318,8 +320,9 @@ WIB2FrameProcessor::use_pattern_generator(frameptr fp)
       }
 
       // Set the ADC to the uint16 maximum value
+     
       wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
-      //TLOG() << "Lift channel " << m_random_channels[m_pattern_index];
+      //TLOG() << "Lift channel " << m_random_channels[m_pattern_index] << " to " << wfptr->get_adc(m_random_channels[m_pattern_index]);
       // Update the previous timestamp of the pattern generator
       m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
     } // timestamp difference
@@ -397,9 +400,10 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
     // Debugging statements
-    m_link = wfptr->header.link;
+    m_det_id = wfptr->header.detector_id;
     m_crate_no = wfptr->header.crate;
     m_slot_no = wfptr->header.slot;
+    m_link = wfptr->header.link;
     TLOG() << "Got first item, link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
 
     // Add WIB2FrameHandler channel map to the common m_register_channels.
@@ -420,7 +424,8 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
 
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
-  *(frame_handler->m_tpg_processing_info->output) = swtpg_wib2::MAGIC;
+  // Set the first word to "magic" indicating there is no hit, initially
+  frame_handler->m_tpg_processing_info->output[0] = swtpg_wib2::MAGIC;
 
   if (m_tpg_algorithm == "SWTPG") {
     swtpg_wib2::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
@@ -470,7 +475,7 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
         uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
             timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
         uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-        TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
+        //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];
         if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
@@ -484,25 +489,25 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
 
-          trgdataformats::TriggerPrimitive trigprim;
-          trigprim.time_start = tp_t_begin;
-          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
-          trigprim.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
-          trigprim.channel = offline_channel;
-          trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
-          trigprim.detid = m_link; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
-          trigprim.type = trgdataformats::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
-          trigprim.version = 1;
+	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+          tp.tp.time_start = tp_t_begin;
+          tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
+          tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
+          tp.tp.channel = offline_channel;
+          tp.tp.adc_integral = hit_charge[i];
+          tp.tp.adc_peak = hit_charge[i] / 20;
+          tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
+          tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
+          tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
+          tp.tp.version = 1;
           
+          //fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+	  //tp.tp = trigprim;	  
 	  //Send the TP to the TP handler module
-          if(!m_tp_sink->try_send(std::move(trigprim), iomanager::Sender::s_no_block)) {
+          if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
 		 m_tps_dropped++;
 		  ers::warning(TriggerPrimitiveMsg(ERS_HERE, "Dropped TP"));
 	  }	 
-	  else
-		  ers::info(TriggerPrimitiveMsg(ERS_HERE, "Sent TP"));
           m_new_tps++;
           ++nhits;
 

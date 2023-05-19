@@ -28,13 +28,14 @@ TPRequestHandler::conf(const nlohmann::json& args) {
 
 void 
 TPRequestHandler::start(const nlohmann::json& args) {
-   TLOG() << "starting";
+   m_new_tps = 0;
+   m_new_tpsets = 0;
+   m_new_tps_dropped = 0;
    inherited2::start(args);
    rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
    m_run_number = start_params.run;
    
    m_tp_set_sender_thread.set_work(&TPRequestHandler::send_tp_sets, this);
-   TLOG() << "started";
 }
 
 void
@@ -47,6 +48,26 @@ TPRequestHandler::stop(const nlohmann::json& args) {
 
 }
 
+void
+TPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
+{
+  readoutlibs::readoutinfo::RawDataProcessorInfo info;
+
+  auto now = std::chrono::high_resolution_clock::now();
+  int new_tps = m_new_tps.exchange(0);
+  int new_tpsets = m_new_tpsets.exchange(0);
+  int new_tps_dropped = m_new_tps_dropped.exchange(0);
+  double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
+  TLOG() << "TPSets rate: " << std::to_string(new_tpsets / seconds / 1000.) << " [kHz]";
+  //info.rate_tp_hits = new_hits / seconds / 1000.;
+ 
+  info.num_tps_sent = new_tps;
+  info.num_tpsets_sent = new_tpsets;
+  info.num_tps_dropped = new_tps_dropped;
+  m_t0 = now;
+  inherited::get_info(ci, level);
+  ci.add(info);
+}
 
 void
 TPRequestHandler::send_tp_sets() {
@@ -56,7 +77,7 @@ TPRequestHandler::send_tp_sets() {
    timestamp_t end_win_ts=0;
    bool first_cycle = true;
    dunedaq::dfmessages::DataRequest dr;
-   TLOG() << "start tpsets sending loop";  
+
    while (m_run_marker.load()) {
    {
       std::unique_lock<std::mutex> lock(m_cv_mutex);
@@ -77,12 +98,12 @@ TPRequestHandler::send_tp_sets() {
        oldest_ts = (*head).get_first_timestamp();
        
        if (newest_ts - oldest_ts <=m_ts_set_sender_offset_ticks) {
-	       ers::info(TPHandlerMsg(ERS_HERE, "Not enough TPs in buffer "));
+	       //ers::info(TPHandlerMsg(ERS_HERE, "Not enough TPs in buffer "));
 	       continue;
        }
 
        if(first_cycle) {
-	       ers::info(TPHandlerMsg(ERS_HERE, "First TS seen "));
+	       //ers::info(TPHandlerMsg(ERS_HERE, "First TS seen "));
     	  start_win_ts = oldest_ts;
 	  first_cycle = false;
        }
@@ -99,12 +120,18 @@ TPRequestHandler::send_tp_sets() {
        // reserve the space for efficiency
        tpset.objects.reserve(frag_pieces.size());
 
+       auto num_tps = frag_pieces.size();
        for( auto f : frag_pieces) {
           trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
 	  tpset.objects.emplace_back(std::move(tp)); 
        }
-       if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block))
+       if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
 	  ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
+	  m_new_tps_dropped += num_tps;
+       }
+       m_new_tps += num_tps;
+       m_new_tpsets++;
+
        //remember what we sent for the next loop
        start_win_ts = end_win_ts;
     }

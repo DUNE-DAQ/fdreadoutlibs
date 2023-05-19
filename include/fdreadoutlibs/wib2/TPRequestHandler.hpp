@@ -64,6 +64,7 @@ public:
   void conf(const nlohmann::json& args) override;
   void start(const nlohmann::json& args) override;
   void stop(const nlohmann::json& args) override;
+  void get_info(opmonlib::InfoCollector& ci, int level);
 
 protected:
   
@@ -75,6 +76,11 @@ private:
   dunedaq::readoutlibs::ReusableThread  m_tp_set_sender_thread;
   void send_tp_sets();
   uint64_t m_next_tpset_seqno;
+
+  std::atomic<uint64_t> m_new_tps{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tpsets{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps_dropped{ 0 };
+
 };
 
 } // namespace readoutlibs

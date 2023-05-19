@@ -16,12 +16,11 @@
 
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 
-//#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 //#include "fdreadoutlibs/wib2/WIB2TPHandler.hpp"
 //#include "trigger/TPSet.hpp"
 
 #include "daqdataformats/Types.hpp"
-#include "trgdataformats/TriggerPrimitive.hpp"
 
 #include "tpg/ProcessingInfo.hpp"
 #include "tpg/RegisterToChannelNumber.hpp"
@@ -187,16 +186,17 @@ private:
 
   std::atomic<int> m_swtpg_hits_count{ 0 };
 
-  uint32_t m_link; // NOLINT(build/unsigned)
-  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_det_id; // NOLINT(build/unsigned)
   uint32_t m_crate_no; // NOLINT(build/unsigned)
+  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_link; // NOLINT(build/unsigned)
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
   std::array<uint, 256> m_register_channels;
 
-  std::shared_ptr<iomanager::SenderConcept<dunedaq::trgdataformats::TriggerPrimitive>> m_tp_sink;
+  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIB2Frame>> m_err_frame_sink;
   int selection_of_register = 0; 
   std::unique_ptr<WIB2FrameHandler> m_wib2_frame_handler = std::make_unique<WIB2FrameHandler>(selection_of_register);
