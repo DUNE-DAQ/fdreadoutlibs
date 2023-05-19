@@ -1,13 +1,17 @@
 /**
- * @file WIBEthTestBench.cxx  Example of expanding a WIBEth frame using AVX2 
+ * @file WIBEthFrameExpansion_test.cxx  Unittest for expanding the WIBEth frames
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
 
+#define BOOST_TEST_MODULE FrameExpansion_test // NOLINT
+
 #include "fddetdataformats/WIBEthFrame.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
+
+#include "boost/test/unit_test.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -78,22 +82,16 @@ swtpg_wibeth::RegisterArray<4*64> unpack_wibeth( dunedaq::fddetdataformats::WIBE
           
       } // loop over number of words 
     } // loop over time frames
-          
-        
 
     return ret;
 }
 
 
+BOOST_AUTO_TEST_SUITE(FrameExpansion_test)
 
-
-int main()
+BOOST_AUTO_TEST_CASE(FrameExpansion)
 {
-    
-    // Test WIBEth unpacking
-
     dunedaq::fddetdataformats::WIBEthFrame frame;
-
     // Zero it out first
     std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIBEthFrame));
 
@@ -103,38 +101,23 @@ int main()
     // Number of time samples (TS) per frame
     int time_samples_per_frame = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
    
-
-
-    // First, loop over time frames
+    // Fill the frame with some data
     for (int itime=0; itime<time_samples_per_frame; ++itime) {
       // Loop over all the channels  
       for(int i=0; i<num_channels; ++i){
         frame.set_adc(i, itime, i);           
       }
     }  
-
-    // Check that the ADC values have been properly set
-    for (int itime=0; itime<time_samples_per_frame; ++itime) {
-      for(int j=0; j<num_channels; ++j){
-          uint16_t adc_val = frame.get_adc(j, itime);
-          //std::cout << "Index " << j << " time sample " << itime << " : " << adc_val << std::endl;
-      }
-    }
-
-
-    
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
     // Unpack the WIB Eth frame
     swtpg_wibeth::RegisterArray<4*64> unpacked = unpack_wibeth(frame);
 
-    // AAA: TODO: the following quantities are hardcode for the moment. 
     int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
     int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
     int TIME_FRAMES = time_samples_per_frame;
     
-    bool success=true;
-
+    bool test_successful=true;
 	    
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       // Index of the ADC frame 
@@ -160,20 +143,18 @@ int main()
         // Input value into the frame
         uint16_t in_val=frame.get_adc(in_index, itime);
 
-        std::cout << "Time sample: " << itime << " index OUTPUT: " << index << "    value:   " << out_val << std::endl;
-        std::cout << "Time sample: " << itime << " index  INPUT: " << in_index << "    value:   " << in_val << std::endl;
-        std::cout << "============" << std::endl;
 
         if(in_val!=out_val){
-            success=false;  
+            test_successful=false;  
         }
       }
     }
+	    
 
-    if (success) {
-        std::cout << "\n\nALL THE ADC VALUES ARE MATCHING!\n\n" << std::endl;
-    }
-    
 
+  BOOST_REQUIRE_EQUAL(true, test_successful);
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
 
