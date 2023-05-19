@@ -61,17 +61,12 @@ namespace fdreadoutlibs {
 
 
 void
-WIB2PatternGenerator::generate()
+WIB2PatternGenerator::generate(int source_id)
 {
   for (int i = 0; i < m_size; i++) {
-      std::random_device rd;
-      std::default_random_engine rng(rd());
-      // Use a uniform distribution to equally select any of the 10 links 
-      // AAA: note the total number of links is hardcoded here!
-      std::uniform_int_distribution<int> dist_source_id(0, 10);
-      int random_source_id = dist_source_id(rng);
-      m_sourceid.push_back(random_source_id);
-  
+      std::seed_seq seq{source_id};    
+      std::default_random_engine rng(seq);
+ 
       std::uniform_int_distribution<int> dist_channel(0, 255);
       int random_ch = dist_channel(rng);
       m_channel.push_back(random_ch);
@@ -279,8 +274,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 
   // Setup pre-processing pipeline
   if (m_emulator_mode_enabled && m_sw_tpg_enabled) {
-    m_wib2_pattern_generator.generate();
-    m_random_source_ids = m_wib2_pattern_generator.get_sourceids();
+    m_wib2_pattern_generator.generate(m_sourceid.id);
     m_random_channels = m_wib2_pattern_generator.get_channels();
     TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
   }  
@@ -367,7 +361,7 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 }
 
 /**
- * Add hits using the pattern generator only when in emulated mode
+ * Add hits using the pattern generator (only when in emulated mode)
  * */
 void
 WIB2FrameProcessor::use_pattern_generator(frameptr fp) 
@@ -379,8 +373,8 @@ WIB2FrameProcessor::use_pattern_generator(frameptr fp)
 
     m_pattern_generator_current_ts = wfptr->get_timestamp();
 
-    // Adding a hit every 6000 gives a total Sent TP rate of approx 5 kHz
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 6000) {      
+    // Adding a hit every 2442 gives a total Sent TP rate of approx 5 kHz (per link)
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 12000) {      
 
       // Reset the pattern from the beginning if it reaches the maximum
       m_pattern_index++;
@@ -388,10 +382,8 @@ WIB2FrameProcessor::use_pattern_generator(frameptr fp)
         m_pattern_index = 0;
       }
 
-      if (m_random_source_ids[m_pattern_index] == m_sourceid.id) {
-        // Set the ADC to the uint16 maximum value
-        wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
-      }
+      // Set the ADC to the uint16 maximum value
+      wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
 
       // Update the previous timestamp of the pattern generator
       m_pattern_generator_previous_ts = m_pattern_generator_current_ts;

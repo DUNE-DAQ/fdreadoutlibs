@@ -70,7 +70,7 @@ public:
   };
   ~WIB2PatternGenerator() {};
 
-  void generate();
+  void generate(int source_id);
 
   std::vector<int> get_sourceids() {
     return m_sourceid;
@@ -259,7 +259,6 @@ private:
 
   // Pattern generator configs
   WIB2PatternGenerator m_wib2_pattern_generator;
-  std::vector<int> m_random_source_ids;
   std::vector<int> m_random_channels; 
   int m_pattern_index = 0;
 
