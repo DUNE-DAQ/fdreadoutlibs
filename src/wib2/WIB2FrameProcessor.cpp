@@ -63,7 +63,8 @@ namespace fdreadoutlibs {
 void
 WIB2PatternGenerator::generate(int source_id)
 {
-  std::seed_seq seq{source_id};    
+  std::seed_seq seq{source_id}; 
+  m_channel.reserve(m_size);   
   for (int i = 0; i < m_size; i++) {
       std::default_random_engine rng(seq); 
       std::uniform_int_distribution<int> dist_channel(0, 255);
