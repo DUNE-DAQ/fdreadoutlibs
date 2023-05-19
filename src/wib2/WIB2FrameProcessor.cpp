@@ -63,10 +63,9 @@ namespace fdreadoutlibs {
 void
 WIB2PatternGenerator::generate(int source_id)
 {
+  std::seed_seq seq{source_id};    
   for (int i = 0; i < m_size; i++) {
-      std::seed_seq seq{source_id};    
-      std::default_random_engine rng(seq);
- 
+      std::default_random_engine rng(seq); 
       std::uniform_int_distribution<int> dist_channel(0, 255);
       int random_ch = dist_channel(rng);
       m_channel.push_back(random_ch);
@@ -373,8 +372,8 @@ WIB2FrameProcessor::use_pattern_generator(frameptr fp)
 
     m_pattern_generator_current_ts = wfptr->get_timestamp();
 
-    // Adding a hit every 2442 gives a total Sent TP rate of approx 5 kHz (per link)
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 12000) {      
+    // Adding a hit every 60000 gives a total rate of 1 kHz per link
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 60000) {      
 
       // Reset the pattern from the beginning if it reaches the maximum
       m_pattern_index++;
