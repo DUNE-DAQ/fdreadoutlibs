@@ -18,11 +18,12 @@ TPRequestHandler::init(const nlohmann::json& args) {
 }	
 void
 TPRequestHandler::conf(const nlohmann::json& args) {
-   
-	inherited2::conf(args);
+   auto conf = args["readoutmodelconf"].get<readoutlibs::readoutconfig::ReadoutModelConf>();
+   m_tp_set_sender_thread.set_name("tpset", conf.source_id);
+   inherited2::conf(args);
    //FIXME: make this configurable
-   m_tp_set_sender_rate_hz = 1000;
-   m_ts_set_sender_offset_ticks = 62500;
+   m_tp_set_sender_rate_hz = 2000;
+   m_ts_set_sender_offset_ticks = 625000*5;
 }
 
 
@@ -34,7 +35,7 @@ TPRequestHandler::start(const nlohmann::json& args) {
    inherited2::start(args);
    rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
    m_run_number = start_params.run;
-   
+
    m_tp_set_sender_thread.set_work(&TPRequestHandler::send_tp_sets, this);
 }
 
@@ -58,16 +59,17 @@ TPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
   int new_tpsets = m_new_tpsets.exchange(0);
   int new_tps_dropped = m_new_tps_dropped.exchange(0);
   double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
-  TLOG() << "TPSets rate: " << std::to_string(new_tpsets / seconds / 1000.) << " [kHz]";
+  TLOG() << "TPSets rate: " << std::to_string(new_tpsets / seconds) << " [Hz], TP rate: " << std::to_string(new_tps / seconds) << ", dropped TPs: " << std::to_string(new_tps_dropped / seconds) << " [Hz]";
   //info.rate_tp_hits = new_hits / seconds / 1000.;
  
   info.num_tps_sent = new_tps;
   info.num_tpsets_sent = new_tpsets;
   info.num_tps_dropped = new_tps_dropped;
   m_t0 = now;
-  inherited::get_info(ci, level);
+  inherited2::get_info(ci, level);
   ci.add(info);
 }
+
 
 void
 TPRequestHandler::send_tp_sets() {
@@ -97,43 +99,44 @@ TPRequestHandler::send_tp_sets() {
        newest_ts = (*tail).get_first_timestamp();
        oldest_ts = (*head).get_first_timestamp();
        
-       if (newest_ts - oldest_ts <=m_ts_set_sender_offset_ticks) {
-	       //ers::info(TPHandlerMsg(ERS_HERE, "Not enough TPs in buffer "));
-	       continue;
-       }
-
-       if(first_cycle) {
-	       //ers::info(TPHandlerMsg(ERS_HERE, "First TS seen "));
+       if (!(newest_ts - oldest_ts <=m_ts_set_sender_offset_ticks)) {
+         if(first_cycle) {
     	  start_win_ts = oldest_ts;
 	  first_cycle = false;
-       }
-       end_win_ts = newest_ts - m_ts_set_sender_offset_ticks;
-       frag_pieces = get_fragment_pieces(start_win_ts, end_win_ts, rres);
-
-       trigger::TPSet tpset;
-       tpset.run_number = m_run_number;
-       tpset.type = trigger::TPSet::Type::kPayload;
-       tpset.origin = m_sourceid;
-       tpset.start_time = start_win_ts;
-       tpset.end_time = end_win_ts;
-       tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
+         }
+         end_win_ts = newest_ts - m_ts_set_sender_offset_ticks;
+         frag_pieces = get_fragment_pieces(start_win_ts, end_win_ts, rres);
+         auto num_tps = frag_pieces.size();
+         if (num_tps == 0) {
+	       std::stringstream s;
+               s << "No TPs in time interval " << start_win_ts << " " << end_win_ts;
+	       ers::info(TPHandlerMsg(ERS_HERE, s.str()));
+         }
+         else {
+            trigger::TPSet tpset;
+            tpset.run_number = m_run_number;
+            tpset.type = trigger::TPSet::Type::kPayload;
+            tpset.origin = m_sourceid;
+            tpset.start_time = start_win_ts;
+            tpset.end_time = end_win_ts;
+            tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
        // reserve the space for efficiency
-       tpset.objects.reserve(frag_pieces.size());
+            tpset.objects.reserve(frag_pieces.size());
 
-       auto num_tps = frag_pieces.size();
-       for( auto f : frag_pieces) {
-          trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
-	  tpset.objects.emplace_back(std::move(tp)); 
+            for( auto f : frag_pieces) {
+               trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
+	       tpset.objects.emplace_back(std::move(tp)); 
+            }
+            if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
+	       ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
+	       m_new_tps_dropped += num_tps;
+            }
+            m_new_tps += num_tps;
+            m_new_tpsets++;
+         }
+         //remember what we sent for the next loop
+         start_win_ts = end_win_ts;
        }
-       if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
-	  ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
-	  m_new_tps_dropped += num_tps;
-       }
-       m_new_tps += num_tps;
-       m_new_tpsets++;
-
-       //remember what we sent for the next loop
-       start_win_ts = end_win_ts;
     }
     {
       std::lock_guard<std::mutex> lock(m_cv_mutex);

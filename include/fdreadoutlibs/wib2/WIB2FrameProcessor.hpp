@@ -136,7 +136,7 @@ public:
 
   void conf(const nlohmann::json& cfg) override;
 
-  void get_info(opmonlib::InfoCollector& ci, int level);
+  void get_info(opmonlib::InfoCollector& ci, int level) override;
 
 protected:
   // Internals

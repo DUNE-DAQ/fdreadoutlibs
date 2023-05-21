@@ -64,7 +64,7 @@ public:
   void conf(const nlohmann::json& args) override;
   void start(const nlohmann::json& args) override;
   void stop(const nlohmann::json& args) override;
-  void get_info(opmonlib::InfoCollector& ci, int level);
+  void get_info(opmonlib::InfoCollector& ci, int level) override;
 
 protected:
   

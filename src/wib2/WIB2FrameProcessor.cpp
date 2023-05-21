@@ -58,7 +58,7 @@ namespace fdreadoutlibs {
 void
 WIB2PatternGenerator::generate(int source_id)
 {
-  TLOG() << "Generate random ADC patterns" ;
+  //TLOG() << "Generate random ADC patterns" ;
   std::srand(source_id*12345678);
   m_channel.reserve(m_size);
   for (int i = 0; i < m_size; i++) {
@@ -159,9 +159,7 @@ WIB2FrameProcessor::start(const nlohmann::json& args)
   if (m_sw_tpg_enabled) {
     m_tps_dropped = 0;
 
-    TLOG() << "Initialise frame handler 1";
     m_wib2_frame_handler->initialize(m_tpg_threshold_selected);
-    TLOG() << "Initialise frame handler 2";
     m_wib2_frame_handler_second_half->initialize(m_tpg_threshold_selected);
   } // end if(m_sw_tpg_enabled)
 
@@ -177,11 +175,7 @@ WIB2FrameProcessor::start(const nlohmann::json& args)
   m_new_hits = 0;
   m_new_tps = 0;
   m_swtpg_hits_count.exchange(0);
-
-  TLOG() << "start base class";
-  
   inherited::start(args);
-  TLOG() << "start base class done";
 }
 
 void
@@ -194,7 +188,6 @@ WIB2FrameProcessor::stop(const nlohmann::json& args)
     m_wib2_frame_handler_second_half->reset();
 
     auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_t0).count();
-    TLOG() << "Ran for " << runtime << "ms.";
   }
 }
 
@@ -234,6 +227,52 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   if (config.enable_software_tpg) {
     m_sw_tpg_enabled = true;
     if (config.emulator_mode) {
+	    m_crate_no = 1;
+      	    switch(m_sourceid.id) {
+	    case 0:
+	      m_slot_no = 0;
+	      m_link = 0;
+	      break;
+            case 1:
+              m_slot_no = 0;
+              m_link = 1;
+              break;
+            case 2:
+              m_slot_no = 1;
+              m_link = 0;
+              break;
+            case 3:
+              m_slot_no = 1;
+              m_link = 1;
+              break;
+            case 4:
+              m_slot_no = 2;
+              m_link = 0;
+              break;
+            case 5:
+              m_slot_no = 2;
+              m_link = 1;
+              break;
+            case 6:
+              m_slot_no = 3;
+              m_link = 0;
+              break;
+            case 7:
+              m_slot_no = 3;
+              m_link = 1;
+              break;
+            case 8:
+              m_slot_no = 4;
+              m_link = 0;
+              break;
+            case 9:
+              m_slot_no = 4;
+              m_link = 1;
+              break;
+	    default:
+	      break;
+      }  
+     
       m_wib2_pattern_generator.generate(m_sourceid.id);
       m_random_channels = m_wib2_pattern_generator.get_channels();
       inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
@@ -257,9 +296,10 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   if (m_sw_tpg_enabled) {
     int new_hits = m_swtpg_hits_count.exchange(0);
     int new_tps = m_new_tps.exchange(0);
+    int new_dropped_tps = m_tps_dropped.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-    TLOG() << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
+    TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
     info.rate_tp_hits = new_hits / seconds / 1000.;
 
@@ -345,6 +385,9 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
       // auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
+      wf->header.crate = m_crate_no;
+      wf->header.slot = m_slot_no;
+      wf->header.link = m_link; 
       wf->set_timestamp(ts_next);
       ts_next += wib2_tick_difference;
       wf++;
@@ -404,7 +447,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     m_crate_no = wfptr->header.crate;
     m_slot_no = wfptr->header.slot;
     m_link = wfptr->header.link;
-    TLOG() << "Got first item, link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
+    //TLOG() << "Got first item link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
 
     // Add WIB2FrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
@@ -415,7 +458,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    TLOG() << "Processed the first superchunk ";
+    //TLOG() << "Processed the first superchunk ";
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
@@ -500,9 +543,7 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
           tp.tp.version = 1;
-          
-          //fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
-	  //tp.tp = trigprim;	  
+
 	  //Send the TP to the TP handler module
           if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
 		 m_tps_dropped++;
