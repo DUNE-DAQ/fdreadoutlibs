@@ -47,8 +47,7 @@
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
-// THIS SHOULDN'T BE HERE!!!!!
-//DUNE_DAQ_TYPESTRING(dunedaq::trgdataformats::TriggerPrimitive, "TriggerPrimitive")
+// THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
 
 
@@ -213,6 +212,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
   m_tpg_algorithm = config.software_tpg_algorithm;
+  m_tp_max_width = config.tp_timeout;
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
 
   m_channel_mask_vec = config.software_tpg_channel_mask;
@@ -222,57 +222,14 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 
   m_tpg_threshold_selected = config.software_tpg_threshold;
 
+  m_crate_no = config.crate_id;
+  m_slot_no = config.slot_id;
+  m_link = config.link_id;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_software_tpg) {
     m_sw_tpg_enabled = true;
     if (config.emulator_mode) {
-	    m_crate_no = 1;
-      	    switch(m_sourceid.id) {
-	    case 0:
-	      m_slot_no = 0;
-	      m_link = 0;
-	      break;
-            case 1:
-              m_slot_no = 0;
-              m_link = 1;
-              break;
-            case 2:
-              m_slot_no = 1;
-              m_link = 0;
-              break;
-            case 3:
-              m_slot_no = 1;
-              m_link = 1;
-              break;
-            case 4:
-              m_slot_no = 2;
-              m_link = 0;
-              break;
-            case 5:
-              m_slot_no = 2;
-              m_link = 1;
-              break;
-            case 6:
-              m_slot_no = 3;
-              m_link = 0;
-              break;
-            case 7:
-              m_slot_no = 3;
-              m_link = 1;
-              break;
-            case 8:
-              m_slot_no = 4;
-              m_link = 0;
-              break;
-            case 9:
-              m_slot_no = 4;
-              m_link = 1;
-              break;
-	    default:
-	      break;
-      }  
-     
       m_wib2_pattern_generator.generate(m_sourceid.id);
       m_random_channels = m_wib2_pattern_generator.get_channels();
       inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
@@ -442,8 +399,11 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
 
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
-    // Debugging statements
     m_det_id = wfptr->header.detector_id;
+    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
+    }
+    // Debugging statements
     m_crate_no = wfptr->header.crate;
     m_slot_no = wfptr->header.slot;
     m_link = wfptr->header.link;
@@ -543,11 +503,14 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
           tp.tp.version = 1;
-
+          if(tp.tp.time_over_threshold > m_tp_max_width) {
+		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
+		  m_tps_dropped++;
+	  }
 	  //Send the TP to the TP handler module
-          if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+		 ers::warning(TPDropped(ERS_HERE, tp.tp.time_start, tp.tp.channel));
 		 m_tps_dropped++;
-		  ers::warning(TriggerPrimitiveMsg(ERS_HERE, "Dropped TP"));
 	  }	 
           m_new_tps++;
           ++nhits;

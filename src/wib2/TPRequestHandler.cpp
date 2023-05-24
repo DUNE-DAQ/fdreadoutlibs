@@ -21,9 +21,8 @@ TPRequestHandler::conf(const nlohmann::json& args) {
    auto conf = args["readoutmodelconf"].get<readoutlibs::readoutconfig::ReadoutModelConf>();
    m_tp_set_sender_thread.set_name("tpset", conf.source_id);
    inherited2::conf(args);
-   //FIXME: make this configurable
-   m_tp_set_sender_rate_hz = 2000;
-   m_ts_set_sender_offset_ticks = 625000*5;
+   m_tp_set_sender_sleep_us = 1000000/conf.tpset_transmission_rate_hz;
+   m_ts_set_sender_offset_ticks = conf.tpset_min_latency_ticks;
 }
 
 
@@ -99,11 +98,11 @@ TPRequestHandler::send_tp_sets() {
        newest_ts = (*tail).get_first_timestamp();
        oldest_ts = (*head).get_first_timestamp();
        
-       if (!(newest_ts - oldest_ts <=m_ts_set_sender_offset_ticks)) {
-         if(first_cycle) {
+       if (first_cycle) {
     	  start_win_ts = oldest_ts;
 	  first_cycle = false;
-         }
+       }
+       if (newest_ts - start_win_ts > m_ts_set_sender_offset_ticks) {
          end_win_ts = newest_ts - m_ts_set_sender_offset_ticks;
          frag_pieces = get_fragment_pieces(start_win_ts, end_win_ts, rres);
          auto num_tps = frag_pieces.size();
@@ -143,7 +142,7 @@ TPRequestHandler::send_tp_sets() {
       m_requests_running--;
     }
     m_cv.notify_all();  
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000/m_tp_set_sender_rate_hz));
+    std::this_thread::sleep_for(std::chrono::microseconds(m_tp_set_sender_sleep_us));
    }
    return;
 }

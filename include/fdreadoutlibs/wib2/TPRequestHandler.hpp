@@ -70,7 +70,7 @@ protected:
   
 private:
   std::shared_ptr<iomanager::SenderConcept<dunedaq::trigger::TPSet>> m_tpset_sink;
-  int m_tp_set_sender_rate_hz;
+  int m_tp_set_sender_sleep_us;
   uint64_t m_ts_set_sender_offset_ticks;
   uint64_t m_run_number;
   dunedaq::readoutlibs::ReusableThread  m_tp_set_sender_thread;

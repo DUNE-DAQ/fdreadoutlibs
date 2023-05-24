@@ -53,10 +53,20 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   ((std::string)algorithm_selection))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  TriggerPrimitiveMsg,
-		  "Message: " << tp_msg,
-		  ((std::string)tp_msg))
+                  TPTooLong,
+		  "TP with ToT " << width << " for channel " << channel,
+		  ((uint64_t)width) ((uint64_t)channel))
 
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  TPDropped,
+                  "TP with ToT " << width << " for channel " << channel,
+                  ((uint64_t)width) ((uint64_t)channel))
+
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  LinkMisconfiguration,
+                  "WIB data have crate/slot/link " << wcrate << "/" << wslot << "/" << wlink << " while this readout link is configured for " << crate << "/" << slot << "/" << link,
+                  ((uint32_t)wcrate) ((uint32_t)wslot) ((uint32_t)wlink) ((uint32_t)crate) ((uint32_t)slot) ((uint32_t)link))
 namespace fdreadoutlibs {
 
 // Pattern generator class for creating different types of TP patterns
@@ -175,6 +185,7 @@ protected:
 private:
   bool m_sw_tpg_enabled;
   std::string m_tpg_algorithm;
+  uint32_t m_tp_max_width;
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
