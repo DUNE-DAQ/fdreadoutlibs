@@ -116,14 +116,19 @@ TPRequestHandler::send_tp_sets() {
             tpset.run_number = m_run_number;
             tpset.type = trigger::TPSet::Type::kPayload;
             tpset.origin = m_sourceid;
-            tpset.start_time = start_win_ts;
-            tpset.end_time = end_win_ts;
+            tpset.start_time = start_win_ts; // provisory timestamp, will be filled with first TP
+            tpset.end_time = end_win_ts; // provisory timestamp, will be filled with last TP
             tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
        // reserve the space for efficiency
             tpset.objects.reserve(frag_pieces.size());
-
+            bool first_tp = true;
             for( auto f : frag_pieces) {
                trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
+	       if(first_tp) {
+		       tpset.start_time = tp.time_start;
+		       first_tp = false;
+	       }
+	       tpset.end_time = tp.time_start;
 	       tpset.objects.emplace_back(std::move(tp)); 
             }
             if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {

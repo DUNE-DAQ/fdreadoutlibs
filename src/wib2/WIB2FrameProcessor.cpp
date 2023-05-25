@@ -260,6 +260,8 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
     info.rate_tp_hits = new_hits / seconds / 1000.;
 
+    info.num_tps_sent = new_tps;
+    info.num_tps_dropped = new_dropped_tps;
     // Find the channels with the top  TP rates
     // Create a vector of pairs to store the map elements
     std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
