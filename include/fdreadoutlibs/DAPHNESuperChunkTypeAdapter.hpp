@@ -41,8 +41,8 @@ struct DAPHNESuperChunkTypeAdapter
   void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
     auto frame = reinterpret_cast<dunedaq::detdataformats::daphne::DAPHNEFrame*>(&data); // NOLINT
-    frame->header.timestamp_wf_1 = ts;
-    frame->header.timestamp_wf_2 = ts >> 32;
+    frame->daq_header.timestamp_1 = ts;
+    frame->daq_header.timestamp_2 = ts >> 32;
   }
 
   void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 25) // NOLINT(build/unsigned)
@@ -50,8 +50,8 @@ struct DAPHNESuperChunkTypeAdapter
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < 12; ++i) {
       auto df = reinterpret_cast<dunedaq::detdataformats::daphne::DAPHNEFrame*>(((uint8_t*)(&data)) + i * 584); // NOLINT
-      df->header.timestamp_wf_1 = ts_next;
-      df->header.timestamp_wf_2 = ts_next >> 32;
+      df->daq_header.timestamp_1 = ts_next;
+      df->daq_header.timestamp_2 = ts_next >> 32;
       ts_next += offset;
     }
   }
