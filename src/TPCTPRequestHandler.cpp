@@ -1,4 +1,4 @@
-#include "fdreadoutlibs/wib2/TPRequestHandler.hpp"
+#include "fdreadoutlibs/TPCTPRequestHandler.hpp"
 #include "appfwk/DAQModuleHelper.hpp"
 #include "rcif/cmd/Nljs.hpp"
 
@@ -6,7 +6,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void
-TPRequestHandler::init(const nlohmann::json& args) {
+TPCTPRequestHandler::init(const nlohmann::json& args) {
 	inherited2::init(args);
    try {
        auto qi = dunedaq::appfwk::connection_index(args, {"tpset_out"});
@@ -17,7 +17,7 @@ TPRequestHandler::init(const nlohmann::json& args) {
 
 }	
 void
-TPRequestHandler::conf(const nlohmann::json& args) {
+TPCTPRequestHandler::conf(const nlohmann::json& args) {
    auto conf = args["readoutmodelconf"].get<readoutlibs::readoutconfig::ReadoutModelConf>();
    m_tp_set_sender_thread.set_name("tpset", conf.source_id);
    inherited2::conf(args);
@@ -27,7 +27,7 @@ TPRequestHandler::conf(const nlohmann::json& args) {
 
 
 void 
-TPRequestHandler::start(const nlohmann::json& args) {
+TPCTPRequestHandler::start(const nlohmann::json& args) {
    m_new_tps = 0;
    m_new_tpsets = 0;
    m_new_tps_dropped = 0;
@@ -35,11 +35,11 @@ TPRequestHandler::start(const nlohmann::json& args) {
    rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
    m_run_number = start_params.run;
 
-   m_tp_set_sender_thread.set_work(&TPRequestHandler::send_tp_sets, this);
+   m_tp_set_sender_thread.set_work(&TPCTPRequestHandler::send_tp_sets, this);
 }
 
 void
-TPRequestHandler::stop(const nlohmann::json& args) {
+TPCTPRequestHandler::stop(const nlohmann::json& args) {
 	m_run_marker.store(false);
 	while(!m_tp_set_sender_thread.get_readiness()) {
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -49,7 +49,7 @@ TPRequestHandler::stop(const nlohmann::json& args) {
 }
 
 void
-TPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
+TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
 {
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
@@ -71,7 +71,7 @@ TPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
 
 
 void
-TPRequestHandler::send_tp_sets() {
+TPCTPRequestHandler::send_tp_sets() {
    timestamp_t oldest_ts=0;
    timestamp_t newest_ts=0;
    timestamp_t start_win_ts=0;

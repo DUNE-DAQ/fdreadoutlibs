@@ -6,8 +6,8 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPREQUESTHANDLER_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPREQUESTHANDLER_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPCTPREQUESTHANDLER_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPCTPREQUESTHANDLER_HPP_
 
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
@@ -43,7 +43,7 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 namespace fdreadoutlibs {
 
 //template<>	
-class TPRequestHandler : public dunedaq::readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>
+class TPCTPRequestHandler : public dunedaq::readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>
 {
 public:
   using inherited2 = readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>;
@@ -51,13 +51,13 @@ public:
 
   // Constructor that binds LB and error registry
 
-  TPRequestHandler(std::unique_ptr<readoutlibs::SkipListLatencyBufferModel<types::TriggerPrimitiveTypeAdapter>>& latency_buffer,
+  TPCTPRequestHandler(std::unique_ptr<readoutlibs::SkipListLatencyBufferModel<types::TriggerPrimitiveTypeAdapter>>& latency_buffer,
                                 std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
     : readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>(
         latency_buffer,
         error_registry), m_tp_set_sender_thread(0)
   {
-    TLOG_DEBUG(TLVL_WORK_STEPS) << "TPRequestHandler created...";
+    TLOG_DEBUG(TLVL_WORK_STEPS) << "TPCTPRequestHandler created...";
   }
  
   void init(const nlohmann::json& args) override;
@@ -87,4 +87,4 @@ private:
 } // namespace dunedaq
 
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPREQUESTHANDLER_HPP_
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPCTPREQUESTHANDLER_HPP_

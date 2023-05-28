@@ -141,7 +141,7 @@ WIB2FrameHandler::get_hits_dest()
 
 WIB2FrameProcessor::WIB2FrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>(error_registry)
-  , m_sw_tpg_enabled(false)
+  , m_tpg_enabled(false)
 {
 }
 
@@ -155,12 +155,12 @@ void
 WIB2FrameProcessor::start(const nlohmann::json& args)
 {
   // Reset software TPG resources
-  if (m_sw_tpg_enabled) {
+  if (m_tpg_enabled) {
     m_tps_dropped = 0;
 
     m_wib2_frame_handler->initialize(m_tpg_threshold_selected);
     m_wib2_frame_handler_second_half->initialize(m_tpg_threshold_selected);
-  } // end if(m_sw_tpg_enabled)
+  } // end if(m_tpg_enabled)
 
   // Reset timestamp check
   m_previous_ts = 0;
@@ -173,7 +173,7 @@ WIB2FrameProcessor::start(const nlohmann::json& args)
   m_t0 = std::chrono::high_resolution_clock::now();
   m_new_hits = 0;
   m_new_tps = 0;
-  m_swtpg_hits_count.exchange(0);
+  m_tpg_hits_count.exchange(0);
   inherited::start(args);
 }
 
@@ -181,7 +181,7 @@ void
 WIB2FrameProcessor::stop(const nlohmann::json& args)
 {
   inherited::stop(args);
-  if (m_sw_tpg_enabled) {
+  if (m_tpg_enabled) {
     // Make temp. buffers reusable on next start.
     m_wib2_frame_handler->reset();
     m_wib2_frame_handler_second_half->reset();
@@ -211,24 +211,24 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
-  m_tpg_algorithm = config.software_tpg_algorithm;
+  m_tpg_algorithm = config.tpg_algorithm;
   m_tp_max_width = config.tp_timeout;
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
 
-  m_channel_mask_vec = config.software_tpg_channel_mask;
+  m_channel_mask_vec = config.tpg_channel_mask;
   // Converting the input vector of channels masks into an std::set
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold_selected = config.software_tpg_threshold;
+  m_tpg_threshold_selected = config.tpg_threshold;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
   m_link = config.link_id;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
-  if (config.enable_software_tpg) {
-    m_sw_tpg_enabled = true;
+  if (config.enable_tpg) {
+    m_tpg_enabled = true;
     if (config.emulator_mode) {
       m_wib2_pattern_generator.generate(m_sourceid.id);
       m_random_channels = m_wib2_pattern_generator.get_channels();
@@ -250,8 +250,8 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
   auto now = std::chrono::high_resolution_clock::now();
-  if (m_sw_tpg_enabled) {
-    int new_hits = m_swtpg_hits_count.exchange(0);
+  if (m_tpg_enabled) {
+    int new_hits = m_tpg_hits_count.exchange(0);
     int new_tps = m_new_tps.exchange(0);
     int new_dropped_tps = m_tps_dropped.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
@@ -432,7 +432,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
   // Set the first word to "magic" indicating there is no hit, initially
   frame_handler->m_tpg_processing_info->output[0] = swtpg_wib2::MAGIC;
 
-  if (m_tpg_algorithm == "SWTPG") {
+  if (m_tpg_algorithm == "SimpleThreshold") {
     swtpg_wib2::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
   } else if (m_tpg_algorithm == "AbsRS") {
     swtpg_wib2::process_window_rs_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
@@ -523,7 +523,7 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
       }
     }
   }
-  m_swtpg_hits_count += nhits;
+  m_tpg_hits_count += nhits;
   return;
 }
 

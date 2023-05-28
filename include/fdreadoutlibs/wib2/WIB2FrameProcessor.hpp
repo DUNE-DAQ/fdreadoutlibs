@@ -183,7 +183,7 @@ protected:
   void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
 
 private:
-  bool m_sw_tpg_enabled;
+  bool m_tpg_enabled;
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
   std::vector<int> m_channel_mask_vec;
@@ -195,7 +195,7 @@ private:
   size_t m_num_msg = 0;
   size_t m_num_push_fail = 0;
 
-  std::atomic<int> m_swtpg_hits_count{ 0 };
+  std::atomic<int> m_tpg_hits_count{ 0 };
 
   uint32_t m_det_id; // NOLINT(build/unsigned)
   uint32_t m_crate_no; // NOLINT(build/unsigned)
