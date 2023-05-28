@@ -63,9 +63,9 @@ WIB2TPHandler::try_sending_tpsets(uint64_t currentTime) // NOLINT(build/unsigned
     tpset.type = trigger::TPSet::Type::kPayload;
     tpset.origin = m_sourceid;
 
-    if (m_tp_sink) {
-      while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
-        triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
+    while (!m_tp_buffer.empty() && m_tp_buffer.top().time_start < tpset.end_time) {
+      triggeralgs::TriggerPrimitive tp = m_tp_buffer.top();
+      if (m_tp_sink) {
         types::TriggerPrimitiveTypeAdapter* tp_readout_type = reinterpret_cast<types::TriggerPrimitiveTypeAdapter*>(&tp); // NOLINT
         try {
           types::TriggerPrimitiveTypeAdapter tp_copy(*tp_readout_type);
@@ -74,9 +74,9 @@ WIB2TPHandler::try_sending_tpsets(uint64_t currentTime) // NOLINT(build/unsigned
         } catch (const dunedaq::iomanager::TimeoutExpired& excpt) {
           ers::error(readoutlibs::CannotWriteToQueue(ERS_HERE, m_sourceid, "m_tp_sink"));
         }
-        tpset.objects.emplace_back(std::move(tp));
-        m_tp_buffer.pop();
       }
+      tpset.objects.emplace_back(std::move(tp));
+      m_tp_buffer.pop();
     }
 
     if (tpset.start_time < m_timestamp_counter) {
