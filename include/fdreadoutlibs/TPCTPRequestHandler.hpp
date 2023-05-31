@@ -80,6 +80,7 @@ private:
   std::atomic<uint64_t> m_new_tps{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tpsets{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps_dropped{ 0 };
+  std::atomic<uint64_t> m_new_heartbeats{ 0 };
 
 };
 

@@ -185,8 +185,6 @@ WIB2FrameProcessor::stop(const nlohmann::json& args)
     // Make temp. buffers reusable on next start.
     m_wib2_frame_handler->reset();
     m_wib2_frame_handler_second_half->reset();
-
-    auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_t0).count();
   }
 }
 
@@ -405,12 +403,6 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
     }
-    // Debugging statements
-    m_crate_no = wfptr->header.crate;
-    m_slot_no = wfptr->header.slot;
-    m_link = wfptr->header.link;
-    //TLOG() << "Got first item link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
-
     // Add WIB2FrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
     for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
