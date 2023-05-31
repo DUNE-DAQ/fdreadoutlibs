@@ -25,11 +25,7 @@
 
 
 #include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
-
-#include "fdreadoutlibs/wib2/WIB2TPHandler.hpp"
-#include "rcif/cmd/Nljs.hpp"
-#include "trigger/TPSet.hpp"
-#include "triggeralgs/TriggerPrimitive.hpp"
+#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fdreadoutlibs/wib2/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wib2/tpg/FrameExpand.hpp"
@@ -42,7 +38,6 @@
 #include <functional>
 #include <future>
 #include <memory>
-#include <pthread.h>
 #include <queue>
 #include <string>
 #include <thread>
@@ -52,22 +47,38 @@
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
-// THIS SHOULDN'T BE HERE!!!!!
+// THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-WIB2FrameHandler::WIB2FrameHandler(int register_selector_params, iomanager::FollyMPMCQueue<uint16_t*>& dest_queue)
-  : m_dest_queue_frame_handler(dest_queue)
+void
+WIB2PatternGenerator::generate(int source_id)
 {
-  m_register_selector = register_selector_params;
+  //TLOG() << "Generate random ADC patterns" ;
+  std::srand(source_id*12345678);
+  m_channel.reserve(m_size);
+  for (int i = 0; i < m_size; i++) {
+      int random_ch = std::rand()%256;
+      m_channel.push_back(random_ch);
+  }
 }
+
+WIB2FrameHandler::WIB2FrameHandler(int register_selector_params)
+  : m_register_selector(register_selector_params)
+  , m_hits_dest(nullptr)
+  , m_tpg_taps_p(nullptr)
+{}
+
 WIB2FrameHandler::~WIB2FrameHandler()
 {
   if (m_tpg_taps_p) {
     delete[] m_tpg_taps_p;
   }
+  if (m_hits_dest)
+	  delete[] m_hits_dest;
 }
 
 int
@@ -79,8 +90,12 @@ WIB2FrameHandler::get_registers_selector()
 void
 WIB2FrameHandler::reset()
 {
-  delete[] m_tpg_taps_p;
+  if (m_tpg_taps_p)
+      	delete[] m_tpg_taps_p;
   m_tpg_taps_p = nullptr;
+  if (m_hits_dest)
+        delete[] m_hits_dest;
+  m_hits_dest = nullptr;
   first_hit = true;
 }
 
@@ -99,11 +114,15 @@ WIB2FrameHandler::initialize(int threshold_value)
     m_tpg_taps_p[i] = m_tpg_taps[i];
   }
 
+  if(m_hits_dest == nullptr) {
+	m_hits_dest = new uint16_t[100000];
+  }
+
   m_tpg_processing_info = std::make_unique<swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>>(nullptr,
                                                                                                             swtpg_wib2::FRAMES_PER_MSG,
                                                                                                             0,
                                                                                                             swtpg_wib2::NUM_REGISTERS_PER_FRAME,
-                                                                                                            nullptr,
+                                                                                                            m_hits_dest,
                                                                                                             m_tpg_taps_p,
                                                                                                             (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
                                                                                                             m_tpg_tap_exponent,
@@ -112,22 +131,17 @@ WIB2FrameHandler::initialize(int threshold_value)
                                                                                                             0);
 }
 
-// Pop one destination ptr for the frame handler
+// Get destination ptr for the frame handler
 uint16_t*
-WIB2FrameHandler::get_primfind_dest()
+WIB2FrameHandler::get_hits_dest()
 {
-  uint16_t* primfind_dest;
-
-  while (!m_dest_queue_frame_handler.try_pop(primfind_dest, std::chrono::milliseconds(0))) {
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
-  }
-  return primfind_dest;
+  return m_hits_dest;
 }
+
 
 WIB2FrameProcessor::WIB2FrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>(error_registry)
-  , m_sw_tpg_enabled(false)
-  , m_add_hits_tphandler_thread_should_run(false)
+  , m_tpg_enabled(false)
 {
 }
 
@@ -141,18 +155,12 @@ void
 WIB2FrameProcessor::start(const nlohmann::json& args)
 {
   // Reset software TPG resources
-  if (m_sw_tpg_enabled) {
-
-    rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
-    m_tphandler->set_run_number(start_params.run);
-
-    m_tphandler->reset();
-
+  if (m_tpg_enabled) {
     m_tps_dropped = 0;
 
     m_wib2_frame_handler->initialize(m_tpg_threshold_selected);
     m_wib2_frame_handler_second_half->initialize(m_tpg_threshold_selected);
-  } // end if(m_sw_tpg_enabled)
+  } // end if(m_tpg_enabled)
 
   // Reset timestamp check
   m_previous_ts = 0;
@@ -165,8 +173,7 @@ WIB2FrameProcessor::start(const nlohmann::json& args)
   m_t0 = std::chrono::high_resolution_clock::now();
   m_new_hits = 0;
   m_new_tps = 0;
-  m_swtpg_hits_count.exchange(0);
-
+  m_tpg_hits_count.exchange(0);
   inherited::start(args);
 }
 
@@ -174,35 +181,23 @@ void
 WIB2FrameProcessor::stop(const nlohmann::json& args)
 {
   inherited::stop(args);
-  if (m_sw_tpg_enabled) {
+  if (m_tpg_enabled) {
     // Make temp. buffers reusable on next start.
     m_wib2_frame_handler->reset();
     m_wib2_frame_handler_second_half->reset();
-
-    auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_t0).count();
-    TLOG() << "Ran for " << runtime << "ms.";
   }
 }
 
 void
 WIB2FrameProcessor::init(const nlohmann::json& args)
 {
-  try {
-    auto queue_index = appfwk::connection_index(args, {});
-    if (queue_index.find("tp_out") != queue_index.end()) {
-      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
-    }
-  } catch (const ers::Issue& excpt) {
-    throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
-  }
+//  inherited::init(args);
 
   try {
-    auto queue_index = appfwk::connection_index(args, {});
-    if (queue_index.find("tpset_out") != queue_index.end()) {
-      m_tpset_sink = get_iom_sender<trigger::TPSet>(queue_index["tpset_out"]);
-    }
+	  auto qi = appfwk::connection_index(args, {"tp_out"});
+	  m_tp_sink = iomanager::IOManager::get()->get_sender<dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>(qi["tp_out"]);
   } catch (const ers::Issue& excpt) {
-    throw readoutlibs::ResourceQueueError(ERS_HERE, "tpset queue", "DefaultRequestHandlerModel", excpt);
+	  ers::warning(readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt));
   }
 
 }
@@ -210,74 +205,41 @@ WIB2FrameProcessor::init(const nlohmann::json& args)
 void
 WIB2FrameProcessor::conf(const nlohmann::json& cfg)
 {
-  // Populate the queue of primfind destinations
-  for (size_t i = 0; i < m_capacity_dest_queue; ++i) {
-    uint16_t* dest = new uint16_t[100000];
-    m_dest_queue.push(std::move(dest), std::chrono::milliseconds(0));
-  }
-
   auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBSuperChunkTypeAdapter::subsystem;
-  m_tpg_algorithm = config.software_tpg_algorithm;
+  m_tpg_algorithm = config.tpg_algorithm;
+  m_tp_max_width = config.tp_timeout;
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
 
-  m_channel_mask_vec = config.software_tpg_channel_mask;
+  m_channel_mask_vec = config.tpg_channel_mask;
   // Converting the input vector of channels masks into an std::set
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
-  for (int el : m_channel_mask_set) {
-    TLOG() << "Software TPG channel mask: " << el;
-  }
 
-  m_tpg_threshold_selected = config.software_tpg_threshold;
-  TLOG() << "Selected threshold value: " << m_tpg_threshold_selected;
+  m_tpg_threshold_selected = config.tpg_threshold;
 
-  if (config.enable_software_tpg) {
-    m_sw_tpg_enabled = true;
+  m_crate_no = config.crate_id;
+  m_slot_no = config.slot_id;
+  m_link = config.link_id;
+  // Setup pre-processing pipeline
+  inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
+  if (config.enable_tpg) {
+    m_tpg_enabled = true;
+    if (config.emulator_mode) {
+      m_wib2_pattern_generator.generate(m_sourceid.id);
+      m_random_channels = m_wib2_pattern_generator.get_channels();
+      inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
+    }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
-    daqdataformats::SourceID tpset_sourceid;
-    tpset_sourceid.id = config.tpset_sourceid;
-    tpset_sourceid.subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
-
-    m_tphandler.reset(new WIB2TPHandler(m_tp_sink, m_tpset_sink, config.tp_timeout, config.tpset_window_size, tpset_sourceid));
-
-    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));
-
-    TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
-
-    // Launch the thread for adding hits to tphandler
-    m_add_hits_tphandler_thread_should_run.store(true);
-    m_add_hits_tphandler_thread = std::thread(&WIB2FrameProcessor::add_hits_to_tphandler, this);
-    TLOG() << "Launched thread for adding hits to tphandler";
+    inherited::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));
+    inherited::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler_second_half.get()));
   }
 
-  // Setup pre-processing pipeline
-  TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
-
-  TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::conf(cfg);
-}
-
-void
-WIB2FrameProcessor::scrap(const nlohmann::json& args)
-{
-  if (m_sw_tpg_enabled) {
-    TLOG() << "Waiting to join add_hits_tphandler_thread";
-    m_add_hits_tphandler_thread_should_run.store(false);
-    m_add_hits_tphandler_thread.join();
-    TLOG() << "add_hits_tphandler_thread joined";
-    m_tphandler.reset();
-
-    // Pop and delete all the elements of the destination queues
-    while (m_dest_queue.can_pop()) {
-      uint16_t* dest;
-      m_dest_queue.pop(dest, std::chrono::milliseconds(0));
-      delete[] dest;
-    }
-  }
-  TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::scrap(args);
+  inherited::conf(cfg);
 }
 
 void
@@ -285,21 +247,19 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
-  if (m_tphandler != nullptr) {
-    info.num_tps_sent = m_tphandler->get_and_reset_num_sent_tps();
-    info.num_tpsets_sent = m_tphandler->get_and_reset_num_sent_tpsets();
-    info.num_tps_dropped = m_tps_dropped.exchange(0);
-  }
-
   auto now = std::chrono::high_resolution_clock::now();
-  if (m_sw_tpg_enabled) {
-    int new_hits = m_swtpg_hits_count.exchange(0);
+  if (m_tpg_enabled) {
+    int new_hits = m_tpg_hits_count.exchange(0);
     int new_tps = m_new_tps.exchange(0);
+    int new_dropped_tps = m_tps_dropped.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
+    TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
     info.rate_tp_hits = new_hits / seconds / 1000.;
 
+    info.num_tps_sent = new_tps;
+    info.num_tps_dropped = new_dropped_tps;
     // Find the channels with the top  TP rates
     // Create a vector of pairs to store the map elements
     std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
@@ -329,9 +289,41 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
     }
   }
   m_t0 = now;
-
-  readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBSuperChunkTypeAdapter>::get_info(ci, level);
+  inherited::get_info(ci, level);
   ci.add(info);
+}
+
+/**
+ * Add hits using the pattern generator only when in emulated mode
+ * */
+void
+WIB2FrameProcessor::use_pattern_generator(frameptr fp)
+{
+
+  // If we are not in the first superchunk then we start applying the pattern generator
+  // This is because we use the ADC values of the first wib frame as the pedestal baseline
+  if (m_current_ts != 0) {
+    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp);
+
+    m_pattern_generator_current_ts = wfptr->get_timestamp();
+
+    // Adding a hit every 2442 gives a total Sent TP rate of approx 100 Hz/wire
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 2442) {
+
+      // Reset the pattern from the beginning if it reaches the maximum
+      m_pattern_index++;
+      if (m_pattern_index == m_wib2_pattern_generator.get_total_size()) {
+        m_pattern_index = 0;
+      }
+
+      // Set the ADC to the uint16 maximum value
+     
+      wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
+      //TLOG() << "Lift channel " << m_random_channels[m_pattern_index] << " to " << wfptr->get_adc(m_random_channels[m_pattern_index]);
+      // Update the previous timestamp of the pattern generator
+      m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
+    } // timestamp difference
+  } // if not first superchunk
 }
 
 /**
@@ -350,6 +342,9 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
       // auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
+      wf->header.crate = m_crate_no;
+      wf->header.slot = m_slot_no;
+      wf->header.link = m_link; 
       wf->set_timestamp(ts_next);
       ts_next += wib2_tick_difference;
       wf++;
@@ -390,7 +385,6 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
 {
   if (!fp)
     return;
-
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp); // NOLINT
   uint64_t timestamp = wfptr->get_timestamp();                                            // NOLINT(build/unsigned)
 
@@ -401,23 +395,14 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
 
   // Only for the first superchunk, create an offline register map
   if (frame_handler->first_hit) {
-
-    // Print thread ID and PID of the executing thread
-    std::thread::id thread_id = std::this_thread::get_id();
-    pid_t tid;
-    tid = syscall(SYS_gettid);
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << " Thread ID " << thread_id << " PID " << tid;
-
     frame_handler->register_channel_map = swtpg_wib2::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map, register_selection);
 
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
-    // Debugging statements
-    m_link = wfptr->header.link;
-    m_crate_no = wfptr->header.crate;
-    m_slot_no = wfptr->header.slot;
-    TLOG() << "Got first item, link/crate/slot=" << m_link << "/" << m_crate_no << "/" << m_slot_no;
-
+    m_det_id = wfptr->header.detector_id;
+    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
+    }
     // Add WIB2FrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
     for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
@@ -427,7 +412,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    TLOG() << "Processed the first superchunk ";
+    //TLOG() << "Processed the first superchunk ";
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
@@ -436,11 +421,10 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
 
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
-  uint16_t* destination_ptr = frame_handler->get_primfind_dest();
-  *destination_ptr = swtpg_wib2::MAGIC;
-  frame_handler->m_tpg_processing_info->output = destination_ptr;
+  // Set the first word to "magic" indicating there is no hit, initially
+  frame_handler->m_tpg_processing_info->output[0] = swtpg_wib2::MAGIC;
 
-  if (m_tpg_algorithm == "SWTPG") {
+  if (m_tpg_algorithm == "SimpleThreshold") {
     swtpg_wib2::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
   } else if (m_tpg_algorithm == "AbsRS") {
     swtpg_wib2::process_window_rs_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER);
@@ -448,21 +432,15 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     throw TPGAlgorithmInexistent(ERS_HERE, "m_tpg_algo");
   }
 
-  // Insert output of the AVX processing into the swtpg_output
-  swtpg_output swtpg_processing_result = { destination_ptr, timestamp };
-
-  // Push to the MPMC tphandler queue only if it's possible, else drop the TPs.
-  if (!m_tphandler_queue.try_push(std::move(swtpg_processing_result), std::chrono::milliseconds(0))) {
-    // we're going to loose these hits
-    ers::warning(TPHandlerBacklog(ERS_HERE, m_sourceid.id));
-  }
+  //GLM: avoid the tp_handler queue/thread
+  process_swtpg_hits(frame_handler->m_tpg_processing_info->output, timestamp);
 }
 
-unsigned int
-WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, timestamp_t timestamp)
+void
+WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp)
 {
 
-  constexpr int clocksPerTPCTick = 32;
+  constexpr int clocksPerTPCTick = types::DUNEWIBSuperChunkTypeAdapter::expected_tick_difference;;
 
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
@@ -491,14 +469,13 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, timestamp_t timest
     for (int i = 0; i < 16; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wib2::MAGIC) {
 
+        uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
+            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
+        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
+        //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];
         if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
-
-          uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
-          uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-
           // May be needed for TPSet:
           // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
           //
@@ -508,24 +485,27 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, timestamp_t timest
           //
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
-          // TLOG() << "Hit: " << tp_t_begin << " " << offline_channel;
 
-          triggeralgs::TriggerPrimitive trigprim;
-          trigprim.time_start = tp_t_begin;
-          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
-          trigprim.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
-          trigprim.channel = offline_channel;
-          trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
-          trigprim.detid = m_link; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
-          trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
-          trigprim.version = 1;
-
-          if (!m_tphandler->add_tp(trigprim, timestamp)) {
-            m_tps_dropped++;
-          }
-
+	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+          tp.tp.time_start = tp_t_begin;
+          tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
+          tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
+          tp.tp.channel = offline_channel;
+          tp.tp.adc_integral = hit_charge[i];
+          tp.tp.adc_peak = hit_charge[i] / 20;
+          tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
+          tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
+          tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
+          tp.tp.version = 1;
+          if(tp.tp.time_over_threshold > m_tp_max_width) {
+		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
+		  m_tps_dropped++;
+	  }
+	  //Send the TP to the TP handler module
+	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+		 ers::warning(TPDropped(ERS_HERE, tp.tp.time_start, tp.tp.channel));
+		 m_tps_dropped++;
+	  }	 
           m_new_tps++;
           ++nhits;
 
@@ -535,43 +515,8 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, timestamp_t timest
       }
     }
   }
-  return nhits;
-}
-
-// Push destination ptr to the common queue
-void
-WIB2FrameProcessor::free_primfind_dest(uint16_t* dest)
-{
-  m_dest_queue.push(std::move(dest), std::chrono::milliseconds(0));
-}
-
-// Function for the TPHandler threads.
-// Reads the m_tpthread_queue and then process the hits
-void
-WIB2FrameProcessor::add_hits_to_tphandler()
-{
-
-  std::stringstream thread_name;
-  thread_name << "tphandler-" << m_sourceid.id;
-  pthread_setname_np(pthread_self(), thread_name.str().c_str());
-
-  while (m_add_hits_tphandler_thread_should_run.load()) {
-    swtpg_output result_from_swtpg;
-    while (m_tphandler_queue.can_pop()) {
-      if (m_tphandler_queue.try_pop(result_from_swtpg, std::chrono::milliseconds(0))) {
-
-        // Process the trigger primitve
-        unsigned int nhits = process_swtpg_hits(result_from_swtpg.output_location, result_from_swtpg.timestamp);
-
-        m_swtpg_hits_count += nhits;
-        m_tphandler->try_sending_tpsets(result_from_swtpg.timestamp);
-
-        // After sending the TPset, add back the dest pointer to the queue
-        free_primfind_dest(result_from_swtpg.output_location);
-      }
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
+  m_tpg_hits_count += nhits;
+  return;
 }
 
 } // namespace fdreadoutlibs
