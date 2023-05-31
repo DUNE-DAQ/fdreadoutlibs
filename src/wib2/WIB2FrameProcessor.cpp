@@ -194,10 +194,12 @@ WIB2FrameProcessor::init(const nlohmann::json& args)
 //  inherited::init(args);
 
   try {
-	  auto qi = appfwk::connection_index(args, {"tp_out"});
-	  m_tp_sink = iomanager::IOManager::get()->get_sender<dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>(qi["tp_out"]);
+    auto queue_index = appfwk::connection_index(args, {});
+    if (queue_index.find("tp_out") != queue_index.end()) {
+      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
+    }
   } catch (const ers::Issue& excpt) {
-	  ers::warning(readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt));
+    ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
   }
 
 }
