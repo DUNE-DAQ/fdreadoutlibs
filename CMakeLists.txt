@@ -78,6 +78,7 @@ daq_add_application(WIB2BinaryFrameReader WIB2BinaryFrameReader.cxx TEST LINK_LI
 ##############################################################################
 
 daq_add_unit_test(DAPHNEStreamSuperChunkTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(WIBEthFrameExpansion_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
