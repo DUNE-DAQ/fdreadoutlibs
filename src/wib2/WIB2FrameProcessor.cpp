@@ -96,8 +96,7 @@ WIB2FrameHandler::reset()
   if (m_hits_dest)
         delete[] m_hits_dest;
   m_hits_dest = nullptr;
-  first_hit = true;
-  first_timestamp_check = true;
+  m_first_hit = true;
 }
 
 void
@@ -166,6 +165,7 @@ WIB2FrameProcessor::start(const nlohmann::json& args)
   // Reset timestamp check
   m_previous_ts = 0;
   m_current_ts = 0;
+  m_first_timestamp_check = true;
   m_first_ts_missmatch = true;
   m_problem_reported = false;
   m_ts_error_ctr = 0;
@@ -377,11 +377,11 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
   }
 
   // check crate, slot, link
-  if (m_wib2_frame_handler->first_timestamp_check) {
+  if (m_first_timestamp_check) {
     if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
     }
-    m_wib2_frame_handler->first_timestamp_check = false;
+    m_first_timestamp_check = false;
   }
 
   m_previous_ts = m_current_ts;
@@ -405,7 +405,7 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
   expand_wib2_adcs(fp, &registers_array, register_selection);
 
   // Only for the first superchunk, create an offline register map
-  if (frame_handler->first_hit) {
+  if (frame_handler->m_first_hit) {
     frame_handler->register_channel_map = swtpg_wib2::get_register_to_offline_channel_map_wib2(wfptr, m_channel_map, register_selection);
 
     frame_handler->m_tpg_processing_info->setState(registers_array);
@@ -423,9 +423,9 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     //TLOG() << "Processed the first superchunk ";
 
     // Set first hit bool to false so that registration of channel map is not executed twice
-    frame_handler->first_hit = false;
+    frame_handler->m_first_hit = false;
 
-  } // end if (frame_handler->first_hit)
+  } // end if (frame_handler->m_first_hit)
 
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;

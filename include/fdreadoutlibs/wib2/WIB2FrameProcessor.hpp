@@ -104,8 +104,7 @@ public:
   // Map from expanded AVX register position to offline channel number
   swtpg_wib2::RegisterChannelMap register_channel_map; 
 
-  bool first_hit = true;
-  bool first_timestamp_check = true;
+  bool m_first_hit = true;
 
   int get_registers_selector();
 
@@ -157,6 +156,7 @@ protected:
   dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
 
+  bool m_first_timestamp_check = true;
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
