@@ -97,6 +97,7 @@ WIB2FrameHandler::reset()
         delete[] m_hits_dest;
   m_hits_dest = nullptr;
   first_hit = true;
+  first_timestamp_check = true;
 }
 
 void
@@ -375,6 +376,14 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
     }
   }
 
+  // check crate, slot, link
+  if (m_wib2_frame_handler->first_timestamp_check) {
+    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
+    }
+    m_wib2_frame_handler->first_timestamp_check = false;
+  }
+
   m_previous_ts = m_current_ts;
   m_last_processed_daq_ts = m_current_ts;
 }
@@ -402,9 +411,6 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
     m_det_id = wfptr->header.detector_id;
-    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
-    }
     // Add WIB2FrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
     for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {

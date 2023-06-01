@@ -104,8 +104,9 @@ public:
   // Map from expanded AVX register position to offline channel number
   swtpg_wib2::RegisterChannelMap register_channel_map; 
 
-  bool first_hit = true;                                                  
-                                                  
+  bool first_hit = true;
+  bool first_timestamp_check = true;
+
   int get_registers_selector();
 
   void reset();
