@@ -11,10 +11,9 @@
 
 #include "TPGConstants_wibeth.hpp"
 #include "fddetdataformats/WIBEthFrame.hpp"
-//#include "fdreadoutlibs/ProtoWIBSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 
-
+#include <iostream>
 #include <array>
 #include <immintrin.h>
 

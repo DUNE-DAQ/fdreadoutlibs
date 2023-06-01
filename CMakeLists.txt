@@ -60,6 +60,7 @@ daq_add_library(
   wib2/*.cpp
   wib2/tpg/*.cpp
   wibeth/*.cpp
+  wibeth/tpg/*.cpp
   daphne/*.cpp
   tde/*.cpp
   LINK_LIBRARIES ${FDREADOUTLIBS_DEPENDENCIES}

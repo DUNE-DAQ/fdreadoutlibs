@@ -87,6 +87,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
   }
 
   */
+   RegisterChannelMap ret; // AAA: TODO: temporary: TO BE DELETED
 
   auto end_time = std::chrono::steady_clock::now();
   auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
