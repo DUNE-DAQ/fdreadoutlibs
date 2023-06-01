@@ -225,6 +225,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
   m_link = config.link_id;
+  m_first_frame = true;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
@@ -356,7 +357,13 @@ WIB2FrameProcessor::timestamp_check(frameptr fp)
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(fp); // NOLINT
   m_current_ts = wfptr->get_timestamp();
-
+  // Check geo id mapping is correct
+  if (m_first_frame) {
+      	if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
+      	   ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
+        }
+	m_first_frame = false;
+  }
   // Check timestamp
   if (m_current_ts - m_previous_ts != wib2_superchunk_tick_difference) {
     ++m_ts_error_ctr;
@@ -402,9 +409,6 @@ WIB2FrameProcessor::find_hits(constframeptr fp, WIB2FrameHandler* frame_handler)
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
     m_det_id = wfptr->header.detector_id;
-    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
-    }
     // Add WIB2FrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
     for (size_t i = 0; i < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++i) {
