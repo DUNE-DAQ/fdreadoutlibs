@@ -56,6 +56,14 @@ struct DAPHNESuperChunkTypeAdapter
     }
   }
 
+  void fake_geoid(uint16_t /*crate_id*/, uint16_t slot_id, uint16_t link_id) {
+      for (unsigned int i = 0; i < get_num_frames(); ++i) {
+        auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
+        df->header.daphne = slot_id;
+        df->header.channel = link_id;
+      }
+  }
+
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
   {
     // Set frame error bits in header
