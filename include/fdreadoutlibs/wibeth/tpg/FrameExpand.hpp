@@ -256,17 +256,17 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
 {
   int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
   int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
-  int timeWindowNumFrames = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
+  int TIME_WINDOW_NUM_FRAMES = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
 
   for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
 
     const size_t register_offset = j % SAMPLES_PER_REGISTER;
     const size_t register_index = j / SAMPLES_PER_REGISTER;
-    const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * timeWindowNumFrames;
+    const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * TIME_WINDOW_NUM_FRAMES;
     int16_t out_val;
-    for (size_t itime = 0; itime < timeWindowNumFrames; ++itime) {
-      const size_t msg_index = itime / timeWindowNumFrames;
-      const size_t msg_time_offset = itime % timeWindowNumFrames;
+    for (size_t itime = 0; itime < TIME_WINDOW_NUM_FRAMES; ++itime) {
+      const size_t msg_index = itime / TIME_WINDOW_NUM_FRAMES;
+      const size_t msg_time_offset = itime % TIME_WINDOW_NUM_FRAMES;
 
       const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
@@ -277,7 +277,7 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
       out_val = register_array->uint16(index);
 
       if (itime  == 0) {
-        std::cout << "Time sample: " << itime << " index OUTPUT: " << index << "    value:   " << out_val << std::endl;
+        std::cout << "time_sample: " << itime << " index_output: " << index << "    value:   " << out_val << std::endl;
       //  std::cout << "============" << std::endl;
       }
 

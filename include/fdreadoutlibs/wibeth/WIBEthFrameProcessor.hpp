@@ -174,7 +174,7 @@ private:
   uint32_t m_det_id; // NOLINT(build/unsigned)
   uint32_t m_crate_no; // NOLINT(build/unsigned)
   uint32_t m_slot_no;  // NOLINT(build/unsigned)
-  uint32_t m_link; // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 

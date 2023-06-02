@@ -18,11 +18,10 @@ const constexpr std::uint16_t MAGIC = std::numeric_limits<std::uint16_t>::max();
 
 const constexpr std::int16_t THRESHOLD = 2000;
 
-// How many frames are concatenated in one netio message
+// How many frames are concatenated together (number of time samples)
 const constexpr std::size_t FRAMES_PER_MSG = 64;
 
 // How many AVX2 registers are returned per frame.
-// Maximum is 16
 const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 4;
 
 // How many bytes are in an AVX2 register

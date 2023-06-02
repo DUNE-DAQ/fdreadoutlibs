@@ -61,7 +61,7 @@ WIBEthPatternGenerator::generate(int source_id)
   std::srand(source_id*12345678);
   m_channel.reserve(m_size);
   for (int i = 0; i < m_size; i++) {
-      int random_ch = std::rand()%256;
+      int random_ch = std::rand()%64;
       m_channel.push_back(random_ch);
   }
 }
@@ -224,7 +224,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
 
   //m_crate_no = config.crate_id;
   //m_slot_no = config.slot_id;
-  //m_link = config.link_id;
+  //m_stream_id = config.stream_id;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
@@ -238,7 +238,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
     inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
-    inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler_second_half.get()));
+    //inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler_second_half.get()));
   }
 
   inherited::conf(cfg);
@@ -343,10 +343,10 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
     uint64_t ts_next = m_previous_ts + wibeth_frame_tick_difference; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      // auto wfh = const_cast<dunedaq::fddetdataformats::WIBEthHeader*>(wf->get_wib_header());
-      //wf->header.crate = m_crate_no;
-      //wf->header.slot = m_slot_no;
-      //wf->header.link = m_link; 
+      //auto wfh = const_cast<dunedaq::fddetdataformats::WIBEthFrame*>(wf->header());
+      wf->daq_header.crate_id = m_crate_no;
+      wf->daq_header.slot_id = m_slot_no;
+      wf->daq_header.stream_id = m_stream_id; 
       wf->set_timestamp(ts_next);
       ts_next += wibeth_tick_difference;
       wf++;
@@ -395,18 +395,18 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   int register_selection = frame_handler->get_registers_selector();
   expand_wibeth_adcs(fp, &registers_array, register_selection);
 
-  // AAA: TODO: RESTORE THIS!
+  // For debugging purposes you can check the single ADCs 
+  //parse_wibeth_adcs(&registers_array);
 
-  /*
   // Only for the first WIBEth frame, create an offline register map
   if (frame_handler->first_hit) {
     frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map, register_selection);
 
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
-    m_det_id = wfptr->header.detector_id;
-    if (wfptr->header.crate != m_crate_no || wfptr->header.slot != m_slot_no || wfptr->header.link != m_link) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->header.crate, wfptr->header.slot, wfptr->header.link, m_crate_no, m_slot_no, m_link));
+    m_det_id = wfptr->daq_header.det_id;
+    if (wfptr->daq_header.crate_id != m_crate_no || wfptr->daq_header.slot_id != m_slot_no || wfptr->daq_header.stream_id != m_stream_id) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_no, m_slot_no, m_stream_id));
     }
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
     // Populate the array taking into account the position of the register selector
@@ -417,15 +417,14 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    //TLOG() << "Processed the first frame ";
+    TLOG() << "Processed the first frame ";
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
 
   } // end if (frame_handler->first_hit)
 
-  */
-
+  // AAA: TODO: RESTORE THIS!
   /*
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
