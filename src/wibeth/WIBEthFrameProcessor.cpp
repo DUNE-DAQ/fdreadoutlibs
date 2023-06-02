@@ -222,9 +222,9 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
 
   m_tpg_threshold_selected = config.tpg_threshold;
 
-  //m_crate_no = config.crate_id;
-  //m_slot_no = config.slot_id;
-  //m_stream_id = config.stream_id;
+  m_crate_no = config.crate_id;
+  m_slot_no = config.slot_id;
+  m_stream_id = config.link_id;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
@@ -413,6 +413,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
       m_register_channels[i + register_selection * swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER] = frame_handler->register_channel_map.channel[i];
 
+      TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
+
       // Set up a map of channels and number of TPs for monitoring/debug
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
@@ -424,8 +426,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
 
   } // end if (frame_handler->first_hit)
 
-  // AAA: TODO: RESTORE THIS!
-  /*
+
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
   // Set the first word to "magic" indicating there is no hit, initially
@@ -442,7 +443,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   //GLM: avoid the tp_handler queue/thread
   process_swtpg_hits(frame_handler->m_tpg_processing_info->output, timestamp);
 
-  */
 }
 
 void

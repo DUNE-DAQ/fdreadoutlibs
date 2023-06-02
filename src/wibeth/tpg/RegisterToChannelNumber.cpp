@@ -49,7 +49,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
   for (size_t ich = 0; ich < dunedaq::fddetdataformats::WIBEthFrame::s_channels_per_half_femb; ++ich) {
     auto offline_ch = ch_map->get_offline_channel_from_crate_slot_stream_chan(
       frame->daq_header.crate_id, frame->daq_header.slot_id, frame->daq_header.stream_id, ich);
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << " offline_ch " << offline_ch; 
+    //TLOG_DEBUG(TLVL_BOOKKEEPING) << " offline_ch " << offline_ch; 
     min_ch = std::min(min_ch, offline_ch);
   }
   TLOG() << "get_register_to_offline_channel_map_wibeth for crate " << frame->daq_header.crate_id << " slot "
