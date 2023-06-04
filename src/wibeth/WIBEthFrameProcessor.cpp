@@ -256,7 +256,7 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
     int new_dropped_tps = m_tps_dropped.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-    TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
+    //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
     info.rate_tp_hits = new_hits / seconds / 1000.;
 
@@ -309,8 +309,8 @@ WIBEthFrameProcessor::use_pattern_generator(frameptr fp)
 
     m_pattern_generator_current_ts = wfptr->get_timestamp();
 
-    // Adding a hit every 2442 gives a total Sent TP rate of approx 100 Hz/wire
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 2442) {
+    // Adding a hit every 2442*4  gives a total Sent TP rate of approx 100 Hz/wire
+    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 9768) {
 
       // Reset the pattern from the beginning if it reaches the maximum
       m_pattern_index++;
@@ -413,13 +413,13 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
       m_register_channels[i + register_selection * swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER] = frame_handler->register_channel_map.channel[i];
 
-      TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
+      //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
 
       // Set up a map of channels and number of TPs for monitoring/debug
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    TLOG() << "Processed the first frame ";
+    //TLOG() << "Processed the first frame ";
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
