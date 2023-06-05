@@ -49,6 +49,14 @@ struct TDEFrameTypeAdapter
     data.set_timestamp(first_timestamp); 
   }
 
+  void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t link_id) {
+      for (unsigned int i = 0; i < get_num_frames(); ++i) {
+        auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
+        df->get_tde_header()->crate = crate_id;
+        df->get_tde_header()->slot = slot_id;
+        df->get_tde_header()->link = link_id;
+      }
+  }
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT(build/unsigned)
   {
   }
