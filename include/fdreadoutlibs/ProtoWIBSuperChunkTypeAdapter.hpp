@@ -58,6 +58,14 @@ struct ProtoWIBSuperChunkTypeAdapter
     }
   }
 
+  void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t link_id) {
+      for (unsigned int i = 0; i < get_num_frames(); ++i) {
+        auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
+        df->get_wib_header()->crate_no = crate_id;
+        df->get_wib_header()->slot_no = slot_id;
+        df->get_wib_header()->fiber_no = link_id;
+      }
+  }  
   void fake_frame_errors(std::vector<uint16_t>* fake_errors) // NOLINT(build/unsigned)
   {
     auto wf = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(((uint8_t*)(&data))); // NOLINT

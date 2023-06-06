@@ -48,6 +48,8 @@ struct TriggerPrimitiveTypeAdapter
     tp.time_start = first_timestamp;
   }
 
+  void fake_geoid(uint16_t /*crate_id*/, uint16_t /*slot_id*/, uint16_t /*link_id*/) {}
+
   FrameType* begin() { return this; }
 
   FrameType* end() { return (this + 1); } // NOLINT

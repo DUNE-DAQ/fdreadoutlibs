@@ -175,6 +175,7 @@ private:
   uint32_t m_crate_no; // NOLINT(build/unsigned)
   uint32_t m_slot_no;  // NOLINT(build/unsigned)
   uint32_t m_link; // NOLINT(build/unsigned)
+  bool m_first_frame = true;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
