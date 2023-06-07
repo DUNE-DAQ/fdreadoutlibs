@@ -16,7 +16,7 @@
 
 namespace swtpg_wibeth {
 
-// The state variables for each channel in the link, saved from the last time
+// The state variables for each channel in the stream, saved from the last time
 template<size_t NREGISTERS>
 struct ChanState
 {

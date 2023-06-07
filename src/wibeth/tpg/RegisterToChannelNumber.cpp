@@ -53,7 +53,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
     min_ch = std::min(min_ch, offline_ch);
   }
   TLOG() << "get_register_to_offline_channel_map_wibeth for crate " << frame->daq_header.crate_id << " slot "
-                << frame->daq_header.slot_id << " link " << frame->daq_header.stream_id << ". min_ch is "
+                << frame->daq_header.slot_id << " stream " << frame->daq_header.stream_id << ". min_ch is "
                 << min_ch;
   // Now set each of the channels in our test frame to their
   // corresponding offline channel number, minus the minimum channel
