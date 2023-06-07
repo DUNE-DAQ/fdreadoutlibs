@@ -3,7 +3,6 @@
  * given number of taps and cutoff, as a fraction of the
  * Nyquist frequency. Copied from the corresponding functions
  * in scipy and converted to C++
- * @author Philip Rodrigues (rodriges@fnal.gov)
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have

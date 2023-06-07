@@ -1,6 +1,5 @@
 /**
  * @file ProcessAVX2.hpp Process frames with AVX2 registers and instructions
- * @author Philip Rodrigues (rodriges@fnal.gov)
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have

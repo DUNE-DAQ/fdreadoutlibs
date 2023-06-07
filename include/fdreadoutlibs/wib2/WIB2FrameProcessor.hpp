@@ -1,6 +1,5 @@
 /**
  * @file WIB2FrameProcessor.hpp WIB2 specific Task based raw processor
- * @author Adam Abed Abud (adam.abed.abud@cern.ch)
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have

@@ -1,7 +1,6 @@
 /**
  * @file UtilsAVX2.hpp 
  * Utility methods based on AVX2
- * @author Adam Abed Abud (adam.abed.abud@cern.ch)
  *
  * This is part of the DUNE DAQ , copyright 2023.
  * Licensing/copyright details are in the COPYING file that you should have

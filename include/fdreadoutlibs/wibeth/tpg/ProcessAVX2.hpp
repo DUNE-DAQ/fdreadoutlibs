@@ -3,7 +3,6 @@
  * Simplified hit finding algorithm
  * Process frames with AVX2 registers and instructions
  * Does not compute the FIR, uses a configurable fixed threshold
- * @author Adam Abed Abud (adam.abed.abud@cern.ch)
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have

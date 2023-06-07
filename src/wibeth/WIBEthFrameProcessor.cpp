@@ -1,6 +1,5 @@
 /**
  * @file WIBEthFrameProcessor.hpp WIBEth specific Task based raw processor
- * @author Adam Abed Abud (adam.abed.abud@cern.ch)
  *
  * This is part of the DUNE DAQ , copyright 2023.
  * Licensing/copyright details are in the COPYING file that you should have
