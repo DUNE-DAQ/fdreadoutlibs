@@ -192,8 +192,7 @@ inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame:
 // Expand 14-bit ADCs to 16-bits using the WIBEth format
 inline void
 expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* __restrict__ ucs,
-                            swtpg_wibeth::MessageRegisters* __restrict__ register_array,
-                            int registers_selection
+                            swtpg_wibeth::MessageRegisters* __restrict__ register_array
                             )
 {
 

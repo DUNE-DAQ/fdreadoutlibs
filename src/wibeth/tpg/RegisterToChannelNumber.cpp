@@ -34,8 +34,7 @@ namespace swtpg_wibeth {
  */
 RegisterChannelMap
 get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBEthFrame* frame,
-                                    std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map,
-                                    int registers_selection
+                                    std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map
                                     )
 {
 
@@ -75,7 +74,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
 
   // Expand the test frame, so the offline channel numbers are now in the relevant places in the output registers
   swtpg_wibeth::MessageRegisters register_array;
-  expand_wibeth_adcs(&wibeth_frame, &register_array, registers_selection); 
+  expand_wibeth_adcs(&wibeth_frame, &register_array); 
 
 
   RegisterChannelMap ret;
@@ -124,12 +123,11 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
 RegisterChannelMap
 get_register_to_offline_channel_map_wibeth(
   const dunedaq::fddetdataformats::WIBEthFrame* frame,
-  std::string channel_map_name,
-  int registers_selection
+  std::string channel_map_name
   )
 {
   auto ch_map = dunedaq::detchannelmaps::make_map(channel_map_name);
-  return get_register_to_offline_channel_map_wibeth(frame, ch_map, registers_selection);
+  return get_register_to_offline_channel_map_wibeth(frame, ch_map);
 }
 
 

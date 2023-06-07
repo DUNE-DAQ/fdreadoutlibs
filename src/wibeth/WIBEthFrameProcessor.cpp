@@ -66,9 +66,8 @@ WIBEthPatternGenerator::generate(int source_id)
   }
 }
 
-WIBEthFrameHandler::WIBEthFrameHandler(int register_selector_params)
-  : m_register_selector(register_selector_params)
-  , m_hits_dest(nullptr)
+WIBEthFrameHandler::WIBEthFrameHandler()
+  : m_hits_dest(nullptr)
   , m_tpg_taps_p(nullptr)
 {}
 
@@ -79,12 +78,6 @@ WIBEthFrameHandler::~WIBEthFrameHandler()
   }
   if (m_hits_dest)
 	  delete[] m_hits_dest;
-}
-
-int
-WIBEthFrameHandler::get_registers_selector()
-{
-  return m_register_selector;
 }
 
 void
@@ -148,7 +141,6 @@ WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErr
 WIBEthFrameProcessor::~WIBEthFrameProcessor()
 {
   m_wibeth_frame_handler->reset();
-  m_wibeth_frame_handler_second_half->reset();
 }
 
 void
@@ -159,7 +151,6 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
     m_tps_dropped = 0;
 
     m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
-    m_wibeth_frame_handler_second_half->initialize(m_tpg_threshold_selected);
   } // end if(m_tpg_enabled)
 
   // Reset timestamp check
@@ -184,7 +175,6 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
   if (m_tpg_enabled) {
     // Make temp. buffers reusable on next start.
     m_wibeth_frame_handler->reset();
-    m_wibeth_frame_handler_second_half->reset();
   }
 }
 
@@ -238,7 +228,6 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
     inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
-    //inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler_second_half.get()));
   }
 
   inherited::conf(cfg);
@@ -392,15 +381,14 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
 
   // Frame expansion
   swtpg_wibeth::MessageRegisters registers_array;
-  int register_selection = frame_handler->get_registers_selector();
-  expand_wibeth_adcs(fp, &registers_array, register_selection);
+  expand_wibeth_adcs(fp, &registers_array);
 
   // For debugging purposes you can check the single ADCs 
   //parse_wibeth_adcs(&registers_array);
 
   // Only for the first WIBEth frame, create an offline register map
   if (frame_handler->first_hit) {
-    frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map, register_selection);
+    frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map);
 
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
@@ -409,9 +397,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_no, m_slot_no, m_stream_id));
     }
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
-    // Populate the array taking into account the position of the register selector
+    // Populate the array 
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-      m_register_channels[i + register_selection * swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER] = frame_handler->register_channel_map.channel[i];
+      m_register_channels[i] = frame_handler->register_channel_map.channel[i];
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
 
@@ -433,9 +421,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   frame_handler->m_tpg_processing_info->output[0] = swtpg_wibeth::MAGIC;
 
   if (m_tpg_algorithm == "SimpleThreshold") {
-    swtpg_wibeth::process_window_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER);
+    swtpg_wibeth::process_window_avx2(*frame_handler->m_tpg_processing_info);
   } else if (m_tpg_algorithm == "AbsRS") {
-    swtpg_wibeth::process_window_rs_avx2(*frame_handler->m_tpg_processing_info, register_selection * swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER);
+    swtpg_wibeth::process_window_rs_avx2(*frame_handler->m_tpg_processing_info);
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, "m_tpg_algo");
   }

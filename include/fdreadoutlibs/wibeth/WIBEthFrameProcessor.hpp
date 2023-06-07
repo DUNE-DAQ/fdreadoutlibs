@@ -71,7 +71,7 @@ private:
 class WIBEthFrameHandler {
 
 public: 
-  explicit WIBEthFrameHandler(int register_selector_params );
+  explicit WIBEthFrameHandler();
   ~WIBEthFrameHandler();
   std::unique_ptr<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
 
@@ -135,7 +135,7 @@ protected:
   std::atomic<int> m_ts_error_ctr{ 0 };
 
   /**
-   * Pipeline Stage 1: Pattern generator for hit finding in emulated mode
+   * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
    * */
   void use_pattern_generator(frameptr fp);
 
@@ -183,13 +183,7 @@ private:
 
   std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
-  int selection_of_register = 0; 
-  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>(selection_of_register);
-  int selection_of_register_second_half = 1; 
-  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler_second_half = std::make_unique<WIBEthFrameHandler>(selection_of_register_second_half);
- 
-  //WIBEthFrameHandler m_wibeth_frame_handler;
-  //WIBEthFrameHandler m_wibeth_frame_handler_second_half;
+  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
 
   // Pattern generator configs
   WIBEthPatternGenerator m_wibeth_pattern_generator;

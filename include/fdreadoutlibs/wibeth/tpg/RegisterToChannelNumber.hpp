@@ -32,15 +32,13 @@ struct RegisterChannelMap
  */
 RegisterChannelMap
 get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBEthFrame* frame,
-                                    std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map,
-                                    int registers_selection
+                                    std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap>& ch_map
                                     );
 
 RegisterChannelMap
 get_register_to_offline_channel_map_wibeth(
   const dunedaq::fddetdataformats::WIBEthFrame* frame,
-  std::string channel_map_name,
-  int registers_selection
+  std::string channel_map_name
   );
 
 
