@@ -199,9 +199,6 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
   // Number of ADC words per TS
   int num_adc_words_per_ts = dunedaq::fddetdataformats::WIBEthFrame::s_num_adc_words_per_ts;
 
-  // Integer to increment the frame pointers to get the values for the registers
-  int increment = swtpg_wibeth::SAMPLES_PER_REGISTER * dunedaq::fddetdataformats::WIBEthFrame::s_bits_per_adc;
-
   const dunedaq::fddetdataformats::WIBEthFrame* frame_ptr =
       reinterpret_cast<const dunedaq::fddetdataformats::WIBEthFrame*>(ucs);
 
