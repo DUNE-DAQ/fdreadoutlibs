@@ -200,9 +200,18 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
 
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
-  m_tpg_algorithm = config.tpg_algorithm;
-  m_tp_max_width = config.tp_timeout;
+
+  m_tpg_algorithm = config.tpg_algorithm;  
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
+  if (m_tpg_algorithm == "SimpleThreshold") {
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+  } else if (m_tpg_algorithm == "AbsRS" ) {
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+  } else {
+    throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
+  }
+
+  m_tp_max_width = config.tp_timeout;
 
   m_channel_mask_vec = config.tpg_channel_mask;
   // Converting the input vector of channels masks into an std::set
@@ -419,13 +428,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   // Set the first word to "magic" indicating there is no hit, initially
   frame_handler->m_tpg_processing_info->output[0] = swtpg_wibeth::MAGIC;
 
-  if (m_tpg_algorithm == "SimpleThreshold") {
-    swtpg_wibeth::process_window_avx2(*frame_handler->m_tpg_processing_info);
-  } else if (m_tpg_algorithm == "AbsRS") {
-    swtpg_wibeth::process_window_rs_avx2(*frame_handler->m_tpg_processing_info);
-  } else {
-    throw TPGAlgorithmInexistent(ERS_HERE, "m_tpg_algo");
-  }
+  m_assigned_tpg_algorithm_function(*frame_handler->m_tpg_processing_info);
 
   //GLM: avoid the tp_handler queue/thread
   process_swtpg_hits(frame_handler->m_tpg_processing_info->output, timestamp);

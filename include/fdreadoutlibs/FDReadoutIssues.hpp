@@ -26,13 +26,13 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGAlgorithmInexistent,
-                  "The selected algorithm does not exist: " << algorithm_selection << " . Check your configuration file and seelect either SWTPG or AbsRS.",
+                  "The selected algorithm does not exist: " << algorithm_selection << " . Check your configuration file and seelect either SimpleThreshold or AbsRS.",
                   ((std::string)algorithm_selection))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPTooLong,
-		  "TP with ToT " << width << " for channel " << channel,
-		  ((uint64_t)width) ((uint64_t)channel))
+		          "TP with ToT " << width << " for channel " << channel,
+		          ((uint64_t)width) ((uint64_t)channel))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPDropped,
