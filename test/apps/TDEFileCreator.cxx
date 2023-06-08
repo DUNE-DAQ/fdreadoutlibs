@@ -38,8 +38,9 @@ int main()
         // Timestamp
         fr.set_timestamp(timestamp);
         // Channel
-        fr.get_tde_header()->slot = amc;
-        fr.get_tde_header()->link = i;
+        fr.get_daq_header()->slot_id = amc;
+        fr.get_daq_header()->stream_id = i;
+        fr.get_tde_header()->channel = i;
         fr.set_adc_sample(batch,0);
         v.push_back(fr);
       }
