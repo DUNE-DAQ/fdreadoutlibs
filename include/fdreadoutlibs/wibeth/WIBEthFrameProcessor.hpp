@@ -1,46 +1,29 @@
 /**
- * @file WIBEthProcessor.hpp WIBEth specific Task based raw processor
- * @author Giovanna Lehmann Miotto (giovanna.lehmann@cern.ch)
+ * @file WIBEthFrameProcessor.hpp WIBEth specific Task based raw processor
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBETH_WIBETHFRAMEPROCESSOR_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBETH_WIBETHFRAMEPROCESSOR_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
-#include "appfwk/DAQModuleHelper.hpp"
+// #include "appfwk/DAQModuleHelper.hpp"
+#include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/IterableQueueModel.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
-#include "readoutlibs/readoutconfig/Nljs.hpp"
-#include "readoutlibs/readoutinfo/InfoNljs.hpp"
-#include "readoutlibs/utils/ReusableThread.hpp"
 
-#include "detchannelmaps/TPCChannelMap.hpp"
-#include "fddetdataformats/WIBEthFrame.hpp"
-
-
-#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
-
-//#include "fdreadoutlibs/wibeth/WIB2TPHandler.hpp"
-#include "rcif/cmd/Nljs.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
+//#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
 //#include "trigger/TPSet.hpp"
-//#include "triggeralgs/TriggerPrimitive.hpp"
 
+#include "daqdataformats/Types.hpp"
 
-//#include "tpg/DesignFIR.hpp"
-//#include "tpg/FrameExpand.hpp"
-//#include "tpg/ProcessAVX2.hpp"
-//#include "tpg/ProcessingInfo.hpp"
-//#include "tpg/RegisterToChannelNumber.hpp"
-//#include "tpg/TPGConstants_wibeth.hpp"
+#include "tpg/ProcessingInfo.hpp"
+#include "tpg/RegisterToChannelNumber.hpp"
 
 #include <atomic>
 #include <bitset>
@@ -53,31 +36,65 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <random>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
+// Pattern generator class for creating different types of TP patterns
+// AAA: at the moment the pattern generator is very simple: random source id and random channel
+class WIBEthPatternGenerator {
+
+public:
+  WIBEthPatternGenerator() {
+    m_size = 1000000;
+  };
+  ~WIBEthPatternGenerator() {};
+
+  void generate(int);
+
+  std::vector<int> get_channels() {
+    return m_channel;
+  }
+
+  int get_total_size() {
+    return m_size;
+  }
+ 
+private: 
+  int m_size;
+  std::vector<int> m_channel;
+};
 
 class WIBEthFrameHandler {
 
 public: 
-  explicit WIBEthFrameHandler(int register_selector_params) {
-    m_register_selector = register_selector_params;
-  }
-  WIBEthFrameHandler(const WIBEthFrameHandler&) = delete;
-  WIBEthFrameHandler& operator=(const WIBEthFrameHandler&) = delete;
-  ~WIBEthFrameHandler() { }
-  void initialize() { }
+  explicit WIBEthFrameHandler();
+  ~WIBEthFrameHandler();
+  std::unique_ptr<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
 
+  // Map from expanded AVX register position to offline channel number
+  swtpg_wibeth::RegisterChannelMap register_channel_map; 
+
+  bool first_hit = true;                                                  
+                                                  
+  int get_registers_selector();
+
+  void reset();
+
+  void initialize(int threshold_value);
+ 
+  uint16_t* get_hits_dest();
 private: 
   int m_register_selector;    
+  uint16_t* m_hits_dest ;
+  uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
+  const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
+  const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
+  std::vector<int16_t> m_tpg_taps;                       // firwin_int(7, 0.1, multiplier);
+  int16_t* m_tpg_taps_p = nullptr;
 };
-
-
-
 
 class WIBEthFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
 {
@@ -87,150 +104,100 @@ public:
   using frameptr = types::DUNEWIBEthTypeAdapter*;
   using constframeptr = const types::DUNEWIBEthTypeAdapter*;
   using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
-  using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
+  // Channel map function type
+  typedef int (*chan_map_fn_t)(int);
 
-  explicit WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
-    : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
-  {}
+  explicit WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry);
 
-  ~WIBEthFrameProcessor(){}
+  ~WIBEthFrameProcessor();
 
-  void start(const nlohmann::json& args) override
-  {
-    inherited::start(args);
-  }
+  void start(const nlohmann::json& args) override;
 
-  void stop(const nlohmann::json& args) override
-  {
-    inherited::stop(args);
-  }
+  void stop(const nlohmann::json& args) override;
 
-  void init(const nlohmann::json& /*args*/) override
-  {
-  }
+  void init(const nlohmann::json& args) override;
 
-  void conf(const nlohmann::json& cfg) override
-  {
-    auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-    m_sourceid.id = config.source_id;
-    m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
-    m_error_counter_threshold = config.error_counter_threshold;
-    m_error_reset_freq = config.error_reset_freq;
+  void conf(const nlohmann::json& cfg) override;
 
-    // Setup pre-processing pipeline
-    TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>::add_preprocess_task(
-      std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
-
-    TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>::conf(cfg);
-  }
-
-  void scrap(const nlohmann::json& args) override
-  {
-    TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>::scrap(args);
-  }
-
-  void get_info(opmonlib::InfoCollector& ci, int level)
-  {
-    readoutlibs::readoutinfo::RawDataProcessorInfo info;
-
-    info.num_frame_errors = m_frame_error_count.exchange(0);
-
-    auto now = std::chrono::high_resolution_clock::now();
-    m_t0 = now;
-
-    readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>::get_info(ci, level);
-    ci.add(info);
-  }
+  void get_info(opmonlib::InfoCollector& ci, int level) override;
 
 protected:
   // Internals
-  timestamp_t m_previous_ts = 0;
-  timestamp_t m_current_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
+
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
+
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
-
-
-  void postprocess_example(const types::DUNEWIBEthTypeAdapter* fp)
-  {
-    TLOG() << "Postprocessing: " << fp->get_first_timestamp();
-  }
+  /**
+   * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
+   * */
+  void use_pattern_generator(frameptr fp);
 
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
    * */
-  void timestamp_check(frameptr fp)
-  {
-
-    uint16_t wibeth_tick_difference = types::DUNEWIBEthTypeAdapter::expected_tick_difference;
 
 
-    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
-
-    // If EMU data, emulate perfectly incrementing timestamp
-    if (inherited::m_emulator_mode) {                           // emulate perfectly incrementing timestamp
-      uint64_t ts_next = m_previous_ts + wibeth_tick_difference;                   // NOLINT(build/unsigned)
-      wfptr->set_timestamp(ts_next);
-    }
-
-    // Acquire timestamp
-    m_current_ts = wfptr->get_timestamp();
-
-    // Check timestamp
-    if (m_current_ts - m_previous_ts != wibeth_tick_difference) {
-      ++m_ts_error_ctr;
-      m_error_registry->add_error("MISSING_FRAMES",
-                                  readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_tick_difference, m_current_ts));
-      if (m_first_ts_missmatch) { // log once
-        TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts)
-                                     << " current: " + std::to_string(m_current_ts);
-        m_first_ts_missmatch = false;
-      }
-    }
-
-    if (m_ts_error_ctr > 1000) {
-      if (!m_problem_reported) {
-        TLOG() << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
-               << "Something is wrong with the FE source or with the configuration!";
-        m_problem_reported = true;
-      }
-    }
-
-    m_previous_ts = m_current_ts;
-    m_last_processed_daq_ts = m_current_ts;
-  }
+  void timestamp_check(frameptr fp);
 
   /**
-   * Pipeline Stage 2.: Check WIB headers for error flags
+   * Pipeline Stage 2.: Do software TPG
    * */
-  void frame_error_check(frameptr fp)
-  {
-    if (!fp)
-      return;
 
-    if (m_frames_processed % 10000 == 0) {
-      for (int i = 0; i < m_num_frame_error_bits; ++i) {
-        if (m_error_occurrence_counters[i])
-          m_error_occurrence_counters[i]--;
-      }
-    }
+  void find_hits(constframeptr fp, WIBEthFrameHandler* frame_handler);
+  //void find_hits(constframeptr fp);
 
-    m_frames_processed++;
-  }
 
+  void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
 
 private:
+  bool m_tpg_enabled;
+  std::string m_tpg_algorithm;
+  uint32_t m_tp_max_width;
+  std::vector<int> m_channel_mask_vec;
+  std::set<uint> m_channel_mask_set;
+  uint16_t m_tpg_threshold_selected;
 
-  // Frame error check
-  int m_error_counter_threshold;
-  const int m_num_frame_error_bits = 16;
-  int m_error_occurrence_counters[16] = { 0 };
-  int m_error_reset_freq;
+  std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
-  std::atomic<uint64_t> m_frame_error_count{ 0 }; // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_frames_processed{ 0 };  // NOLINT(build/unsigned)
+  size_t m_num_msg = 0;
+  size_t m_num_push_fail = 0;
+
+  std::atomic<int> m_tpg_hits_count{ 0 };
+
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_no; // NOLINT(build/unsigned)
+  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+
+  // Mapping from expanded AVX register position to offline channel number
+  std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+
+    std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+
+  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
+  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
+
+  // Pattern generator configs
+  WIBEthPatternGenerator m_wibeth_pattern_generator;
+  std::vector<int> m_random_channels; 
+  int m_pattern_index = 0;
+
+  //std::thread m_add_hits_tphandler_thread;
+
   daqdataformats::SourceID m_sourceid;
+
+  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_tps_dropped{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
@@ -238,4 +205,4 @@ private:
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBETH_WIBETHFRAMEPROCESSOR_HPP_
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_

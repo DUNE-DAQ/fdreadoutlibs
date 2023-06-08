@@ -5,19 +5,18 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPG_FRAMEEXPAND_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPG_FRAMEEXPAND_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_TPG_FRAMEEXPAND_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_TPG_FRAMEEXPAND_HPP_
 
-#include "TPGConstants_wib2.hpp"
-#include "fddetdataformats/WIB2Frame.hpp"
-#include "fdreadoutlibs/ProtoWIBSuperChunkTypeAdapter.hpp"
-#include "fdreadoutlibs/DUNEWIBSuperChunkTypeAdapter.hpp"
+#include "TPGConstants_wibeth.hpp"
+#include "fddetdataformats/WIBEthFrame.hpp"
+#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 
-
+#include <iostream>
 #include <array>
 #include <immintrin.h>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 // A little wrapper around an array of 256-bit registers, so that we
 // can explicitly access it as an array of 256-bit registers or as an
@@ -60,9 +59,9 @@ private:
   alignas(32) uint16_t __restrict__ m_array[N * 16]; // NOLINT(build/unsigned)
 };
 
-typedef RegisterArray<swtpg_wib2::NUM_REGISTERS_PER_FRAME> FrameRegisters;
+typedef RegisterArray<swtpg_wibeth::NUM_REGISTERS_PER_FRAME> FrameRegisters;
 
-typedef RegisterArray<swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::FRAMES_PER_MSG> MessageRegisters;
+typedef RegisterArray<swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::FRAMES_PER_MSG> MessageRegisters;
 
 
 
@@ -82,7 +81,7 @@ void
 print256_as16_dec(__m256i var);
 
 //==============================================================================
-inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIB2Frame::word_t* first_word)
+inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame::word_t* first_word)
 {
     __m256i reg=_mm256_lddqu_si256((__m256i*)first_word);
     // printf("Input:      ");
@@ -189,27 +188,104 @@ inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIB2Frame::w
 
 
 
-// Expand 14-bit ADCs to 16-bits using the WIB2 format
+// Expand 14-bit ADCs to 16-bits using the WIBEth format
 inline void
-expand_wib2_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapter* __restrict__ ucs,
-                            swtpg_wib2::MessageRegisters* __restrict__ register_array, 
-                            int registers_selection
+expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* __restrict__ ucs,
+                            swtpg_wibeth::MessageRegisters* __restrict__ register_array
                             )
 {
-  for (size_t iframe = 0; iframe < swtpg_wib2::FRAMES_PER_MSG; ++iframe) {
-    const dunedaq::fddetdataformats::WIB2Frame* frame =
-      reinterpret_cast<const dunedaq::fddetdataformats::WIB2Frame*>(ucs) + iframe; // NOLINT
 
-    for (size_t iblock = 0; iblock < swtpg_wib2::NUM_REGISTERS_PER_FRAME ; ++iblock) {
-      register_array->set_ymm(iframe + iblock * swtpg_wib2::FRAMES_PER_MSG, swtpg_wib2::unpack_one_register(frame->adc_words+7*(iblock+registers_selection*swtpg_wib2::NUM_REGISTERS_PER_FRAME)));
-    }
-    
+  // Number of ADC words per TS
+  int num_adc_words_per_ts = dunedaq::fddetdataformats::WIBEthFrame::s_num_adc_words_per_ts;
 
-  }
+  const dunedaq::fddetdataformats::WIBEthFrame* frame_ptr =
+      reinterpret_cast<const dunedaq::fddetdataformats::WIBEthFrame*>(ucs);
+
+  // Define a pointer to walk the rows of the WIBEth frame which is 2D array
+  const dunedaq::fddetdataformats::WIBEthFrame::word_t (*frame_words_ptr)[14] = frame_ptr->adc_words;
+  //auto frame_words_ptr = frame_ptr->adc_words;  
+
+  // Loop over time frames
+  for (size_t i = 0; i < swtpg_wibeth::FRAMES_PER_MSG; ++i) {
+
+    // The register index is used to decide on which of the 
+    // registers we want to unpack the ADC messages
+    int reg_index = 0;
+
+    // Loop over ADC values (channels) in a given time sample
+    for (int j = 0; j < num_adc_words_per_ts; j++) {
+
+      // The words repeat every 7 iterations. 
+      // In this way we can use the DUNEWIB unpacking 
+      // function (unpack_one_register) 
+      if (j%7 == 0 ) {
+        const dunedaq::fddetdataformats::WIBEthFrame::word_t * first_half = (*(frame_words_ptr + i) + j);
+
+        // Unpack one register and add it to the register array
+        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(first_half));
+        reg_index += 1;
+
+        // Increment the cursor by 224 bits to get the second part of the first time sample
+        // 224 corresponds to 16 (U blocks or ADCs) times 14 which are the bits per ADC. 
+        // Check the spreadsheet for further details
+        char* cursor = (char*) first_half;
+        cursor += 224 / 8; // divide by 8 to get the results in bytes
+        dunedaq::fddetdataformats::WIBEthFrame::word_t * second_half = (dunedaq::fddetdataformats::WIBEthFrame::word_t*) cursor;
+        // Unpack another register and add it to the register array
+        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
+
+        reg_index += 1;
+      }
+
+
+    } // loop over number of adc words per ts  
+  } // loop over time frames  
+
 }
 
 
 
-} // namespace swtpg_wib2
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIB2_TPG_FRAMEEXPAND_HPP_
+inline void
+parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
+{
+  int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
+  int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
+  int TIME_WINDOW_NUM_FRAMES = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
+
+  for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
+
+    const size_t register_offset = j % SAMPLES_PER_REGISTER;
+    const size_t register_index = j / SAMPLES_PER_REGISTER;
+    const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * TIME_WINDOW_NUM_FRAMES;
+    int16_t out_val;
+    for (size_t itime = 0; itime < TIME_WINDOW_NUM_FRAMES; ++itime) {
+      const size_t msg_index = itime / TIME_WINDOW_NUM_FRAMES;
+      const size_t msg_time_offset = itime % TIME_WINDOW_NUM_FRAMES;
+
+      const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
+      const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
+      // The index in uint16_t of the start of the message we want. 
+      const size_t index = msg_start_index + offset_within_msg;
+      //const uint16_t* input16 = unpacked.data(); // NOLINT
+      //out_val = input16[index]
+      out_val = register_array->uint16(index);
+
+      if (itime  == 0) {
+        std::cout << "time_sample: " << itime << " index_output: " << index << "    value:   " << out_val << std::endl;
+      //  std::cout << "============" << std::endl;
+      }
+
+    }
+  }
+
+
+
+}
+
+
+
+
+} // namespace swtpg_wibeth
+
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_TPG_FRAMEEXPAND_HPP_

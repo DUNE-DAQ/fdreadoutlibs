@@ -6,13 +6,13 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIB2_TPG_UTILSAVX2_HPP_
-#define READOUT_SRC_WIB2_TPG_UTILSAVX2_HPP_
+#ifndef READOUT_SRC_WIBEth_TPG_UTILSAVX2_HPP_
+#define READOUT_SRC_WIBEth_TPG_UTILSAVX2_HPP_
 
 
 #include <immintrin.h>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 inline void
 frugal_accum_update_avx2(__m256i& __restrict__ median,
@@ -82,4 +82,4 @@ inline __m256i _mm256_div_epi16 (const __m256i va, const int b)
 
 
 }
-#endif // READOUT_SRC_WIB2_TPG_UTILSAVX2_HPP_
+#endif // READOUT_SRC_WIBEth_TPG_UTILSAVX2_HPP_

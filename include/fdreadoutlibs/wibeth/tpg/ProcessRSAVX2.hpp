@@ -1,27 +1,26 @@
 /**
  * @file ProcessRSAVX2.hpp Process frames with AVX2 registers and instructions
  * using the Running Sum algorithm
- * 
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIB2_TPG_PROCESSRSAVX2_HPP_
-#define READOUT_SRC_WIB2_TPG_PROCESSRSAVX2_HPP_
+#ifndef READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
+#define READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
 
 #include "FrameExpand.hpp"
 #include "UtilsAVX2.hpp"
 #include "ProcessingInfo.hpp"
-#include "TPGConstants_wib2.hpp"
+#include "TPGConstants_wibeth.hpp"
 
 #include <immintrin.h>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 template<size_t NREGISTERS>
 inline void
-process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
+process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 {
 
   // Running sum scaling factor
@@ -83,7 +82,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
     ;
 
     // The channel numbers in each of the slots in the register
-    __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER + channel_offset);
+    __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
     __m256i channels = _mm256_add_epi16(channel_base, iota);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
@@ -120,13 +119,13 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
       __m256i is_lt = _mm256_xor_si256(gt_or_eq, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Update the 25th percentile in the channels that are below the median
-      swtpg_wib2::frugal_accum_update_avx2(quantile25, s, accum25, 10, is_lt);
+      swtpg_wibeth::frugal_accum_update_avx2(quantile25, s, accum25, 10, is_lt);
       // Update the 75th percentile in the channels that are above the median
-      swtpg_wib2::frugal_accum_update_avx2(quantile75, s, accum75, 10, is_gt);
+      swtpg_wibeth::frugal_accum_update_avx2(quantile75, s, accum75, 10, is_gt);
       // Update the median itself in all channels
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wib2::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);
@@ -152,7 +151,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
      //__m256i second_part_div = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
 
      //RS = _mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
-     RS = swtpg_wib2::_mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
+     RS = swtpg_wibeth::_mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
      //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
@@ -163,7 +162,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wib2::frugal_accum_update_avx2(medianRS, RS, accumRS, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, 10, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
 
       // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
@@ -315,7 +314,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
   // Store the output
   for (int i = 0; i < 4; ++i) {
-    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wib2::MAGIC)); // NOLINT(runtime/increment_decrement)
+    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 
   info.nhits = nhits;
@@ -324,7 +323,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
 } // NOLINT(readability/fn_size)
 
-} // namespace swtpg_wib2
+} // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIB2_TPG_PROCESSRSAVX2_HPP_
+#endif // READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
 

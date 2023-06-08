@@ -5,18 +5,18 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIB2_TPG_PROCESSNAIVE_HPP_
-#define READOUT_SRC_WIB2_TPG_PROCESSNAIVE_HPP_
+#ifndef READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_
+#define READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_
 
 #include "FrameExpand.hpp"
 #include "ProcessingInfo.hpp"
-#include "TPGConstants_wib2.hpp"
+#include "TPGConstants_wibeth.hpp"
 
 #include <algorithm>
 #include <inttypes.h>
 #include <limits>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 void
 frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acclimit)
@@ -82,7 +82,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       const size_t msg_index = itime / 12;
       const size_t msg_time_offset = itime % 12;
       // The index in uint16_t of the start of the message we want // NOLINT
-      const size_t msg_start_index = msg_index * swtpg_wib2::ADCS_SIZE / sizeof(uint16_t); // NOLINT
+      const size_t msg_start_index = msg_index * swtpg_wibeth::ADCS_SIZE / sizeof(uint16_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
       const size_t index = msg_start_index + offset_within_msg;
 
@@ -162,6 +162,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   }
 }
 
-} // namespace swtpg_wib2
+} // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIB2_TPG_PROCESSNAIVE_HPP_
+#endif // READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_

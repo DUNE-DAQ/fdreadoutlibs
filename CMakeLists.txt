@@ -60,6 +60,7 @@ daq_add_library(
   wib2/*.cpp
   wib2/tpg/*.cpp
   wibeth/*.cpp
+  wibeth/tpg/*.cpp
   daphne/*.cpp
   tde/*.cpp
   LINK_LIBRARIES ${FDREADOUTLIBS_DEPENDENCIES}
@@ -77,6 +78,7 @@ daq_add_application(WIB2BinaryFrameReader WIB2BinaryFrameReader.cxx TEST LINK_LI
 ##############################################################################
 
 daq_add_unit_test(DAPHNEStreamSuperChunkTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(WIBEthFrameExpansion_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
