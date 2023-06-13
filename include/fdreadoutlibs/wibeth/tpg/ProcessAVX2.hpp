@@ -8,22 +8,22 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIB2_TPG_PROCESSAVX2_HPP_
-#define READOUT_SRC_WIB2_TPG_PROCESSAVX2_HPP_
+#ifndef READOUT_SRC_WIBEth_TPG_PROCESSAVX2_HPP_
+#define READOUT_SRC_WIBEth_TPG_PROCESSAVX2_HPP_
 
 #include "FrameExpand.hpp"
 #include "UtilsAVX2.hpp"
 #include "ProcessingInfo.hpp"
-#include "TPGConstants_wib2.hpp"
+#include "TPGConstants_wibeth.hpp"
 
 #include <immintrin.h>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 
 template<size_t NREGISTERS>
 inline void
-process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
+process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
   //const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
 
@@ -36,7 +36,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
   for (uint16_t ireg = info.first_register; ireg < info.last_register; ++ireg) { // NOLINT(build/unsigned)
 
-    //uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT(build/unsigned)
 
     // ------------------------------------
     // Variables for pedestal subtraction
@@ -61,12 +60,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
     __m256i hit_tover = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg); // NOLINT
 
     // The channel numbers in each of the slots in the register
-    __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER + channel_offset);
+    __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
     __m256i channels = _mm256_add_epi16(channel_base, iota);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
-      const size_t msg_index = itime / 12;
-      const size_t msg_time_offset = itime % 12;
+      const size_t msg_index = itime / info.timeWindowNumFrames;
+      const size_t msg_time_offset = itime % info.timeWindowNumFrames;
       const size_t index = msg_index * NREGISTERS * FRAMES_PER_MSG + FRAMES_PER_MSG * ireg + msg_time_offset;
       // const __m256i* rawp=reinterpret_cast<const __m256i*>(info.input)+index; // NOLINT
 
@@ -76,7 +75,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wib2::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);
@@ -192,14 +191,14 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
   // Store the output
   for (int i = 0; i < 4; ++i) {
-    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wib2::MAGIC)); // NOLINT(runtime/increment_decrement)
+    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 
   info.nhits = nhits;
 
 } // NOLINT(readability/fn_size)
 
-} // namespace swtpg_wib2
+} // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIB2_TPG_PROCESSAVX2_HPP_
+#endif // READOUT_SRC_WIBEth_TPG_PROCESSAVX2_HPP_
 
