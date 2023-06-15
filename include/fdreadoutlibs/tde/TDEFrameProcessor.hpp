@@ -34,10 +34,8 @@ class TDEFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::T
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter
->;
-  using frameptr = types::TDEFrameTypeAdapter
-*;
+  using inherited = readoutlibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter>;
+  using frameptr = types::TDEFrameTypeAdapter*;
   using tdeframeptr = dunedaq::fddetdataformats::TDE16Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 

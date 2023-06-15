@@ -18,10 +18,10 @@ namespace fdreadoutlibs {
 void 
 TDEFrameProcessor::conf(const nlohmann::json& args)
 {
-  TaskRawDataProcessorModel<types::TDEFrameTypeAdapter>::add_preprocess_task(
+  inherited::add_preprocess_task(
       std::bind(&TDEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&TDEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  TaskRawDataProcessorModel<types::TDEFrameTypeAdapter>::conf(args);
+  inherited::conf(args);
 
   auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
   m_clock_frequency = config.clock_speed_hz;
@@ -33,19 +33,23 @@ TDEFrameProcessor::conf(const nlohmann::json& args)
 void 
 TDEFrameProcessor::timestamp_check(frameptr fp)
 {
+  
+  //auto tdef.= reinterpret_cast<dunedaq::fddetdataformats::TDE16Frame*>(fp); // NOLINT
+  auto tdef = fp->data; // NOLINT
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) {         // emulate perfectly incrementing timestamp
-    auto tdef = reinterpret_cast<dunedaq::fddetdataformats::TDE16Frame*>((uint8_t*)fp); // NOLINT
-    auto ts_next = m_previous_ts[tdef->get_channel()] + (dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples); // NOLINT(build/unsigned)
-    tdef->set_timestamp(ts_next);
+    if (m_previous_ts[tdef.get_channel()] == 0) 
+	    m_previous_ts[tdef.get_channel()] = tdef.get_timestamp();
+    auto ts_next = m_previous_ts[tdef.get_channel()] + (dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples); // NOLINT(build/unsigned)
+    tdef.set_timestamp(ts_next);
   }
 
   // Acquire timestamp
-  auto tdefptr = reinterpret_cast<dunedaq::fddetdataformats::TDE16Frame*>(fp); // NOLINT
-  m_current_ts = tdefptr->get_timestamp();
-  auto ch = tdefptr->get_channel();
-  auto tdefh = tdefptr->get_daq_header();
-  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Checking TDE frame timestamp value of " << m_current_ts << " ticks (..." << (static_cast<double>(m_current_ts % (m_clock_frequency*1000)) / static_cast<double>(m_clock_frequency)) << " sec), crate " << tdefh->crate_id << ", slot " << tdefh->slot_id << ", stream " << tdefh->stream_id; // NOLINT
+  m_current_ts = tdef.get_timestamp();
+  auto ch = tdef.get_channel();
+  auto tdefh = tdef.get_daq_header();
+  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Checking TDE frame timestamp value of " << m_current_ts 
+	  << " , crate " << tdefh->crate_id << ", slot " << tdefh->slot_id << ", stream " << tdefh->stream_id; // NOLINT
 
   // Check timestamp
   if (m_previous_ts[ch]!=0 && m_current_ts - m_previous_ts[ch] != dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples) {
@@ -53,7 +57,8 @@ TDEFrameProcessor::timestamp_check(frameptr fp)
     m_error_registry->add_error("MISSING_FRAMES",
                                 readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts[ch] + (dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples), m_current_ts));
     if (m_first_ts_missmatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts[ch])
+      //TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts[ch])
+      TLOG() << "First timestamp MISSMATCH for channel " << ch<< "! -> | previous: " << std::to_string(m_previous_ts[ch])
                                    << " current: " + std::to_string(m_current_ts);
       m_first_ts_missmatch = false;
     }
