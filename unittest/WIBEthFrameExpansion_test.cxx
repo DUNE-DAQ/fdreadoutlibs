@@ -113,12 +113,12 @@ BOOST_AUTO_TEST_CASE(FrameExpansion)
     // Unpack the WIB Eth frame
     swtpg_wibeth::RegisterArray<4*64> unpacked = unpack_wibeth(frame);
 
-    int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
-    int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
-    int TIME_FRAMES = time_samples_per_frame;
-    
+    size_t NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
+    size_t SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
+    size_t TIME_FRAMES = time_samples_per_frame;
+
     bool test_successful=true;
-	    
+
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       // Index of the ADC frame 
       int in_index=16*(j/16)+indices[j%16];

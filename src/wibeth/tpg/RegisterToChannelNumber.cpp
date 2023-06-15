@@ -80,7 +80,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
   RegisterChannelMap ret;
  
   // Define the following variables for convenience
-  int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
+  //int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
   int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
   int TIME_WINDOW_NUM_FRAMES = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
 

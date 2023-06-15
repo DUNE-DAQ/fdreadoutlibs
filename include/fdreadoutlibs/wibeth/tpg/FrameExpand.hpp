@@ -249,9 +249,9 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
 inline void
 parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
 {
-  int NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
-  int SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
-  int TIME_WINDOW_NUM_FRAMES = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
+  size_t NREGISTERS = swtpg_wibeth::NUM_REGISTERS_PER_FRAME;
+  size_t SAMPLES_PER_REGISTER = swtpg_wibeth::SAMPLES_PER_REGISTER;
+  size_t TIME_WINDOW_NUM_FRAMES = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
 
   for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
 
