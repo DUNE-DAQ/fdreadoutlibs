@@ -13,7 +13,9 @@ namespace dunedaq::fdreadoutlibs::types {
    * @brief For DAPHNE Stream the numbers are similar to DUNE-WIB                                                           
    * 12[DAPHNE frames] x 472[Bytes] = 5664[Bytes]                                                                           
    * */
-  const constexpr std::size_t kDAPHNEStreamSuperChunkSize = 5664; // for 12: 5664 
+  const constexpr std::size_t kDAPHNEStreamNumFrames = 12;
+  const constexpr std::size_t kDAPHNEStreamFrameSize = 472;
+  const constexpr std::size_t kDAPHNEStreamSuperChunkSize = kDAPHNEStreamNumFrames * kDAPHNEStreamFrameSize; // for 12: 5664 
 
   struct DAPHNEStreamSuperChunkTypeAdapter {
 
@@ -72,9 +74,9 @@ namespace dunedaq::fdreadoutlibs::types {
 
     constexpr size_t get_payload_size() const { return get_num_frames() * get_frame_size(); } // 12*472 -> 5664
 
-    constexpr size_t get_num_frames() const { return 12; }
+    constexpr size_t get_num_frames() const { return kDAPHNEStreamNumFrames; }
 
-    constexpr size_t get_frame_size() const { return 472; }
+    constexpr size_t get_frame_size() const { return kDAPHNEStreamFrameSize; }
 
     static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
     static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
