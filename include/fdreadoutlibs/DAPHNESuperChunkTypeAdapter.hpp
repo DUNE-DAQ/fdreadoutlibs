@@ -19,7 +19,9 @@ namespace types {
  * @brief For DAPHNE the numbers are different.
  * 12[DAPHNE frames] x 454[32-bit words] x 4[Bytes per word] = 21792[Bytes]
  * */
-const constexpr std::size_t kDAPHNESuperChunkSize = 21792; // for 12: 21792
+const constexpr std::size_t kDAPHNENumFrames = 12;
+const constexpr std::size_t kDAPHNEFrameSize = 1816;
+const constexpr std::size_t kDAPHNESuperChunkSize = kDAPHNENumFrames * kDAPHNEFrameSize; // for 12: 21792
 struct DAPHNESuperChunkTypeAdapter
 {
   using FrameType = dunedaq::fddetdataformats::DAPHNEFrame;
@@ -49,7 +51,7 @@ struct DAPHNESuperChunkTypeAdapter
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < 12; ++i) {
-      auto df = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * 584); // NOLINT
+      auto df = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * get_frame_size()); // NOLINT
       df->daq_header.timestamp_1 = ts_next;
       df->daq_header.timestamp_2 = ts_next >> 32;
       ts_next += offset;
@@ -80,11 +82,11 @@ struct DAPHNESuperChunkTypeAdapter
     return reinterpret_cast<FrameType*>(data + kDAPHNESuperChunkSize); // NOLINT
   }
 
-  size_t get_payload_size() { return 21792; }
+  size_t get_payload_size() { return get_num_frames() * get_frame_size(); }
 
-  size_t get_num_frames() { return 12; }
+  size_t get_num_frames() { return kDAPHNENumFrames; }
 
-  size_t get_frame_size() { return 1816; }
+  size_t get_frame_size() { return kDAPHNEFrameSize; }
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
