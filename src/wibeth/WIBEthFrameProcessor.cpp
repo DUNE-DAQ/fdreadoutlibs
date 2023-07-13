@@ -156,8 +156,13 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   m_previous_ts = 0;
   m_current_ts = 0;
   m_first_ts_missmatch = true;
-  m_problem_reported = false;
+  m_ts_problem_reported = false;
   m_ts_error_ctr = 0;
+
+  m_first_seq_id_mismatch = true;
+  m_seq_id_problem_reported = false;
+  m_seq_id_error_ctr = 0;
+
 
   // Reset stats
   m_t0 = std::chrono::high_resolution_clock::now();
@@ -224,6 +229,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   m_slot_no = config.slot_id;
   m_stream_id = config.link_id;
   // Setup pre-processing pipeline
+  inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
     m_tpg_enabled = true;
@@ -245,6 +251,9 @@ void
 WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
+  info.num_seq_id_errors = m_seq_id_error_ctr.exchange(0);
+  info.num_ts_errors = m_ts_error_ctr.exchange(0);
+  
 
   auto now = std::chrono::high_resolution_clock::now();
   if (m_tpg_enabled) {
@@ -325,6 +334,56 @@ WIBEthFrameProcessor::use_pattern_generator(frameptr fp)
   } // if not first frame
 }
 
+
+/**
+ * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
+ * */
+void
+WIBEthFrameProcessor::sequence_check(frameptr fp)
+{
+
+  // If EMU data, emulate perfectly incrementing timestamp
+  if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+    // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
+    auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
+    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
+      //auto wfh = const_cast<dunedaq::fddetdataformats::WIBEthFrame*>(wf->header());
+      wf->daq_header.crate_id = m_crate_no;
+      wf->daq_header.slot_id = m_slot_no;
+      wf->daq_header.stream_id = m_stream_id; 
+      wf->daq_header.seq_id = (m_previous_seq_id+i) & 0xfff;
+      wf++;
+    }
+  }
+
+  // Acquire timestamp
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
+  m_current_seq_id = wfptr->daq_header.seq_id;
+
+  // Check sequence id
+  // Calculate the next sequence id (12 bits)
+  uint16_t expected_seq_id = (m_previous_seq_id + fp->get_num_frames()) & 0xfff;
+  if (m_current_seq_id != expected_seq_id) {
+    ++m_seq_id_error_ctr;
+    m_error_registry->add_error("SEQUENCE_ID_JUMP", readoutlibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
+    if (m_first_seq_id_mismatch) { // log once
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
+      m_first_seq_id_mismatch = false;
+    }
+  }
+
+  if (m_seq_id_error_ctr > 1000) {
+    if (!m_seq_id_problem_reported) {
+      TLOG() << "*** Data Integrity ERROR *** Sequence ID continuity is completely broken! "
+             << "Something is wrong with the FE source or with the configuration!";
+      m_seq_id_problem_reported = true;
+    }
+  }
+
+  m_previous_seq_id = m_current_seq_id;
+}
+
+
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
  * */
@@ -365,10 +424,10 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   }
 
   if (m_ts_error_ctr > 1000) {
-    if (!m_problem_reported) {
+    if (!m_ts_problem_reported) {
       TLOG() << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
              << "Something is wrong with the FE source or with the configuration!";
-      m_problem_reported = true;
+      m_ts_problem_reported = true;
     }
   }
 
