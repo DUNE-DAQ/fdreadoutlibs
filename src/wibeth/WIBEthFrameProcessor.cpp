@@ -251,7 +251,11 @@ void
 WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
+
   info.num_seq_id_errors = m_seq_id_error_ctr.exchange(0);
+  info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
+  info.max_seq_id_jump = m_seq_id_max_jump.exchange(0);
+
   info.num_ts_errors = m_ts_error_ctr.exchange(0);
   
 
@@ -363,13 +367,25 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
   // Check sequence id
   // Calculate the next sequence id (12 bits)
   uint16_t expected_seq_id = (m_previous_seq_id + fp->get_num_frames()) & 0xfff;
-  if (m_current_seq_id != expected_seq_id) {
+  int16_t delta_seq_id = m_current_seq_id-expected_seq_id;
+  if ( delta_seq_id > 0x800) {
+    delta_seq_id -= 0x1000;
+  } else if ( delta_seq_id < -0x7ff) {
+    delta_seq_id += 0x1000;
+  }
+
+  if (delta_seq_id != 0) {
+    // uint16_t delta_seq_id = (m_current_seq_id-expected_seq_id);
     ++m_seq_id_error_ctr;
+    m_seq_id_max_jump = std::max(delta_seq_id, m_seq_id_max_jump.load());
+    m_seq_id_min_jump = std::min(delta_seq_id, m_seq_id_min_jump.load());
+
     m_error_registry->add_error("SEQUENCE_ID_JUMP", readoutlibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
     if (m_first_seq_id_mismatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISSMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
       m_first_seq_id_mismatch = false;
     }
+
   }
 
   if (m_seq_id_error_ctr > 1000) {

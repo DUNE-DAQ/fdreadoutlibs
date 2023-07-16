@@ -139,6 +139,8 @@ protected:
   bool m_first_seq_id_mismatch = true;
   bool m_seq_id_problem_reported = false;
   std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
+  std::atomic<int16_t> m_seq_id_min_jump{ 0 };
+  std::atomic<int16_t> m_seq_id_max_jump{ 0 };
 
   /**
    * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
