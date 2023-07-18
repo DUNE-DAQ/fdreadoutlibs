@@ -80,6 +80,7 @@ struct DUNEWIBEthTypeAdapter
 
   size_t get_frame_size() { return kDUNEWIBEthSize; }
 
+  static const constexpr size_t fixed_payload_size = 7200;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIBEth;
   static const constexpr uint64_t expected_tick_difference = 2048; // NOLINT(build/unsigned)

@@ -86,6 +86,7 @@ struct DUNEWIBSuperChunkTypeAdapter
 
   size_t get_frame_size() { return sizeof(struct dunedaq::fddetdataformats::WIB2Frame); }
 
+  static const constexpr size_t fixed_payload_size = 5664;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIB;
   static const constexpr uint64_t expected_tick_difference = 32; // NOLINT(build/unsigned)
