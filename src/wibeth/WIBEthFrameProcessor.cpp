@@ -252,11 +252,11 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
   readoutlibs::readoutinfo::RawDataProcessorInfo info;
 
-  info.num_seq_id_errors = m_seq_id_error_ctr.exchange(0);
+  info.num_seq_id_errors = m_seq_id_error_ctr.load();
   info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
   info.max_seq_id_jump = m_seq_id_max_jump.exchange(0);
 
-  info.num_ts_errors = m_ts_error_ctr.exchange(0);
+  info.num_ts_errors = m_ts_error_ctr.load();
   
 
   auto now = std::chrono::high_resolution_clock::now();
