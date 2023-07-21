@@ -79,7 +79,7 @@ namespace dunedaq::fdreadoutlibs::types {
     constexpr size_t get_frame_size() const { return kDAPHNEStreamFrameSize; }
 
     static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
-    static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
+    static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNEStream;
     static const constexpr uint64_t expected_tick_difference = 64; // NOLINT(build/unsigned)    
   };
 
