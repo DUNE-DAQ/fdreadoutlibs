@@ -15,6 +15,7 @@
 #include <string>
 
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::readoutlibs::logging::TLVL_FRAME_RECEIVED;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -47,6 +48,8 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 
   // Acquire timestamp
   m_current_ts = fp->get_first_timestamp();
+  uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
+  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)"; // NOLINT
 
   // Check timestamp
   // RS warning : not fixed rate!
