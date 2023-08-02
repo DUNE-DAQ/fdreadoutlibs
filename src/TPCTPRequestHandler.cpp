@@ -59,7 +59,7 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
   int new_tpsets = m_new_tpsets.exchange(0);
   int new_tps_dropped = m_new_tps_dropped.exchange(0);
   int new_heartbeats = m_new_heartbeats.exchange(0);
-  double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
+  //double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
   //TLOG() << "TPSets rate: " << std::to_string(new_tpsets / seconds) << " [Hz], TP rate: " << std::to_string(new_tps / seconds) << ", heartbeats: " << std::to_string(new_heartbeats / seconds) << " [Hz]";
   //info.rate_tp_hits = new_hits / seconds / 1000.;
  
