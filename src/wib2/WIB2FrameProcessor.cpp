@@ -232,7 +232,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
     if (config.emulator_mode) {
       m_wib2_pattern_generator.generate(m_sourceid.id);
       m_random_channels = m_wib2_pattern_generator.get_channels();
-      inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
+      //inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
@@ -295,38 +295,6 @@ WIB2FrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   ci.add(info);
 }
 
-/**
- * Add hits using the pattern generator only when in emulated mode
- * */
-void
-WIB2FrameProcessor::use_pattern_generator(frameptr fp)
-{
-
-  // If we are not in the first superchunk then we start applying the pattern generator
-  // This is because we use the ADC values of the first wib frame as the pedestal baseline
-  if (m_current_ts != 0) {
-    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>((uint8_t*)fp);
-
-    m_pattern_generator_current_ts = wfptr->get_timestamp();
-
-    // Adding a hit every 2442 gives a total Sent TP rate of approx 100 Hz/wire
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 2442) {
-
-      // Reset the pattern from the beginning if it reaches the maximum
-      m_pattern_index++;
-      if (m_pattern_index == m_wib2_pattern_generator.get_total_size()) {
-        m_pattern_index = 0;
-      }
-
-      // Set the ADC to the uint16 maximum value
-     
-      wfptr->set_adc(m_random_channels[m_pattern_index], 16383);
-      //TLOG() << "Lift channel " << m_random_channels[m_pattern_index] << " to " << wfptr->get_adc(m_random_channels[m_pattern_index]);
-      // Update the previous timestamp of the pattern generator
-      m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
-    } // timestamp difference
-  } // if not first superchunk
-}
 
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in WIB frame

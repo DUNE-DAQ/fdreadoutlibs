@@ -230,7 +230,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
     if (config.emulator_mode) {
       m_wibeth_pattern_generator.generate(m_sourceid.id);
       m_random_channels = m_wibeth_pattern_generator.get_channels();
-      inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::use_pattern_generator, this, std::placeholders::_1));
+      //inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::use_pattern_generator, this, std::placeholders::_1));
     }
 
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);

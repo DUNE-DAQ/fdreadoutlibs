@@ -57,6 +57,10 @@ namespace dunedaq::fdreadoutlibs::types {
     void fake_geoid(uint16_t /*crate_id*/, uint16_t /*slot_id*/, uint16_t /*link_id*/) {
     }
 
+    void fake_adc_pattern(int /*channel*/) {
+    }
+
+
     void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT                                                
     {
       // Set frame error bits in header                                                                                     
