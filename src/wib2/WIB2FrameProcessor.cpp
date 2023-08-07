@@ -53,17 +53,6 @@ DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-void
-WIB2PatternGenerator::generate(int source_id)
-{
-  //TLOG() << "Generate random ADC patterns" ;
-  std::srand(source_id*12345678);
-  m_channel.reserve(m_size);
-  for (int i = 0; i < m_size; i++) {
-      int random_ch = std::rand()%256;
-      m_channel.push_back(random_ch);
-  }
-}
 
 WIB2FrameHandler::WIB2FrameHandler(int register_selector_params)
   : m_register_selector(register_selector_params)
@@ -229,12 +218,6 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
     m_tpg_enabled = true;
-    if (config.emulator_mode) {
-      m_wib2_pattern_generator.generate(m_sourceid.id);
-      m_random_channels = m_wib2_pattern_generator.get_channels();
-      //inherited::add_preprocess_task(std::bind(&WIB2FrameProcessor::use_pattern_generator, this, std::placeholders::_1));
-    }
-
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
     inherited::add_postprocess_task(std::bind(&WIB2FrameProcessor::find_hits, this, std::placeholders::_1, m_wib2_frame_handler.get()));

@@ -53,17 +53,6 @@ DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-void
-WIBEthPatternGenerator::generate(int source_id)
-{
-  //TLOG() << "Generate random ADC patterns" ;
-  std::srand(source_id*12345678);
-  m_channel.reserve(m_size);
-  for (int i = 0; i < m_size; i++) {
-      int random_ch = std::rand()%64;
-      m_channel.push_back(random_ch);
-  }
-}
 
 WIBEthFrameHandler::WIBEthFrameHandler()
   : m_hits_dest(nullptr)
@@ -227,12 +216,6 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
   if (config.enable_tpg) {
     m_tpg_enabled = true;
-    if (config.emulator_mode) {
-      m_wibeth_pattern_generator.generate(m_sourceid.id);
-      m_random_channels = m_wibeth_pattern_generator.get_channels();
-      //inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::use_pattern_generator, this, std::placeholders::_1));
-    }
-
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
 
     inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
@@ -290,39 +273,6 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   m_t0 = now;
   inherited::get_info(ci, level);
   ci.add(info);
-}
-
-/**
- * Add hits using the pattern generator only when in emulated mode
- * */
-void
-WIBEthFrameProcessor::use_pattern_generator(frameptr fp)
-{
-
-  // If we are not in the first WIBEth fram then we start applying the pattern generator
-  // This is because we use the ADC values of the first wib frame as the pedestal baseline
-  if (m_current_ts != 0) {
-    auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
-
-    m_pattern_generator_current_ts = wfptr->get_timestamp();
-
-    // Adding a hit every 2442*4  gives a total Sent TP rate of approx 100 Hz/wire
-    if (m_pattern_generator_current_ts - m_pattern_generator_previous_ts > 9768) {
-
-      // Reset the pattern from the beginning if it reaches the maximum
-      m_pattern_index++;
-      if (m_pattern_index == m_wibeth_pattern_generator.get_total_size()) {
-        m_pattern_index = 0;
-      }
-
-      // Set the ADC to the uint16 maximum value 
-      // AAA: setting only the first time sample
-      wfptr->set_adc(m_random_channels[m_pattern_index],0,16383);
-      //TLOG() << "Lift channel " << m_random_channels[m_pattern_index] << " to " << wfptr->get_adc(m_random_channels[m_pattern_index]);
-      // Update the previous timestamp of the pattern generator
-      m_pattern_generator_previous_ts = m_pattern_generator_current_ts;
-    } // timestamp difference
-  } // if not first frame
 }
 
 /**
