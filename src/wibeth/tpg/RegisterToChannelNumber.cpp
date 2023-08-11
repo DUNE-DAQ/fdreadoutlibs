@@ -108,7 +108,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
     int16_t out_val = register_array.uint16(index);
     ret.channel[i] = out_val + min_ch;
 
-    std::cout << " index: " << index << "    value:   " << out_val << std::endl;
+    //std::cout << " index: " << index << "    value:   " << out_val << std::endl;
 
 
 
