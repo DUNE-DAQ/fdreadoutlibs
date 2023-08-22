@@ -101,14 +101,36 @@ protected:
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 
+  uint16_t m_previous_seq_id = 0;
+  uint16_t m_current_seq_id = 0;
+
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
+
   bool m_first_ts_missmatch = true;
-  bool m_problem_reported = false;
-  std::atomic<int> m_ts_error_ctr{ 0 };
+  bool m_ts_problem_reported = false;
+  std::atomic<uint64_t> m_ts_error_ctr{ 0 };
+
+  bool m_first_seq_id_mismatch = true;
+  bool m_seq_id_problem_reported = false;
+  std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
+  std::atomic<int16_t> m_seq_id_min_jump{ 0 };
+  std::atomic<int16_t> m_seq_id_max_jump{ 0 };
 
   /**
-   * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
+   * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
+   * */
+  void use_pattern_generator(frameptr fp);
+
+  /**
+   * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
    * */
 
+  void sequence_check(frameptr fp);
+
+  /**
+   * Pipeline Stage 1.: Check proper timestamp increments in DAQ Eth header
+   * */
 
   void timestamp_check(frameptr fp);
 
