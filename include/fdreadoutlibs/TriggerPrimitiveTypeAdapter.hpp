@@ -50,6 +50,8 @@ struct TriggerPrimitiveTypeAdapter
 
   void fake_geoid(uint16_t /*crate_id*/, uint16_t /*slot_id*/, uint16_t /*link_id*/) {}
 
+  void fake_adc_pattern(int /*channel*/) {}
+
   FrameType* begin() { return this; }
 
   FrameType* end() { return (this + 1); } // NOLINT

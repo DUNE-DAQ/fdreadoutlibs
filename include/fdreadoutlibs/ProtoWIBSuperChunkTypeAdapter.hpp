@@ -66,6 +66,9 @@ struct ProtoWIBSuperChunkTypeAdapter
         df->get_wib_header()->fiber_no = link_id;
       }
   }  
+
+  void fake_adc_pattern(int /*channel*/) {}
+
   void fake_frame_errors(std::vector<uint16_t>* fake_errors) // NOLINT(build/unsigned)
   {
     auto wf = reinterpret_cast<dunedaq::fddetdataformats::WIBFrame*>(((uint8_t*)(&data))); // NOLINT

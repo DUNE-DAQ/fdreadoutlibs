@@ -42,31 +42,6 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-// Pattern generator class for creating different types of TP patterns
-// AAA: at the moment the pattern generator is very simple: random source id and random channel
-class WIBEthPatternGenerator {
-
-public:
-  WIBEthPatternGenerator() {
-    m_size = 1000000;
-  };
-  ~WIBEthPatternGenerator() {};
-
-  void generate(int);
-
-  std::vector<int> get_channels() {
-    return m_channel;
-  }
-
-  int get_total_size() {
-    return m_size;
-  }
- 
-private: 
-  int m_size;
-  std::vector<int> m_channel;
-};
-
 class WIBEthFrameHandler {
 
 public: 
@@ -151,14 +126,11 @@ protected:
    * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
    * */
 
-
   void sequence_check(frameptr fp);
-
 
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in DAQ Eth header
    * */
-
 
   void timestamp_check(frameptr fp);
 
@@ -202,11 +174,6 @@ private:
   std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
   std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
-
-  // Pattern generator configs
-  WIBEthPatternGenerator m_wibeth_pattern_generator;
-  std::vector<int> m_random_channels; 
-  int m_pattern_index = 0;
 
   //std::thread m_add_hits_tphandler_thread;
 

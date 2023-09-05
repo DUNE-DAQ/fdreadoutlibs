@@ -67,6 +67,9 @@ struct DAPHNESuperChunkTypeAdapter
       }
   }
 
+  void fake_adc_pattern(int /*channel*/) {
+  }
+
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
   {
     // Set frame error bits in header
