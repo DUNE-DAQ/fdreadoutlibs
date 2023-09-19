@@ -42,31 +42,6 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-// Pattern generator class for creating different types of TP patterns
-// AAA: at the moment the pattern generator is very simple: random source id and random channel
-class WIBEthPatternGenerator {
-
-public:
-  WIBEthPatternGenerator() {
-    m_size = 1000000;
-  };
-  ~WIBEthPatternGenerator() {};
-
-  void generate(int);
-
-  std::vector<int> get_channels() {
-    return m_channel;
-  }
-
-  int get_total_size() {
-    return m_size;
-  }
- 
-private: 
-  int m_size;
-  std::vector<int> m_channel;
-};
-
 class WIBEthFrameHandler {
 
 public: 
@@ -126,12 +101,21 @@ protected:
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 
+  uint16_t m_previous_seq_id = 0;
+  uint16_t m_current_seq_id = 0;
+
   dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
 
   bool m_first_ts_missmatch = true;
-  bool m_problem_reported = false;
-  std::atomic<int> m_ts_error_ctr{ 0 };
+  bool m_ts_problem_reported = false;
+  std::atomic<uint64_t> m_ts_error_ctr{ 0 };
+
+  bool m_first_seq_id_mismatch = true;
+  bool m_seq_id_problem_reported = false;
+  std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
+  std::atomic<int16_t> m_seq_id_min_jump{ 0 };
+  std::atomic<int16_t> m_seq_id_max_jump{ 0 };
 
   /**
    * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
@@ -139,9 +123,14 @@ protected:
   void use_pattern_generator(frameptr fp);
 
   /**
-   * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
+   * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
    * */
 
+  void sequence_check(frameptr fp);
+
+  /**
+   * Pipeline Stage 1.: Check proper timestamp increments in DAQ Eth header
+   * */
 
   void timestamp_check(frameptr fp);
 
@@ -185,11 +174,6 @@ private:
   std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
   std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
-
-  // Pattern generator configs
-  WIBEthPatternGenerator m_wibeth_pattern_generator;
-  std::vector<int> m_random_channels; 
-  int m_pattern_index = 0;
 
   //std::thread m_add_hits_tphandler_thread;
 

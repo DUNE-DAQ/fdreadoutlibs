@@ -65,6 +65,11 @@ struct DUNEWIBSuperChunkTypeAdapter
       }
   }
 
+  void fake_adc_pattern(int channel) {
+    auto frame = reinterpret_cast<dunedaq::fddetdataformats::WIB2Frame*>(&data); // NOLINT
+    frame->set_adc(channel, 16383);    
+  }
+
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
   {
     // Set error bits in header
