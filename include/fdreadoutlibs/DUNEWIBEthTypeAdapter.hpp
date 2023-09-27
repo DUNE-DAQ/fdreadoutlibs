@@ -59,6 +59,13 @@ struct DUNEWIBEthTypeAdapter
       }
   }
 
+  void fake_adc_pattern(int channel) {
+    auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
+    // Set the ADC to the uint16 maximum value 
+    // AAA: setting only the first time sample
+    frame->set_adc(channel, 0, 16383);
+  }
+
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
   {
     // Set error bits in header
@@ -80,6 +87,7 @@ struct DUNEWIBEthTypeAdapter
 
   size_t get_frame_size() { return kDUNEWIBEthSize; }
 
+  static const constexpr size_t fixed_payload_size = 7200;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIBEth;
   static const constexpr uint64_t expected_tick_difference = 2048; // NOLINT(build/unsigned)

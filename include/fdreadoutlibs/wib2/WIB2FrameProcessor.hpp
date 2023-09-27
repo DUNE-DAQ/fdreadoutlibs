@@ -42,31 +42,6 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-// Pattern generator class for creating different types of TP patterns
-// AAA: at the moment the pattern generator is very simple: random source id and random channel
-class WIB2PatternGenerator {
-
-public:
-  WIB2PatternGenerator() {
-    m_size = 1000000;
-  };
-  ~WIB2PatternGenerator() {};
-
-  void generate(int);
-
-  std::vector<int> get_channels() {
-    return m_channel;
-  }
-
-  int get_total_size() {
-    return m_size;
-  }
- 
-private: 
-  int m_size;
-  std::vector<int> m_channel;
-};
-
 class WIB2FrameHandler {
 
 public: 
@@ -126,17 +101,10 @@ protected:
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 
-  dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
-  dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
-
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
-  /**
-   * Pipeline Stage 1: Pattern generator for hit finding in emulated mode
-   * */
-  void use_pattern_generator(frameptr fp);
 
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
@@ -190,11 +158,6 @@ private:
  
   //WIB2FrameHandler m_wib2_frame_handler;
   //WIB2FrameHandler m_wib2_frame_handler_second_half;
-
-  // Pattern generator configs
-  WIB2PatternGenerator m_wib2_pattern_generator;
-  std::vector<int> m_random_channels; 
-  int m_pattern_index = 0;
 
   //std::thread m_add_hits_tphandler_thread;
 

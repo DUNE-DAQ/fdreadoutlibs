@@ -59,6 +59,10 @@ struct TDEFrameTypeAdapter
 	//df->get_tde_header()->channel = link_id;
       }
   }
+
+  void fake_adc_pattern(int /*channel*/) {
+  }
+
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT(build/unsigned)
   {
   }
