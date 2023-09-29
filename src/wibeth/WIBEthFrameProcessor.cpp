@@ -464,7 +464,7 @@ void
 WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp)
 {
 
-  constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::expected_tick_difference;;
+  constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
