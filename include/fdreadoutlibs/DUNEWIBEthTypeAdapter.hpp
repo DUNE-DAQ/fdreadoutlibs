@@ -91,6 +91,8 @@ struct DUNEWIBEthTypeAdapter
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIBEth;
   static const constexpr uint64_t expected_tick_difference = 2048; // NOLINT(build/unsigned)
+  static const constexpr uint64_t samples_per_frame = 64; // NOLINT(build/unsigned)
+  static const constexpr uint64_t samples_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct dunedaq::fddetdataformats::WIBEthFrame) == kDUNEWIBEthSize,
