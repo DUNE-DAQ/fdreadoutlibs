@@ -20,8 +20,8 @@
 
 #include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessRSAVX2.hpp"
-//#include "fdreadoutlibs/wibeth/tpg/ProcessNaive.hpp"
-//#include "fdreadoutlibs/wibeth/tpg/ProcessNaiveRS.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessNaive.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessNaiveRS.hpp"
 
 
 #include "readoutlibs/models/DefaultRequestHandlerModel.hpp"
@@ -371,7 +371,7 @@ main(int argc, char** argv)
 
     if (select_algorithm == "SimpleThreshold") {
       if (select_implementation == "NAIVE") {
-        //m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else if (select_implementation == "AVX") {
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
@@ -382,7 +382,7 @@ main(int argc, char** argv)
       }
     } else if (select_algorithm == "AbsRS") {
       if (select_implementation == "NAIVE") {        
-        //m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive_RS<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive_RS<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else if (select_implementation == "AVX") {
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
