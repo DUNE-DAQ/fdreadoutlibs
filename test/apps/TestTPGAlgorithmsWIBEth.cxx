@@ -146,8 +146,8 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   
       for (size_t iframe = 0; iframe<swtpg_wibeth::FRAMES_PER_MSG; ++iframe) {
     
-        const size_t msg_index = iframe / 64;
-        const size_t msg_time_offset = iframe % 64;
+        const size_t msg_index = iframe / swtpg_wibeth::FRAMES_PER_MSG; 
+        const size_t msg_time_offset = iframe % swtpg_wibeth::FRAMES_PER_MSG;
         // The index in uint16_t of the start of the message we want // NOLINT 
         const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
         const size_t offset_within_msg = register_t0_start + swtpg_wibeth::SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
@@ -385,7 +385,7 @@ main(int argc, char** argv)
         //m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive_RS<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else if (select_implementation == "AVX") {
-        //m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else {
         std::cout << "Select a valid algorithm implementation. Use --help for further details." << std::endl;

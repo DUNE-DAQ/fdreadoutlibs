@@ -16,12 +16,12 @@
 #include <inttypes.h>
 #include <limits>
 
-namespace swtpg_wib2 {
+namespace swtpg_wibeth {
 
 
 template<size_t NREGISTERS>
 void
-process_window_naive_RS(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
+process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 {
   // Start with taps as floats that add to 1. Multiply by some
   // power of two (2**N) and round to int. Before filtering, cap the
@@ -73,11 +73,11 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
-      const size_t msg_index = itime / 12;
-      const size_t msg_time_offset = itime % 12;
+      const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
+      const size_t msg_time_offset = itime % swtpg_wibeth::FRAMES_PER_MSG;
 
       // The index in uint16_t of the start of the message we want // NOLINT
-      const size_t msg_start_index = msg_index * swtpg_wib2::ADCS_SIZE / sizeof(uint16_t); // NOLINT
+      const size_t msg_start_index = msg_index * swtpg_wibeth::ADCS_SIZE / sizeof(uint16_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
       const size_t index = msg_start_index + offset_within_msg;
 
@@ -227,6 +227,6 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
 
 }
 
-} // namespace swtpg_wib2
+} // namespace swtpg_wibeth
 
 #endif // READOUT_SRC_WIBETH_TPG_PROCESSNAIVERS_HPP_
