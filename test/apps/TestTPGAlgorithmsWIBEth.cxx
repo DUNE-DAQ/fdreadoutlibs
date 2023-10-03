@@ -424,7 +424,7 @@ main(int argc, char** argv)
     //                       Setup the SWTPG
     // =================================================================
 
-    auto limiter = dunedaq::readoutlibs::RateLimiter(166);
+    auto limiter = dunedaq::readoutlibs::RateLimiter(31);
     limiter.init();
 
     fh.initialize(swtpg_threshold);
