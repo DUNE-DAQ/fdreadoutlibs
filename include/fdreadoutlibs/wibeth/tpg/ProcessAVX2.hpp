@@ -25,7 +25,7 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  //const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
+  const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
@@ -58,6 +58,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     __m256i hit_charge = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_charge) + ireg); // NOLINT
     // The time-over-threshold (so far) of the current hit
     __m256i hit_tover = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg); // NOLINT
+
+    // The time of the peak of the current hit
+    __m256i hit_peak_time = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg); // NOLINT
+
+    // The peak adc value
+    __m256i hit_peak_adc = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg); // NOLINT
 
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
@@ -108,7 +114,10 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // so treating everything as epi8 works the same
       __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
       // Divide by the multiplier before adding (implemented as a shift-right)
-      hit_charge = _mm256_adds_epi16(hit_charge, _mm256_srai_epi16(to_add_charge, info.tap_exponent));
+      hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
+
+      // Avoid overflow of the hit charge
+      hit_charge = _mm256_min_epi16(hit_charge, adcMax);
 
       //if(ireg==0){
       //     printf("itime=%ld\n", itime);
@@ -125,6 +134,14 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
       __m256i to_add_tover = _mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
       hit_tover = _mm256_adds_epi16(hit_tover, to_add_tover);
+
+
+      // Calculation of the hit peak time and ADC
+      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
+      hit_peak_time = _mm256_blendv_epi8(hit_tover, hit_peak_time, is_sample_over_adc_peak);
+      hit_peak_adc = _mm256_blendv_epi8(s, hit_peak_adc, is_sample_over_adc_peak);
+      
+      
 
       // Only store the values if there are >0 hits ending on
       // this sample. We have to save the entire 16-channel
@@ -165,6 +182,9 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
+        _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)
+
+        _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
         //printf("charge:"); print256_as16_dec(hit_charge);          printf("\n");
 
@@ -173,6 +193,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
         hit_tover = _mm256_blendv_epi8(hit_tover, zero, left);
+        hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
+        hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
       } // end if(!no_hits_to_store)
 
       prev_was_over = is_over;
@@ -186,6 +208,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over) + ireg, prev_was_over); // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_charge) + ireg, hit_charge);       // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg, hit_tover);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg, hit_peak_time);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg, hit_peak_adc);         // NOLINT
 
   } // end loop over ireg (the 8 registers in this frame)
 
@@ -201,4 +225,3 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 } // namespace swtpg_wibeth
 
 #endif // READOUT_SRC_WIBEth_TPG_PROCESSAVX2_HPP_
-
