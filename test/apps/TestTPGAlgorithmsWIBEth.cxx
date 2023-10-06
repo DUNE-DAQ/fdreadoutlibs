@@ -59,7 +59,7 @@ struct swtpg_output{
 };
 
 int WIBEth_FRAME_SIZE = 7200;
-
+int TIME_TEST = 120;
 unsigned int total_hits = 0;
 bool first_hit = true;
 
@@ -172,7 +172,6 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
     uint16_t chan, hit_end, hit_charge, hit_tover; 
     unsigned int nhits = 0;
 
@@ -214,12 +213,8 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
         save_hit_data(trigprim, "NAIVE");
       }
       ++total_hits;
-      
-      
 
     }
-
-
 }
 
 void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
@@ -281,8 +276,6 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
             save_hit_data(trigprim, "AVX");
           }          
 
-
-
         ++total_hits;
       }
     } // loop over 16 registers   
@@ -316,7 +309,6 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
 
   }  
        
-  
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
   *destination_ptr = swtpg_wibeth::MAGIC;
@@ -331,8 +323,6 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   } else if(select_implementation == "NAIVE") {  
     extract_hits_naive(destination_ptr, timestamp);
   }
-   
-
 
 }
 
@@ -340,8 +330,6 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
 // =================================================================
 //                       MAIN
 // =================================================================
-
-
 int 
 main(int argc, char** argv)
 {
@@ -438,8 +426,6 @@ main(int argc, char** argv)
 
     // Loop over the DUNEWIB Ethernet frames in the file
     while (wibeth_frame_index < num_frames_to_read ){      
-    //while (true){        
-      
 
       // current WIBEth frame
       auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(source.data() + wibeth_frame_index*WIBEth_FRAME_SIZE);
@@ -452,20 +438,19 @@ main(int argc, char** argv)
       // If end of the file is reached, restart the index counter
       if (wibeth_frame_index == num_frames_to_read) {
         wibeth_frame_index = 0;
-	      frame_repeat_index++;
+	frame_repeat_index++;
       }
 
-      // Some printouts 
       if (frame_repeat_index % 500  == 0) {
-
         // Calculate elapsed time in seconds  
         auto now = std::chrono::high_resolution_clock::now();
         auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
         std::cout << "Elapsed time [s]: " << elapsed_seconds << std::endl;      
-	      frame_repeat_index = 0;        
+	
+	frame_repeat_index = 0;        
 
         // stop the testing after a time a condition
-        if (elapsed_seconds > 120) {
+        if (elapsed_seconds > TIME_TEST) {
           wibeth_frame_index = num_frames_to_read;
         }
       }
@@ -479,8 +464,6 @@ main(int argc, char** argv)
     std::cout << "Found in total " << total_hits << " hits." << std::endl;
     
     std::cout << "\n\nFinished testing." << std::endl;
-
-
 
 }
 
