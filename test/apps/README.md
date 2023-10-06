@@ -1,10 +1,10 @@
 # Software TPG Tools
 
 
-`TestTPGAlgorithms` is a testing tool for validating the different TPG algorithms, either in a naive or in AVX implementation. To use the tool use the following. Refer to the code for further details.
+`TestTPGAlgorithmsWIBEth` is a testing tool for validating different TPG algorithms, either in a naive or in AVX implementation. To use the tool use the following. Refer to the code for further details.
 
 ```sh
-$ ./TestTPGAlgorithms --help 
+$ ./TestTPGAlgorithmsWIBEth --help 
 Test TPG algorithms
 Usage: ./TestTPGAlgorithms [OPTIONS]
 
@@ -23,22 +23,16 @@ The options `save_adc_data` and `save_trigprim` are quite useful. The former all
 
 Example of usage: 
 ```sh
-$ ./TestSWTPGAlgorithms --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation NAIVE --save_adc_data 1
-$ ./TestSWTPGAlgorithms --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation AVX  --save_trigprim 1
-
+$ ./TestTPGAlgorithmsWIBEth --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation NAIVE --save_adc_data 1
+$ ./TestTPGAlgorithmsWIBEth.cxx --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation AVX  --save_trigprim 1
 ```
 
 ## Tools 
+Here is a short summary of other tools available in the software TPG test applications repository. Refer to the code for further details. 
+
+`WIBEthBinaryFrameReader` reads a WIBEth frames bin file and prints the respecting channel and adc values. Usage `./WIB2BinaryFrameReader <input_file_name> <input_channel>`
 
 
-Here is a short summary of other tools available in the SWTPG suite. Refer to the code for further details. 
+`WIBEthTestBench` is a test application to check the unpacking step of the SWTPG. 
 
-`WIB2BinaryFrameReader` reads a frames bin file and prints the respecting channel and adc values. Usage `./WIB2BinaryFrameReader <input_file_name> <input_channel>`
-
-
-`WIB2TestBench` is a test application to check the unpacking step of the SWTPG. 
-
-`WIB2AddFakeHits` is a utility tool that is used to create a custom WIB2 frames file suitable for testing different patterns. 
-
-
-
+`WIBEthAddFakeHits` is a utility tool that is used to create a custom WIBEth frame file suitable for testing different patterns. 
