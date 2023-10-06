@@ -110,7 +110,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 
 // Function to save raw ADC data to a file (only for debugging) 
 void save_raw_data(swtpg_wibeth::MessageRegisters register_array, 
-	       uint64_t t0, size_t channel_number,
+	       uint64_t t0, int channel_number,
            std::string source_name)
 {
   std::ofstream out_file;
@@ -133,9 +133,9 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   uint64_t t_current= t0 ; 
   
   const uint16_t* input16 = register_array.data();
-  for (size_t ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
+  for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
-    if (register_index < 0 || register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
+    if (register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
        continue;
 
     // Parse only selected channel number. To select all channels choose -1
@@ -173,7 +173,6 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
     uint16_t chan, hit_end, hit_charge, hit_tover; 
-    unsigned int nhits = 0;
 
     size_t i = 0;
     while (*output_location != swtpg_wibeth::MAGIC) {
@@ -316,7 +315,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
        
   // Insert output of the AVX processing into the swtpg_output 
-  swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
+  //swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
     
   if (select_implementation == "AVX") {
     extract_hits_avx(destination_ptr, timestamp);

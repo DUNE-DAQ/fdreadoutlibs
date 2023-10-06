@@ -31,7 +31,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
   const __m256i scale_factor = _mm256_set1_epi16(5);
 
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
-  const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
+  //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)

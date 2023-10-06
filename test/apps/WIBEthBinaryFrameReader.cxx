@@ -124,8 +124,6 @@ int main(int argc, char** argv)
 
   const std::string ifile_name = std::string(argv[1]);
 
-  const size_t input_ch = atoi(argv[2]);
-
   // Read file
   FrameFile input_file = FrameFile(ifile_name.c_str()); 
 

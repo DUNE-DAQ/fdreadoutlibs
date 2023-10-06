@@ -109,7 +109,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 
 // Function to save raw ADC data to a file (only for debugging) 
 void save_raw_data(swtpg_wib2::MessageRegisters register_array, 
-	       uint64_t t0, size_t channel_number,
+	       uint64_t t0, int channel_number,
            std::string source_name)
 {
   std::ofstream out_file;
@@ -133,7 +133,7 @@ void save_raw_data(swtpg_wib2::MessageRegisters register_array,
   
   const uint16_t* input16 = register_array.data();
   for (size_t ichan = 0; ichan < swtpg_wib2::NUM_REGISTERS_PER_FRAME * swtpg_wib2::SAMPLES_PER_REGISTER; ++ichan) {
-    const size_t register_index = ichan / swtpg_wib2::SAMPLES_PER_REGISTER;
+    const int register_index = ichan / swtpg_wib2::SAMPLES_PER_REGISTER;
     if (register_index < 0 || register_index >= swtpg_wib2::NUM_REGISTERS_PER_FRAME)
        continue;
 
