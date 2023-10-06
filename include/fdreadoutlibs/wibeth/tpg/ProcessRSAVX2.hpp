@@ -31,7 +31,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
   const __m256i scale_factor = _mm256_set1_epi16(5);
 
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
-  const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
+  //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
@@ -173,15 +173,15 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 
       // --------------------------------------------------------------
-      // Pedestal subtraction & inter-quantile range
+      // Inter-quantile range
       // --------------------------------------------------------------
 
       // Find the interquartile range
-      __m256i sigma = _mm256_sub_epi16(quantile75, quantile25);
+      //__m256i sigma = _mm256_sub_epi16(quantile75, quantile25);
       
       // Clamp sigma to a range where it won't overflow when
       // multiplied by info.multiplier*5
-      sigma = _mm256_min_epi16(sigma, sigmaMax);
+      //sigma = _mm256_min_epi16(sigma, sigmaMax);
 
 
 
@@ -189,9 +189,15 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Hit finding
       // --------------------------------------------------------------
       // Mask for channels that are over the threshold in this step
-      // const uint16_t threshold=2000; // NOLINT(build/unsigned)
-      //__m256i is_over = _mm256_cmpgt_epi16(RS, sigma * info.multiplier * info.threshold);
-      __m256i is_over = _mm256_cmpgt_epi16(RS, sigma * info.threshold);
+
+      // IQR-based THRESHOLD
+      //__m256i is_over = _mm256_cmpgt_epi16(RS, sigma * info.threshold);
+
+      // FIXED THRESHOLD
+      __m256i threshold = _mm256_set1_epi16(info.threshold);
+      __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
+
+
       // Mask for channels that left "over threshold" state this step
       __m256i left = _mm256_andnot_si256(is_over, prev_was_over);
 
