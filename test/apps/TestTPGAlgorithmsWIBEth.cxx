@@ -6,8 +6,8 @@
  * received with this code.
  */
 
+
 // DUNE-DAQ
-#include "fddetdataformats/WIBEthFrame.hpp"
 #include "fddetdataformats/WIBEthFrame.hpp"
 
 #include "iomanager/IOManager.hpp"
@@ -36,7 +36,7 @@
 #include <vector>
 #include <random>
 #include <algorithm>
-
+#include <sstream>
 
 #include <cstring>
 #include <immintrin.h>
@@ -48,6 +48,8 @@
 #include <memory>
 
 
+// Test Application 
+#include "TestTPGAlgorithmsWIBEth.hpp"
 
 // =================================================================
 //                       PUBLIC VARIABLES
@@ -71,6 +73,7 @@ std::string select_algorithm = "";
 std::string select_implementation = "";
 bool save_adc_data = false;
 bool save_trigprim = false;
+std::map<std::string, std::string> cfg;
 
 // =================================================================
 //                       FUNCTIONS and UTILITIES
@@ -154,7 +157,8 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
         const size_t index = msg_start_index + offset_within_msg;
     
         int16_t adc_value = input16[index];
-        std::cout << adc_value << std::endl;
+        // std::cout << adc_value << std::endl;
+        std::cout << "IRH ADC value: " << adc_value << ", ichan: " << ichan << ", ts: " << t_current << std::endl; // IRH 
         out_file << ichan << "," <<  adc_value << "," << t_current << std::endl;
         t_current += 32;
       } 
@@ -162,8 +166,79 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
     }
   }
   out_file.close();
+}
+void save_raw_data_bin(swtpg_wibeth::MessageRegisters register_array,
+  uint64_t t0, size_t channel_number,
+  std::string source_name, 
+  dunedaq::fddetdataformats::WIBEthFrame* wfptr)
+{
+  std::ofstream out_file;
 
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);  
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%d-%m-%Y_%H-%M");
+  auto date_time_str = oss.str();
 
+  std::string file_name;
+  if (channel_number == -1) {
+    //file_name = "all_channels_" + source_name + "_data" + date_time_str + ".bin";
+    file_name = "all_channels_" + source_name + "_data.bin";
+  } else {
+    //file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_data" + date_time_str + ".bin";
+    file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_data.bin";
+  }
+  out_file.open(file_name.c_str(), std::ofstream::app);
+
+  size_t msg_size = swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; 
+  size_t num_fr = swtpg_wibeth::FRAMES_PER_MSG ;
+  size_t adc_size = swtpg_wibeth::ADCS_SIZE;  // 8192 
+  std::cout << "IRH ADC message size: " << msg_size << std::endl; // IRH 
+  std::cout << "IRH ADC frames per message: " << num_fr << std::endl; // IRH 
+  std::cout << "IRH ADC packet size [1]: " << msg_size*num_fr << std::endl; // IRH  
+  std::cout << "IRH ADC packet size [2]: " << msg_size*num_fr*adc_size << std::endl; // IRH  
+
+  const uint16_t* input16 = register_array.data();
+  size_t data_size = sizeof(register_array);
+  std::cout << "IRH ADC register array: " << data_size << std::endl; // IRH  
+
+  uint64_t t_current= t0 ; 
+
+  dunedaq::fddetdataformats::WIBEthFrame* output_frame; // hold copy
+  output_frame = wfptr;
+
+  for (size_t ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
+    const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
+    if (register_index < 0 || register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
+       continue;
+
+    // Parse only selected channel number. To select all channels choose -1
+    if (ichan == channel_number || channel_number == -1) { 
+   
+      const size_t register_offset = ichan % swtpg_wibeth::SAMPLES_PER_REGISTER;
+      const size_t register_t0_start = register_index * swtpg_wibeth::SAMPLES_PER_REGISTER * swtpg_wibeth::FRAMES_PER_MSG;
+  
+      for (size_t iframe = 0; iframe<swtpg_wibeth::FRAMES_PER_MSG; ++iframe) {
+    
+        const size_t msg_index = iframe / swtpg_wibeth::FRAMES_PER_MSG; 
+        const size_t msg_time_offset = iframe % swtpg_wibeth::FRAMES_PER_MSG;
+        // The index in uint16_t of the start of the message we want // NOLINT 
+        const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
+        const size_t offset_within_msg = register_t0_start + swtpg_wibeth::SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
+        const size_t index = msg_start_index + offset_within_msg;
+    
+        int16_t adc_value = input16[index];
+        // std::cout << adc_value << std::endl;
+	uint16_t adc_val_input = wfptr->get_adc(ichan, msg_time_offset);
+	output_frame->set_adc(ichan, msg_time_offset, adc_value);
+        std::cout << "IRH ADC value: " << adc_value << " V " << adc_val_input << " @ " << msg_time_offset << ", ichan: " << ichan << ", ts: " << t_current << std::endl; // IRH 
+        //out_file << ichan << "," <<  adc_value << "," << t_current << std::endl;
+        t_current += 32;
+      }
+    }
+  }
+  out_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::fddetdataformats::WIBEthFrame) );
+  out_file.close();
 }
 
 // =================================================================
@@ -173,8 +248,11 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
-    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    //uint16_t chan, hit_end, hit_charge, hit_tover; // IRH
+    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset; // IRH
     unsigned int nhits = 0;
+
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
 
     size_t i = 0;
     while (*output_location != swtpg_wibeth::MAGIC) {
@@ -182,15 +260,23 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       hit_end    = *output_location++;
       hit_charge  = *output_location++;
       hit_tover     = *output_location++;
+      hit_peak_adc  = *output_location++;
+      hit_peak_time = *output_location++;
+      //hit_peak_offset = *output_location++;
 
-
-      //if (hit_charge && chan != swtpg_wibeth::MAGIC) {
-      //  std::cout << "Channel number: " << chan << std::endl;
-      //  std::cout << "Hit charge: " << hit_charge << std::endl;
-      //}
-
+      if (hit_charge && chan != swtpg_wibeth::MAGIC) {
+        std::cout << "Channel number: " << chan << std::endl;
+        std::cout << "Hit charge: " << hit_charge << std::endl;
+        std::cout << "Hit end: " << hit_end << std::endl;
+        std::cout << "Hit tover: " << hit_tover << std::endl;
+        std::cout << "Hit peak adc: " << hit_peak_adc << std::endl;
+        std::cout << "Hit peak time: " << hit_peak_time << std::endl;
+        std::cout << "Hit peak offset: " << hit_peak_offset << std::endl;
+      }
       
       i += 1;
+      chan = 16*(chan/16)+indices[chan%16];
+      /*  // IRH 
       uint64_t tp_t_begin =                                                        
         timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
       uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
@@ -209,18 +295,146 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
       trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
       trigprim.version = 1;
-    
+      */
+
+      uint64_t tp_t_begin =
+        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );
+      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end ); // NB not needed 
+      uint64_t tp_t_peak =
+	timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time - hit_peak_offset);
+	//timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time);
+      std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", hit_peak_offset: " << hit_peak_offset << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
+      //std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
+
+      triggeralgs::TriggerPrimitive trigprim;
+      trigprim.time_start = tp_t_begin;
+      trigprim.time_peak = tp_t_peak;
+
+      trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
+
+
+      trigprim.channel = chan;
+      trigprim.adc_integral = hit_charge;
+      trigprim.adc_peak = hit_peak_adc;
+      trigprim.detid = 666;
+      trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+      trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+      trigprim.version = 1;
+
       if (save_trigprim) {
         save_hit_data(trigprim, "NAIVE");
       }
       ++total_hits;
-      
-      
 
     }
 
 
 }
+
+void extract_naive_pedsub(uint16_t* output_location, uint64_t timestamp) {
+
+    constexpr int clocksPerTPCTick = 32;
+    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
+    //uint16_t chan, hit_end, hit_charge, hit_tover; // IRH
+    //uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset; // IRH
+    int16_t chan, time, adc;
+    unsigned int nhits = 0;
+
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
+
+    size_t i = 0;
+    while (*output_location != swtpg_wibeth::MAGIC) {
+      chan   = *output_location++;
+      time   = *output_location++;
+      adc    = *output_location++;
+
+      i += 1;
+      chan = 16*(chan/16)+indices[chan%16];
+
+      //if (adc && chan != swtpg_wibeth::MAGIC) {
+      if (chan != swtpg_wibeth::MAGIC) {
+        std::cout << "DBG PEDSUB channel, time, adc: " << chan << ", " << time << ", " << adc << std::endl; // loop order: channel/time 
+      }
+    }
+}
+void save_naive_pedsub(uint16_t* output_location, uint64_t timestamp,
+      size_t channel_number,
+      std::string source_name,
+      dunedaq::fddetdataformats::WIBEthFrame* wfptr) {
+
+  std::ofstream out_file;
+
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);  
+  std::ostringstream oss;
+  oss << std::put_time(&tm, "%d-%m-%Y_%H-%M");
+  auto date_time_str = oss.str();
+
+  std::string file_name;
+  if (channel_number == -1) {
+    //file_name = "all_channels_" + source_name + "_data" + date_time_str + ".bin";
+    file_name = "all_channels_" + source_name + "_pedsub_data.bin";
+  } else {
+    //file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_data" + date_time_str + ".bin";
+    file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_pedsub_data.bin";
+  }
+  out_file.open(file_name.c_str(), std::ofstream::app);
+
+  dunedaq::fddetdataformats::WIBEthFrame* output_frame; // hold copy
+  output_frame = wfptr;
+
+
+    constexpr int clocksPerTPCTick = 32;
+    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
+    //uint16_t chan, hit_end, hit_charge, hit_tover; // IRH
+    //uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset; // IRH
+    int16_t chan, time, adc;
+    unsigned int nhits = 0;
+
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14}; 
+
+    size_t i = 0;
+
+    /*while (*output_location != swtpg_wibeth::MAGIC) {
+      chan   = *output_location++;
+      time   = *output_location++;
+      adc    = *output_location++;
+
+      i += 1;
+      chan = 16*(chan/16)+indices[chan%16];
+
+      //if (adc && chan != swtpg_wibeth::MAGIC) {
+      if (chan != swtpg_wibeth::MAGIC) {
+        std::cout << "DBG PEDSUB channel, time, adc: " << chan << ", " << time << ", " << adc << std::endl; // loop order: channel/time 
+      }
+    }
+    */
+
+    for (int ch=0; ch<64; ++ch) {
+      for (int itime=0; itime<64; ++itime) {
+        if (*output_location != swtpg_wibeth::MAGIC) {
+          chan   = *output_location++;
+          time   = *output_location++;
+	  adc    = *output_location++;
+	  i += 1;
+          chan = 16*(chan/16)+indices[chan%16];
+	  if (chan != swtpg_wibeth::MAGIC) {
+            output_frame->set_adc(chan, time, adc);
+	  }
+	}
+      }
+      //uint16_t adc_val = output_frame->get_adc(input_ch, itime);
+      //std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << input_ch << " \t\tTimeSample: " << itime <<  std::endl;
+    }
+    //output_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::fddetdataformats::WIBEthFrame) );  
+  
+
+  out_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::fddetdataformats::WIBEthFrame) );
+  out_file.close();
+
+}
+
+
 
 void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 
@@ -295,11 +509,13 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
 
   // Set CPU affinity of the TPG thread
-  SetAffinityThread(0);
+  //SetAffinityThread(0); // IRH
 
   // Parse the WIBEth frames
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
-  uint64_t timestamp = wfptr->get_timestamp();      
+  uint64_t timestamp = wfptr->get_timestamp();
+  std::cout << "IRH timestamp [64b]: " << timestamp << std::endl; // IRH
+  printf("IRH ts = 0x%" PRIx64 "\n", timestamp); // IRH
   swtpg_wibeth::MessageRegisters registers_array;
   swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
 
@@ -308,28 +524,34 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
 
-    // Save ADC info
+    // Save ADC info - TODO check if whole files is saved ?
     if (save_adc_data){
       save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
     }
-
-
   }  
-       
-  
+  // Save ADC info to binary file - TODO move inside first hit ?
+  std::cout << "DBG save adc data to binary file ? " << cfg.count("save_adc_data_bin") << std::endl;
+  if (cfg.count("save_adc_data_bin") == 1 && cfg["save_adc_data_bin"] == "true") {
+    std::cout << "DBG save adc data to binary file" << std::endl;
+    save_raw_data_bin(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation, wfptr);
+  }
+ 
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
   *destination_ptr = swtpg_wibeth::MAGIC;
   fh.m_tpg_processing_info->output = destination_ptr;
-  m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
+  m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info); // IRH call function 
        
   // Insert output of the AVX processing into the swtpg_output 
   swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
     
   if (select_implementation == "AVX") {
     extract_hits_avx(destination_ptr, timestamp);
-  } else if(select_implementation == "NAIVE") {  
+  } else if (select_implementation == "NAIVE") {  
     extract_hits_naive(destination_ptr, timestamp);
+  } else if (select_implementation == "NAIVE_PEDSUB") {
+    extract_naive_pedsub(destination_ptr, timestamp);
+    save_naive_pedsub(destination_ptr, timestamp, -1, select_algorithm + "_" + select_implementation, wfptr);
   }
    
 
@@ -366,6 +588,9 @@ main(int argc, char** argv)
 
     app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
 
+    std::string app_cfg_fn = "app.cfg";  
+    app.add_option("-c", app_cfg_fn, "App config file. Default: app.cfg");
+
 
     CLI11_PARSE(app, argc, argv);
 
@@ -376,6 +601,9 @@ main(int argc, char** argv)
       } else if (select_implementation == "AVX") {
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
         std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
+      } else if (select_implementation == "NAIVE_PEDSUB") {
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_naive_pedsub<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+	std::cout << "Created an instance of the " << select_algorithm << " algorithm ( " << select_implementation << " )" << std::endl;
       } else {
         std::cout << "Select a valid algorithm implementation. Use --help for further details." << std::endl;
         return 1;
@@ -396,6 +624,18 @@ main(int argc, char** argv)
       return 1;
     }
 
+    // parse/print app configuration file
+    //AppCfg ac = AppCfg(app_cfg_fn);
+    std::ifstream file(app_cfg_fn);
+    //AppCfg ac = AppCfg(file, cfg);
+    //ac.parse(file,cfg);
+    //ac.print(cfg);
+    AppCfg ac = AppCfg(app_cfg_fn);
+    ac.parse(cfg);
+    ac.print(cfg);
+    // usage e.g. 
+    //if (cfg.count("save_adc_data_bin") == 1 && cfg["save_adc_data_bin"] == "true") {
+    //}
 
     
     // =================================================================
@@ -419,13 +659,19 @@ main(int argc, char** argv)
       num_frames_to_read = total_num_frames;
     }
 
-    
+
+    // IRH
+    bool timebased_repeat = false;  // IRH
+    bool countbased_repeat = false; // IRH
+    int elapsed_counts = 0; // IRH
+    bool no_repeat = true;  // IRH
+
     // =================================================================
     //                       Setup the SWTPG
     // =================================================================
 
-    auto limiter = dunedaq::readoutlibs::RateLimiter(31);
-    limiter.init();
+    //auto limiter = dunedaq::readoutlibs::RateLimiter(31); // IRH
+    //limiter.init(); // IRH
 
     fh.initialize(swtpg_threshold);
 
@@ -437,6 +683,8 @@ main(int argc, char** argv)
     auto start_test = std::chrono::high_resolution_clock::now();  
 
     // Loop over the DUNEWIB Ethernet frames in the file
+    std::cout << "IRH number of frames to read: " << num_frames_to_read << std::endl;      
+    std::cout << "IRH START wib frame index: " << wibeth_frame_index << std::endl;      
     while (wibeth_frame_index < num_frames_to_read ){      
     //while (true){        
       
@@ -448,12 +696,21 @@ main(int argc, char** argv)
 
       ++wibeth_frame_index;
 
+      if (no_repeat) { // IRH
+	std::cout << "IRH RUN wibeth frame index: " << wibeth_frame_index << std::endl; // IRH
+        if (wibeth_frame_index == num_frames_to_read) { // IRH
+	  continue; // IRH
+	} // IRH
+      } // IRH
 
       // If end of the file is reached, restart the index counter
       if (wibeth_frame_index == num_frames_to_read) {
         wibeth_frame_index = 0;
 	      frame_repeat_index++;
       }
+
+
+      if (timebased_repeat) { // IRH
 
       // Some printouts 
       if (frame_repeat_index % 500  == 0) {
@@ -465,14 +722,24 @@ main(int argc, char** argv)
 	      frame_repeat_index = 0;        
 
         // stop the testing after a time a condition
-        if (elapsed_seconds > 120) {
+        if (elapsed_seconds > 120) { 
           wibeth_frame_index = num_frames_to_read;
         }
       }
 
+      } // IRH
+
+      if (countbased_repeat) { // IRH
+        if (frame_repeat_index == 2) { // IRH
+	  elapsed_counts++; // IRH
+	  std::cout << "IRH Elapsed counts [#]: " << elapsed_counts << std::endl; // IRH
+          frame_repeat_index = 0; // IRH
+	  wibeth_frame_index = num_frames_to_read; // IRH
+	} // IRH
+      } // IRH 
 	
 
-      limiter.limit();
+      //limiter.limit(); // IRH
 
     }
     std::cout << "\n\n===============================" << std::endl;

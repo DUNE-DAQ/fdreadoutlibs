@@ -83,6 +83,7 @@ WIBEthFrameHandler::reset()
 void
 WIBEthFrameHandler::initialize(int threshold_value)
 {
+  std::cout << "IRH initialize threshold value: " << threshold_value << std::endl; // IRH
   m_tpg_taps = swtpg_wibeth::firwin_int(7, 0.1, m_tpg_multiplier);
   m_tpg_taps.push_back(0);
 

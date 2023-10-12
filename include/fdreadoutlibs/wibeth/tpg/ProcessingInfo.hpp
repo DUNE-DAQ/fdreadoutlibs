@@ -35,6 +35,7 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
+      hit_peak_offset[i] = 0;
       for (size_t j = 0; j < NTAPS; ++j) {
         prev_samp[i * NTAPS + j] = 0;
       }
@@ -70,6 +71,7 @@ struct ChanState
 
   alignas(32) int16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
   alignas(32) int16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+  alignas(32) int16_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 };
 
 template<size_t NREGISTERS>
@@ -106,6 +108,8 @@ struct ProcessingInfo
   template<size_t N>
   void setState(const RegisterArray<N>& first_tick_registers)
   {
+
+    std::cout << "IRH setState. " << std::endl; // IRH
     static_assert(N >= NREGISTERS, "Wrong array size");
 
     // AAA: Loop through all the registers, loop through all the channels, look at the 
