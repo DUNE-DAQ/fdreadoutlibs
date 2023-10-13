@@ -27,6 +27,7 @@
 #include "readoutlibs/models/DefaultRequestHandlerModel.hpp"
 
 #include "triggeralgs/TriggerPrimitive.hpp"
+#include "trgdataformats/TriggerPrimitive.hpp"
 
 #include "hdf5libs/HDF5RawDataFile.hpp"
 
@@ -61,9 +62,8 @@ struct swtpg_output{
   uint64_t timestamp;
 };
 
-int WIBEth_FRAME_SIZE = 7200;
-int TIME_TEST = 120;
 unsigned int total_hits = 0;
+unsigned int total_hits_trigger_primitive = 0;
 bool first_hit = true;
 
 dunedaq::fdreadoutlibs::WIBEthFrameHandler fh;
@@ -138,9 +138,6 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   const uint16_t* input16 = register_array.data();
   for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
-    if (register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
-       continue;
-
     // Parse only selected channel number. To select all channels choose -1
     if (ichan == channel_number || channel_number == -1) { 
    
@@ -156,9 +153,9 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
         const size_t offset_within_msg = register_t0_start + swtpg_wibeth::SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
         const size_t index = msg_start_index + offset_within_msg;
     
-        int16_t adc_value = input16[index];
-        //std::cout << adc_value << std::endl;
-        out_file << ichan << "," <<  adc_value << "," << t_current << std::endl;
+        //int16_t adc_value = input16[index];    
+        int16_t adc_value = register_array.uint16(index);
+        out_file << "Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
         t_current += 32;
       } 
 
@@ -168,6 +165,50 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 
 
 }
+
+void
+save_tp(const dunedaq::trgdataformats::TriggerPrimitive& prim, size_t offset = 0)
+{
+  std::ofstream out_file; 
+  std::ostringstream oss;
+
+  if (save_trigprim) {   
+    auto t = std::time(nullptr);
+    auto tm = *std::localtime(&t);  
+    
+    oss << std::put_time(&tm, "%d-%m-%Y_%H-%M");
+    auto date_time_str = oss.str();
+  
+    std::string file_name = "TriggerPrimitiveRecord_dump_" + date_time_str + ".txt";
+    out_file.open(file_name.c_str(), std::ofstream::app);
+  
+    //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
+    out_file << prim.channel << "," << prim.time_start << "," << prim.time_over_threshold << "," 
+	     << prim.time_peak << "," << prim.adc_integral << ","  << prim.adc_peak << "," << prim.detid << "," << prim.type << "\n";  
+  
+  }
+  out_file.close();
+  
+}
+
+
+void print_tps(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag, int TP_index,
+               size_t offset = 0)
+{
+  size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
+  size_t n_tps = payload_size / sizeof(dunedaq::trgdataformats::TriggerPrimitive);
+  std::cout << "Trigger Primitive number " << TP_index << " with SourceID[" << frag->get_element_id() << "] has " << n_tps << " TPs" << std::endl;
+  total_hits_trigger_primitive = total_hits_trigger_primitive + n_tps ; 
+  size_t remainder = payload_size % sizeof(dunedaq::trgdataformats::TriggerPrimitive);
+  assert(remainder == 0);
+  const dunedaq::trgdataformats::TriggerPrimitive* prim = reinterpret_cast<dunedaq::trgdataformats::TriggerPrimitive*>(frag->get_data());
+  
+  for (size_t i = 0; i < n_tps; ++i) {
+    save_tp(*prim, offset);
+    ++prim;
+  }
+}
+
 
 
 // =================================================================
@@ -290,6 +331,8 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 
 void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
 
+  std::cout << "EXECUTING TPG" << std::endl;
+
   // Set CPU affinity of the TPG thread
   SetAffinityThread(0);
 
@@ -303,10 +346,11 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
     // Save ADC info
-    if (save_adc_data){
-      save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
-    }
-  }  
+    //if (save_adc_data){
+    //  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
+    //}
+  } 
+  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation); 
        
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
@@ -438,6 +482,11 @@ main(int argc, char** argv)
     }
     */
 
+    int record_idx_TR = 0;
+    int record_idx_TP = 0;
+    auto start_test = std::chrono::high_resolution_clock::now();  
+
+
     for (auto const& rid : records) {
       for(auto const& frag_dataset : h5_raw_data_file.get_fragment_dataset_paths(rid)) {
         auto frag_ptr = h5_raw_data_file.get_frag_ptr(frag_dataset);
@@ -447,7 +496,10 @@ main(int argc, char** argv)
         //auto id = frag_ptr->get_element_id();
         //auto element_id = id.id;
         int num_frames =
-          (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);
+          (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
+
+        std::cout << "Trigger Record number " << record_idx_TR << " [ " << frag_ptr->get_element_id() << "] has "   << num_frames << " frames" << std::endl;
+        ++record_idx_TR;
 
         // Calculate the total number of elements in the array
         size_t total_elements = static_cast<size_t>(n_ch) * n_smpl * num_frames;
@@ -467,80 +519,55 @@ main(int argc, char** argv)
           // Unpack the ADC values
           for (size_t j=0; j<n_smpl; ++j){
             for (size_t k=0; k<n_ch; ++k){
-              ptr_res[(n_smpl*n_ch) * i + n_ch*j + k] = fr->get_adc(k, j);
-              //std::cout << fr->get_adc(k, j) << std::endl;
+              ptr_res[(n_smpl*n_ch) * i + n_ch*j + k] = fr->get_adc(k, j);             
             } // loop over channels
           } // loop over time samples    
 
+          if (record_idx_TR == 25) {
+            for (size_t j=0; j<n_smpl; ++j){
+              for (size_t k=0; k<n_ch; ++k){
+                std::cout << "Channel " << k << " time sample " << j << " ADC " <<  fr->get_adc(k, j)  << std::endl;
+                
+              } // loop over channels
+            } // loop over time samples            
+          }
+          
           auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(result.data());
-          execute_tpg(fp);
+          if (record_idx_TR == 25) {
+            execute_tpg(fp);
+          }
+          
 
 
 
 
 
 
-        } // end loop over number of frames
-        //result.resize({num_frames*n_smpl, n_ch});
+        } // end loop over number of frames      
         
+        } 
+        if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
+          if (record_idx_TP == 25) {
+            print_tps(std::move(frag_ptr), record_idx_TP);
+          }
+          ++record_idx_TP;
+        }
         
 
-        } // if fragment is WIBEth
         
       } // loop over all the fragments in a single trigger record    
     } // loop over all trigger records
 
+    // Calculate elapsed time in seconds  
+    auto now = std::chrono::high_resolution_clock::now();
+    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_test).count();  
+    std::cout << "Elapsed time for reading input file [ms]: " << elapsed_milliseconds << std::endl;      
 
 
-
-    /*
-    std::unique_ptr<dunedaq::readoutlibs::FileSourceBuffer> m_source_buffer;
-    m_source_buffer = std::make_unique<dunedaq::readoutlibs::FileSourceBuffer>(10485100, WIBEth_FRAME_SIZE); // AAA: hardcoded values!! 
- 
-    m_source_buffer->read(input_file);
-    auto& source = m_source_buffer->get(); 
-    int total_num_frames = m_source_buffer->num_elements(); // file_ size/chunk_size = 180 
-
-    std::cout << "Number of DUNE WIBEth frames in the input file: " << total_num_frames << std::endl;
-
-
-
-    
-    // =================================================================
-    //                  Process the DUNE WIBEth frames
-    // =================================================================
-    int wibeth_frame_index = 0; 
-    uint64_t frame_repeat_index = 0;
-    auto start_test = std::chrono::high_resolution_clock::now();  
-
-    // Loop over the DUNEWIB Ethernet frames in the file
-    while (wibeth_frame_index < num_frames_to_read ){      
-
-      // current WIBEth frame
-      auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(source.data() + wibeth_frame_index*WIBEth_FRAME_SIZE);
-
-      execute_tpg(fp);
-
-      ++wibeth_frame_index;
-
-
-      // Calculate elapsed time in seconds  
-      auto now = std::chrono::high_resolution_clock::now();
-      auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_test).count();  
-      std::cout << "Elapsed time [ms]: " << elapsed_milliseconds << std::endl;      
-	
-
-    
-
-	
-
-      limiter.limit();
-
-    }
-     */
 
     std::cout << "\n\n===============================" << std::endl;
     std::cout << "Found in total " << total_hits << " hits." << std::endl;
+    std::cout << "Found in total  (from Trigger Primitive objects) " << total_hits_trigger_primitive << " TPs." << std::endl;
     
     std::cout << "\n\nFinished testing." << std::endl;
 
