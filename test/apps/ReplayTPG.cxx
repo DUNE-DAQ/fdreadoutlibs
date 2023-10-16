@@ -136,7 +136,12 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   uint64_t t_current= t0 ; 
   
   const uint16_t* input16 = register_array.data();
+
+  std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
   for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
+
+    int in_index=16*(ichan/16)+indices[ichan%16];
+
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
     // Parse only selected channel number. To select all channels choose -1
     if (ichan == channel_number || channel_number == -1) { 
@@ -155,7 +160,7 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
     
         //int16_t adc_value = input16[index];    
         int16_t adc_value = register_array.uint16(index);
-        out_file << "Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
+        out_file << " Time " << iframe << " channel " <<  in_index << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
         t_current += 32;
       } 
 
@@ -331,8 +336,6 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 
 void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
 
-  std::cout << "EXECUTING TPG" << std::endl;
-
   // Set CPU affinity of the TPG thread
   SetAffinityThread(0);
 
@@ -346,12 +349,11 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
     // Save ADC info
-    //if (save_adc_data){
-    //  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
-    //}
-  } 
-  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation); 
-       
+    if (save_adc_data){
+      save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
+    }
+  }
+         
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
   *destination_ptr = swtpg_wibeth::MAGIC;
@@ -469,21 +471,10 @@ main(int argc, char** argv)
       return 0;
     }
 
-
-    // Check if the selected number of frames is <= than the ones available in the input file
-    /*
-    num_trigger_records = records.size()
-
-    if (num_trigger_records < num_TR_to_read) {
-      std::cout << "\n**ERROR**: Select a valid number of Trigger Records that is less or equal to the ones available in the input file." << std::endl;
-      return 1;
-    } else if (num_TR_to_read == -1) {
-      num_TR_to_read = num_trigger_records;
-    }
-    */
-
     int record_idx_TR = 0;
     int record_idx_TP = 0;
+
+    // Measure the time taken to read the whole trigger record file
     auto start_test = std::chrono::high_resolution_clock::now();  
 
 
@@ -492,64 +483,62 @@ main(int argc, char** argv)
         auto frag_ptr = h5_raw_data_file.get_frag_ptr(frag_dataset);
 
         if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
-
-        //auto id = frag_ptr->get_element_id();
-        //auto element_id = id.id;
-        int num_frames =
-          (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
-
-        std::cout << "Trigger Record number " << record_idx_TR << " [ " << frag_ptr->get_element_id() << "] has "   << num_frames << " frames" << std::endl;
-        ++record_idx_TR;
-
-        // Calculate the total number of elements in the array
-        size_t total_elements = static_cast<size_t>(n_ch) * n_smpl * num_frames;
-        
-        // Create a vector of unsigned 16-bit integers (uint16_t)
-        std::vector<uint16_t> result(total_elements);
-        
-        // Access the data through a pointer
-        uint16_t* ptr_res = result.data();        
-
-        for (int i = 0; i < num_frames; ++i) {
-
-          auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
-            static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
-          );
-
-          // Unpack the ADC values
-          for (size_t j=0; j<n_smpl; ++j){
-            for (size_t k=0; k<n_ch; ++k){
-              ptr_res[(n_smpl*n_ch) * i + n_ch*j + k] = fr->get_adc(k, j);             
-            } // loop over channels
-          } // loop over time samples    
-
-          if (record_idx_TR == 25) {
+          int num_frames =
+            (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
+  
+          std::cout << "Trigger Record number " << record_idx_TR << " [ " << frag_ptr->get_element_id() << "] has "   << num_frames << " frames" << std::endl;
+          
+          for (int i = 0; i < num_frames; ++i) {
+  
+            // The safest way for reading is to create a frame 
+            // to hold the ADC values of the Trigger Record for the TPG algorithm
+            dunedaq::fddetdataformats::WIBEthFrame frame;
+            std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIBEthFrame));
+  
+            // Read the Trigger Record data as a WIBEth frame
+            auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
+              static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
+            );
+  
+            // Unpack the ADC values
             for (size_t j=0; j<n_smpl; ++j){
               for (size_t k=0; k<n_ch; ++k){
-                std::cout << "Channel " << k << " time sample " << j << " ADC " <<  fr->get_adc(k, j)  << std::endl;
-                
+                frame.set_adc(k, j, fr->get_adc(k, j));
               } // loop over channels
-            } // loop over time samples            
-          }
-          
-          auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(result.data());
-          if (record_idx_TR == 25) {
+            } // loop over time samples    
+  
+  
+            // AAA: the following lines are useful for debugging if we manage to 
+            // read the ADC values of the Trigger Records correctly  
+            // std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
+            // if (record_idx_TR == 26) {
+            //   for (size_t j=0; j<64; ++j){
+            //     int in_index=16*(j/16)+indices[j%16];
+            //     for (size_t itime=0; itime<64; ++itime){
+            //       uint16_t in_val=frame.get_adc(in_index, itime);
+            //       std::cout << "Time " << itime << " channel " << in_index << " ADC_value " << in_val << std::endl;
+            //     } // loop over channels
+            //   } // loop over time samples            
+            // }
+
+            // Set timestamp of the frame
+            frame.set_timestamp(fr->get_timestamp());
+  
+            // Execute the TPG algorithm on the WIBEth adapter frames
+            auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(&frame);
             execute_tpg(fp);
-          }
-          
+  
+  
+          } // end loop over number of frames      
+  
+          // Finished processing all the frames for the given WIBEth fragment.
+          // Incrementing the pointer
+          ++record_idx_TR;
 
-
-
-
-
-
-        } // end loop over number of frames      
+        } // if trigger record is WIBEth type
         
-        } 
         if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
-          if (record_idx_TP == 25) {
-            print_tps(std::move(frag_ptr), record_idx_TP);
-          }
+          print_tps(std::move(frag_ptr), record_idx_TP);
           ++record_idx_TP;
         }
         
