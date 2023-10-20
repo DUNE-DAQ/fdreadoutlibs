@@ -25,7 +25,7 @@
 #include <chrono>
 #include <stdio.h>
 #include <stdint.h>
-
+#include <cstdlib> // abs
 
 #include "hdf5libs/HDF5RawDataFile.hpp"
 #include "hdf5libs/hdf5filelayout/Nljs.hpp"
@@ -125,10 +125,11 @@ void hit_finder(std::vector<int>& adcs, std::vector<std::vector<int>>& out, cons
 
       // index of ADCs above threshold
       //int threshold = (int)m_threshold;
-      // cout << "threshold " << threshold << endl;
-      // for(long unsigned int m = 0; m < adcs.size(); m++){
-      //   cout << adcs[m] << endl;
-      // }
+      std::cout << "DBG threshold " << threshold << std::endl;
+      std::cout << "DBG ADC sample length " << adcs.size() << std::endl;
+      for(long unsigned int m = 0; m < adcs.size(); m++){
+        std::cout << "DBG ADC sample, value " << m << ", " << adcs[m] << std::endl;
+      }
 
       int m_tov_min = 2;
 
@@ -226,7 +227,7 @@ void hit_finder(std::vector<int>& adcs, std::vector<std::vector<int>>& out, cons
 	  std::vector<int> aux = {start[k], end[k], peak_times[k], channel, sums[k], peak_adcs[k], hitcontinue[k]};
           out.push_back(aux);
 
-	  std::cout << "# hit " << "[" << adcs.size() << "]"<< k << ", start time " << start[k] << ", end time " << end[k] << ", peak time " << peak_times[k] << ", peak adc " << peak_adcs[k] << ", sum adc " << sums[k] << ", hit continue " << hitcontinue[k] << std::endl;
+	  std::cout << "# hit " << "[" << adcs.size() << "]"<< k << ", start time " << start[k] << ", end time " << end[k] << ", peak time " << peak_times[k] << ", peak adc " << peak_adcs[k] << ", sum adc " << sums[k] << ", hit continue " << hitcontinue[k] << ", timestamp " << timestamp << std::endl;
           
 	  uint64_t ts_tov = (end[k]-start[k])*32;
 	  uint64_t ts_start = start[k] * 32 + timestamp;
@@ -270,15 +271,47 @@ int main(int argc, char** argv)
 
   std::cout << "Size of the input file " << input_file.length() << std::endl;
   std::cout << "Number of frames " << input_file.num_frames() << std::endl;
-   
+ 
+  // Number of frames to process
+  int num_frames = input_file.num_frames(); 
+  if (cfg.count("patt_time_offset") == 1) {
+    num_frames = stoi(cfg["num_frames"]);
+  }
+
+
   // Write output file 
   std::fstream output_file;
-  output_file.open("wibeth_output.bin", std::ios::app | std::ios::binary);
+  std::string patt_name; 
+  int patt_time_offset = 1;
+  if (cfg.count("patt_time_offset") == 1) {
+    patt_time_offset = stoi(cfg["patt_time_offset"]);
+  }
+ 
+  for (auto& it : cfg) {
+    if (it.second == "true") {
+      if (it.first.substr(0,5) == "patt_") {
+        patt_name = it.first.substr(0) + "_" + std::to_string(patt_time_offset);
+      }
+    }
+  }
+  std::cout << "Pattern name from configuration: " << patt_name << std::endl;
+
+  output_file.open(patt_name+"_wibeth_output.bin", std::ios::app | std::ios::binary);
+
+  uint64_t timestamp_first = input_file.frame(0)->get_timestamp();
 
   dunedaq::fddetdataformats::WIBEthFrame* output_frame; 
-  for (size_t i=0; i<input_file.num_frames(); i++) {
+  for (size_t i=0; i<num_frames; i++) {
     std::cout << "========== FRAME_NUM " << i <<  std::endl;
     output_frame = input_file.frame(i);
+
+    uint64_t timestamp = output_frame->get_timestamp();
+    uint64_t ts_expect = timestamp_first + i*2048;
+    if (i>0 && timestamp != ts_expect) {
+      int64_t ts_diff = timestamp - ts_expect;
+      std::cout << " |______ TIMESTAMP WILL BE OVERWRITTEN! OLD: " << timestamp << ", NEW: " << ts_expect <<  std::endl;
+      output_frame->set_timestamp(ts_expect);
+    }
 
     // default pattern  
     if (cfg.count("patt_default") == 1 && cfg["patt_default"] == "true") {
@@ -291,6 +324,34 @@ int main(int argc, char** argv)
           std::cout << "Nothing to do for first frame" << std::endl;
         } else {	
           output_frame->set_adc(input_ch, itime, 666);      
+        }
+        uint16_t adc_val = output_frame->get_adc(input_ch, itime);
+        std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << input_ch << " \t\tTimeSample: " << itime <<  std::endl;
+      }
+    }
+    // golden pattern
+    if (cfg.count("patt_golden") == 1 && cfg["patt_golden"] == "true") {
+      std::cout << "********** PATT_GOLDEN " << std::endl;
+
+      int patt_time[9]{0};
+      int patt_adc[9]{500, 502, 504, 505, 506, 505, 504, 502, 500};
+      patt_time[0] = patt_time_offset;
+      int npatt = sizeof(patt_time) / sizeof(*patt_time);
+      for (int ipatt=1; ipatt<npatt; ipatt++) {
+	patt_time[ipatt] = patt_time_offset+ipatt < 64 ? patt_time_offset+ipatt : patt_time_offset-64+ipatt;
+      } 
+
+      for (int itime=0; itime<64; ++itime) {
+        for (int ch=0; ch<64; ++ch) {
+          output_frame->set_adc(ch, itime, 0);
+        }
+        //if (i==0 && itime < npatt && std::find(patt_time, patt_time + npatt, itime) == patt_time + npatt ) {
+        if (i==0 && itime < patt_time[0]) {
+          std::cout << "Nothing to do for first frame" << std::endl;
+        } else {
+          for (int ipatt=0; ipatt<sizeof(patt_time)/sizeof(patt_time[0]); ipatt++) {
+            if (itime == patt_time[ipatt]) output_frame->set_adc(input_ch, itime, patt_adc[ipatt]);
+	  }
         }
         uint16_t adc_val = output_frame->get_adc(input_ch, itime);
         std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << input_ch << " \t\tTimeSample: " << itime <<  std::endl;
@@ -360,9 +421,10 @@ int main(int argc, char** argv)
 
     // pedsub as stream - and reused headers for writing binary file 
     dunedaq::fddetdataformats::WIBEthFrame* output_frame_pedsub; 
-    FrameFile input_file_fake = FrameFile("wibeth_output.bin"); 
+    FrameFile input_file_fake = FrameFile((patt_name+"_wibeth_output.bin").c_str()); 
     std::cout << "Size of the input file wibeth_output.bin: " << input_file_fake.length() << std::endl;
-    std::cout << "Number of frames " << input_file_fake.num_frames() << std::endl;
+    //std::cout << "Number of frames " << input_file_fake.num_frames() << std::endl;
+    std::cout << "Number of frames " << num_frames << std::endl;
 
     std::fstream output_file_pedsub;
     output_file_pedsub.open("wibeth_output_pedsub.bin", std::ios::app | std::ios::binary);
@@ -371,7 +433,7 @@ int main(int argc, char** argv)
     int16_t median = 0;
     int16_t accum = 0;
 
-    for (size_t i=0; i<input_file_fake.num_frames(); i++) {
+    for (size_t i=0; i<num_frames; i++) {
       std::cout << "========== FRAME_NUM " << i <<  std::endl;
       output_frame_pedsub = input_file_fake.frame(i);
       // pedsub
@@ -412,30 +474,31 @@ int main(int argc, char** argv)
 
     // hit finding - ADCs stored in long vector - works for small number of frames -> text file
     dunedaq::fddetdataformats::WIBEthFrame* input_frame_pedsub; 
-    std::string input_file_name = "wibeth_output.bin";
+    std::string input_file_name = patt_name+"_wibeth_output.bin";
     if (cfg.count("do_pedsub") == 1 && cfg["do_pedsub"] == "true") {
-      input_file_name = "wibeth_output_pedsub.bin";
+      input_file_name = patt_name+"_wibeth_output_pedsub.bin";
     }
     FrameFile input_file_pedsub = FrameFile(input_file_name.c_str()); 
     std::cout << "Size of the input file wibeth_output_pedsub.bin: " << input_file_pedsub.length() << std::endl;
-    std::cout << "Number of frames " << input_file_pedsub.num_frames() << std::endl;
+    //std::cout << "Number of frames " << input_file_pedsub.num_frames() << std::endl;
+    std::cout << "Number of frames " << num_frames << std::endl;
 
     //std::fstream output_file_pedsub;
     //output_file_pedsub.open("wibeth_output_hits.txt", std::ios::app | std::ios::binary);
     std::ofstream output_file_pedsub;
-    std::string file_name_pedsub = "wibeth_output_hits.txt";
+    std::string file_name_pedsub = patt_name+"_wibeth_output_hits.txt";
     output_file_pedsub.open(file_name_pedsub.c_str(), std::ofstream::app);
 
     if (cfg.count("threshold") == 1) {	    
       threshold = stoi(cfg["threshold"]);
     }
-    std::vector<std::vector<int>> tmp_out;
 
     for (int ch=0; ch<64; ++ch) {
       //std::vector<int16_t> adcs;
       std::vector<int> adcs;
+      std::vector<std::vector<int>> tmp_out;
       uint64_t timestamp;
-      for (size_t i=0; i<input_file_pedsub.num_frames(); i++) {
+      for (size_t i=0; i<num_frames; i++) {
         std::cout << "========== FRAME_NUM " << i <<  std::endl;
         input_frame_pedsub = input_file_pedsub.frame(i);
 	if (i==0) {
@@ -462,4 +525,16 @@ int main(int argc, char** argv)
   // end
 }
 
+/* patterns 
+patt_default
 
+patt_golden
+-----------
+500 502 504 505 506 505 504 502 500
+threshold : 499
+tov       : 8 * 32 = 256 (ticks, counted from 0)
+peak_time : ts_0  + (time_offset + 4) * 32  e.g.  79554162068719943+(1+4)*32
+peak_adc  : 506
+sum_adc   : 4528
+
+*/

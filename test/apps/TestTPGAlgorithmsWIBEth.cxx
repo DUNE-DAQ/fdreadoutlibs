@@ -193,14 +193,18 @@ void save_raw_data_bin(swtpg_wibeth::MessageRegisters register_array,
   size_t msg_size = swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; 
   size_t num_fr = swtpg_wibeth::FRAMES_PER_MSG ;
   size_t adc_size = swtpg_wibeth::ADCS_SIZE;  // 8192 
+  if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
   std::cout << "IRH ADC message size: " << msg_size << std::endl; // IRH 
   std::cout << "IRH ADC frames per message: " << num_fr << std::endl; // IRH 
   std::cout << "IRH ADC packet size [1]: " << msg_size*num_fr << std::endl; // IRH  
   std::cout << "IRH ADC packet size [2]: " << msg_size*num_fr*adc_size << std::endl; // IRH  
+  }
 
   const uint16_t* input16 = register_array.data();
   size_t data_size = sizeof(register_array);
+  if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
   std::cout << "IRH ADC register array: " << data_size << std::endl; // IRH  
+  }
 
   uint64_t t_current= t0 ; 
 
@@ -231,8 +235,9 @@ void save_raw_data_bin(swtpg_wibeth::MessageRegisters register_array,
         // std::cout << adc_value << std::endl;
 	uint16_t adc_val_input = wfptr->get_adc(ichan, msg_time_offset);
 	output_frame->set_adc(ichan, msg_time_offset, adc_value);
-        std::cout << "IRH ADC value: " << adc_value << " V " << adc_val_input << " @ " << msg_time_offset << ", ichan: " << ichan << ", ts: " << t_current << std::endl; // IRH 
-        //out_file << ichan << "," <<  adc_value << "," << t_current << std::endl;
+        if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+	std::cout << "IRH ADC value: " << adc_value << " V " << adc_val_input << " @ " << msg_time_offset << ", ichan: " << ichan << ", ts: " << t_current << std::endl; // IRH 
+	}
         t_current += 32;
       }
     }
@@ -262,8 +267,10 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       hit_tover     = *output_location++;
       hit_peak_adc  = *output_location++;
       hit_peak_time = *output_location++;
-      //hit_peak_offset = *output_location++;
+      hit_peak_offset = *output_location++;
 
+      if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+      std::cout << "Timestamp: " << timestamp << std::endl;
       if (hit_charge && chan != swtpg_wibeth::MAGIC) {
         std::cout << "Channel number: " << chan << std::endl;
         std::cout << "Hit charge: " << hit_charge << std::endl;
@@ -273,7 +280,8 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
         std::cout << "Hit peak time: " << hit_peak_time << std::endl;
         std::cout << "Hit peak offset: " << hit_peak_offset << std::endl;
       }
-      
+      }
+
       i += 1;
       chan = 16*(chan/16)+indices[chan%16];
       /*  // IRH 
@@ -297,14 +305,23 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       trigprim.version = 1;
       */
 
-      uint64_t tp_t_begin =
-        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );
-      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end ); // NB not needed 
-      uint64_t tp_t_peak =
-	timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time - hit_peak_offset);
-	//timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time);
-      std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", hit_peak_offset: " << hit_peak_offset << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
-      //std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
+      hit_peak_offset *= 64;
+
+      int64_t set_hit_end = int64_t(hit_end - hit_peak_offset);
+      if (set_hit_end == 0) {
+        set_hit_end -= 1;
+      } else if (set_hit_end < 0) {
+        set_hit_end = int64_t(64 - hit_peak_offset + hit_end);
+      }
+
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - hit_tover);
+      uint64_t tp_t_end   = timestamp + clocksPerTPCTick * int64_t(hit_end ); // NB not needed 
+      uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time - hit_peak_offset);
+
+      tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + 64 * clocksPerTPCTick;
+      if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+        std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan << ", hit_end: "  << (int64_t(hit_end)) << ", hit_over:" << hit_tover << ", hit_peak_time: " << hit_peak_time << ", hit_peak_offset: " << hit_peak_offset << ", diff: " << (int64_t(hit_end ) - hit_tover ) << " --> " << tp_t_begin << std::endl;
+      }
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
@@ -514,8 +531,10 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   // Parse the WIBEth frames
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
   uint64_t timestamp = wfptr->get_timestamp();
-  std::cout << "IRH timestamp [64b]: " << timestamp << std::endl; // IRH
-  printf("IRH ts = 0x%" PRIx64 "\n", timestamp); // IRH
+  if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+    std::cout << "IRH timestamp [64b]: " << timestamp << std::endl; // IRH
+    printf("IRH ts = 0x%" PRIx64 "\n", timestamp); // IRH
+  }
   swtpg_wibeth::MessageRegisters registers_array;
   swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
 
@@ -530,9 +549,13 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
     }
   }  
   // Save ADC info to binary file - TODO move inside first hit ?
-  std::cout << "DBG save adc data to binary file ? " << cfg.count("save_adc_data_bin") << std::endl;
+  if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+    std::cout << "DBG save adc data to binary file ? " << cfg.count("save_adc_data_bin") << std::endl;
+  }
   if (cfg.count("save_adc_data_bin") == 1 && cfg["save_adc_data_bin"] == "true") {
-    std::cout << "DBG save adc data to binary file" << std::endl;
+    if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+      std::cout << "DBG save adc data to binary file" << std::endl;
+    }
     save_raw_data_bin(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation, wfptr);
   }
  

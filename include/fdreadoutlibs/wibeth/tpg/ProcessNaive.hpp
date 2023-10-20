@@ -176,7 +176,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   uint16_t* output_loc = info.output;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
-  int ntime = 64; // 12 // IRH 
+  int ntime = 64; // 12 was for DUNEWIB // IRH 
 
   for (size_t ichan = 0; ichan < NREGISTERS * SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / SAMPLES_PER_REGISTER;
@@ -202,7 +202,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     int16_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
 
     if (prev_was_over) {
-      hit_peak_offset += ntime; // IRH
+      hit_peak_offset += 1; // IRH
     }
     printf("DBG ChanState % 5d:prev_was_over % 5d:hit_peak_offset % 5d:nframes \n", prev_was_over, hit_peak_offset, info.timeWindowNumFrames);
 
@@ -223,8 +223,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       frugal_accum_update(median, sample, accum, 10);
       printf("Sample before pedsub % 5d:sample % 5d:median % 5d:accum \n", (int16_t)sample, median, accum);
 
-      // Subtract the baseline
-      sample -= median;
+      // Subtract the baseline - pedestal subtraction on/off
+      //sample -= median;
       printf("Sample after pedsub % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
       //sample = sample >> info.tap_exponent;
       printf("Sample after shift % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
@@ -250,6 +250,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       }
       printf("DBG check % 5d:prev_was_over % 5d:is_over % 5d:itime \n", prev_was_over, is_over, itime);
       if (prev_was_over && !is_over) {
+        //printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time\n", ichan, itime, hit_charge, hit_peak_time);
         printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time % 5d:hit_peak_offset \n", ichan, itime, hit_charge, hit_peak_time, hit_peak_offset);
         // if(hit_tover==1){
         //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
@@ -257,7 +258,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = itime-1;           // NOLINT // IH: handle edge case
+        (*output_loc++) = itime>0 ? itime-1 : ntime;           // NOLINT // IH: handle edge case
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover-1;     // NOLINT
 	(*output_loc++) = hit_peak_adc;    // NOLINT
@@ -320,12 +321,12 @@ process_window_naive_pedsub(ProcessingInfo<NREGISTERS>& info)
     int16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     int16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     int16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
-    int16_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
+    //int16_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
 
-    if (prev_was_over) {
-      hit_peak_offset += ntime; // IRH
-    }
-    printf("DBG ChanState % 5d:prev_was_over % 5d:hit_peak_offset % 5d:nframes \n", prev_was_over, hit_peak_offset, info.timeWindowNumFrames);
+    //if (prev_was_over) {
+    //  hit_peak_offset += ntime; // IRH
+    //}
+    //printf("DBG ChanState % 5d:prev_was_over % 5d:hit_peak_offset % 5d:nframes \n", prev_was_over, hit_peak_offset, info.timeWindowNumFrames);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / ntime; // IRH
@@ -377,7 +378,8 @@ process_window_naive_pedsub(ProcessingInfo<NREGISTERS>& info)
       }
       printf("DBG check % 5d:prev_was_over % 5d:is_over % 5d:itime \n", prev_was_over, is_over, itime);
       if (prev_was_over && !is_over) {
-        printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time % 5d:hit_peak_offset \n", ichan, itime, hit_charge, hit_peak_time, hit_peak_offset);
+        printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time \n", ichan, itime, hit_charge, hit_peak_time);
+        //printf("DBG save hit  % 5d:ichan % 5d:itime % 5d:hit_charge % 5d:hit_peak_time % 5d:hit_peak_offset \n", ichan, itime, hit_charge, hit_peak_time, hit_peak_offset);
         // if(hit_tover==1){
         //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
         // }
@@ -389,13 +391,13 @@ process_window_naive_pedsub(ProcessingInfo<NREGISTERS>& info)
         (*output_loc++) = hit_tover;       // NOLINT
 	(*output_loc++) = hit_peak_adc;    // NOLINT
         (*output_loc++) = hit_peak_time;   // NOLINT
-        (*output_loc++) = hit_peak_offset;   // NOLINT
+        //(*output_loc++) = hit_peak_offset;   // NOLINT
 
         hit_charge = 0;
         hit_tover = 0;
 	hit_peak_adc = 0;
         hit_peak_time = 0;
-        hit_peak_offset = 0;
+        //hit_peak_offset = 0;
 
         ++nhits;
         prev_was_over = false;

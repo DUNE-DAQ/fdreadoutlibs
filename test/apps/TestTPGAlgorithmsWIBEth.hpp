@@ -91,3 +91,10 @@ bool to_bool(std::string str) {
   return b;
 }
 
+bool is_cfg_true(std::map<std::string, std::string> cfg, std::string key) {
+  return cfg.count(key) == 1 && cfg[key] == "true";
+}
+template <class T1>
+bool is_cfg_value(std::map<std::string, std::string> cfg, std::string key, T1 value) {
+  return cfg.count(key) == 1 && cfg[key] == value;
+}
