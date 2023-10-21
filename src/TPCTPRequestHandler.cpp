@@ -83,12 +83,22 @@ TPCTPRequestHandler::send_tp_sets()
   bool first_cycle = true;
   dunedaq::dfmessages::DataRequest dr;
 
+  std::chrono::steady_clock::time_point time_last_hb = std::chrono::steady_clock::now();
+  const std::chrono::milliseconds dt_hb(100);
+
+
   while (m_run_marker.load()) {
+
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    bool hb_timeout = (now-time_last_hb > dt_hb);
+    
+
     {
       std::unique_lock<std::mutex> lock(m_cv_mutex);
       m_cv.wait(lock, [&] { return !m_cleanup_requested; });
       m_requests_running++;
     }
+
     m_cv.notify_all();
     if (m_latency_buffer->occupancy() != 0) {
       // Prepare response
@@ -106,6 +116,26 @@ TPCTPRequestHandler::send_tp_sets()
         start_win_ts = oldest_ts;
         first_cycle = false;
       }
+
+      if (hb_timeout) {
+        // Fire a gratuitous Hearbeat
+        trigger::TPSet tpset;
+        tpset.run_number = m_run_number;
+        tpset.type = trigger::TPSet::Type::kHeartbeat;
+        tpset.origin = m_sourceid;
+        tpset.start_time = start_win_ts;    // provisory timestamp, will be filled with first TP
+        tpset.end_time = start_win_ts;      // provisory timestamp, will be filled with last TP
+        tpset.seqno = m_next_tpset_seqno++; // NOLINT(runtime/increment_decrement)
+                                            // reserve the space for efficiency
+        m_new_heartbeats++;
+        time_last_hb = now;
+
+        if (!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
+          ers::warning(DroppedTPSet(ERS_HERE, tpset.start_time, tpset.end_time));
+        }
+        m_new_tpsets++;
+      }
+
       if (newest_ts - start_win_ts > m_ts_set_sender_offset_ticks) {
         end_win_ts = newest_ts - m_ts_set_sender_offset_ticks;
         frag_pieces = get_fragment_pieces(start_win_ts, end_win_ts, rres);
@@ -122,7 +152,8 @@ TPCTPRequestHandler::send_tp_sets()
 
         trigger::TPSet tpset;
         tpset.run_number = m_run_number;
-        tpset.type = num_tps > 0 ? trigger::TPSet::Type::kPayload : trigger::TPSet::Type::kHeartbeat;
+        // tpset.type = num_tps > 0 ? trigger::TPSet::Type::kPayload : trigger::TPSet::Type::kHeartbeat;
+        tpset.type = trigger::TPSet::Type::kPayload;
         tpset.origin = m_sourceid;
         tpset.start_time = start_win_ts;    // provisory timestamp, will be filled with first TP
         tpset.end_time = end_win_ts;        // provisory timestamp, will be filled with last TP
@@ -140,6 +171,11 @@ TPCTPRequestHandler::send_tp_sets()
             tpset.end_time = tp.time_start;
             tpset.objects.emplace_back(std::move(tp));
           }
+        } else {
+            // Fire an HB
+            tpset.type = trigger::TPSet::Type::kHeartbeat;
+            m_new_heartbeats++;
+            time_last_hb = now;
         }
 
         if (!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
@@ -149,9 +185,9 @@ TPCTPRequestHandler::send_tp_sets()
         m_new_tps += num_tps;
         m_new_tpsets++;
 
-        if (num_tps == 0) {
-          m_new_heartbeats++;
-        }
+        // if (num_tps == 0) {
+        //   m_new_heartbeats++;
+        // }
         // remember what we sent for the next loop
         start_win_ts = end_win_ts;
       }
