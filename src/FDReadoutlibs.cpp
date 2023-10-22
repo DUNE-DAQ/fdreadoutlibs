@@ -8,3 +8,4 @@
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp"
 #include "fdreadoutlibs/tde/TDEFrameProcessor.hpp"
 #include "fdreadoutlibs/TPCTPRequestHandler.hpp"
+#include "fdreadoutlibs/TPCTPReadoutModel.hpp"

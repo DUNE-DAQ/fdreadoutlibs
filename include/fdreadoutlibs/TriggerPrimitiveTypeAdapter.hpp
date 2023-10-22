@@ -5,6 +5,7 @@
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
+#include "trgdataformats/Types.hpp"
 
 #include <cstdint> // uint_t types
 #include <memory>  // unique_ptr

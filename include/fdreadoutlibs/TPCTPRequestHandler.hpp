@@ -1,5 +1,5 @@
 /**
- * @file DefaultSkipListRequestHandler.hpp Trigger matching mechanism 
+ * @file TPCTPRequestHandler.hpp Trigger matching mechanism 
  * used for skip list based LBs in readout models
  *
  * This is part of the DUNE DAQ , copyright 2020.
