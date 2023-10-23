@@ -26,6 +26,8 @@
 
 #include "readoutlibs/models/DefaultRequestHandlerModel.hpp"
 
+#include "detchannelmaps/TPCChannelMap.hpp"
+
 #include "triggeralgs/TriggerPrimitive.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
 
@@ -65,16 +67,26 @@ struct swtpg_output{
 unsigned int total_hits = 0;
 unsigned int total_hits_trigger_primitive = 0;
 bool first_hit = true;
-bool is_hit = false;
 
 dunedaq::fdreadoutlibs::WIBEthFrameHandler fh;
 
 std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> channel_map;
+
+// Map from expanded AVX register position to offline channel number
+swtpg_wibeth::RegisterChannelMap register_channel_map; 
+
+// Mapping from expanded AVX register position to offline channel number
+std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels = {};
 
 std::string select_algorithm = "";
 std::string select_implementation = "";
+std::string select_channel_map = "";
 bool save_adc_data = false;
 bool save_trigprim = false;
+
+
+
 
 // =================================================================
 //                       FUNCTIONS and UTILITIES
@@ -162,10 +174,8 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
         //int16_t adc_value = input16[index];    
         int16_t adc_value = register_array.uint16(index);
         out_file << " Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
-        if (is_hit) {
-          std::cout << " Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
-        }
-        t_current += 32; // AAA: TODO: RESTORE THIS LINE
+
+        t_current += 32; 
       } 
 
     }
@@ -254,7 +264,7 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
 
 
-      trigprim.channel = chan;
+      trigprim.channel = m_register_channels[chan];
       trigprim.adc_integral = hit_charge ;
       trigprim.adc_peak = hit_charge  / 20;
       trigprim.detid = 666; 
@@ -275,7 +285,6 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
   constexpr int clocksPerTPCTick = 32;
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
 
-  int turns = 0;
   while (*output_location != swtpg_wibeth::MAGIC) {
     for (int i = 0; i < 16; ++i) {
       chan[i] = *output_location++; 
@@ -313,9 +322,9 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
         //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
         triggeralgs::TriggerPrimitive trigprim;
         trigprim.time_start = tp_t_begin;
-        trigprim.time_peak = int64_t(hit_end[i]); // AAA: TODO: RESTORE THIS!!!!!
-        trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
-        trigprim.channel = chan[i];
+        trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+        trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;      
+        trigprim.channel = m_register_channels[chan[i]]; //offline channel map
         trigprim.adc_integral = hit_charge[i];
         trigprim.adc_peak = hit_charge[i] / 20;
         trigprim.detid = 666;          
@@ -327,11 +336,8 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
         }          
 
         ++total_hits;
-        std::cout << "FOUND_A_HIT AT CHAN " << chan[i] << " INDEX " << i << "/16 " << " TURNS "   << turns << " TIMESTMAP " << timestamp << " TIME_OVER_THRESHOLD " << hit_tover[i] << std::endl;
-        is_hit = true;
       }
     } // loop over 16 registers 
-    ++turns;  
   } // while not magic   
 
 }
@@ -345,17 +351,26 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
 
   // Parse the WIBEth frames
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
-  uint64_t timestamp = wfptr->get_timestamp();      
+  uint64_t timestamp = wfptr->get_timestamp();     
+
+  // Frame expansion
   swtpg_wibeth::MessageRegisters registers_array;
   swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
 
   if (first_hit) {                     
+    register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, channel_map);
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
     // Save ADC info
-    //if (save_adc_data){
-    //  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
-    //}
+    if (save_adc_data){
+      save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
+    }
+
+    // Register the offline channel numbers
+    for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
+      m_register_channels[i] = register_channel_map.channel[i];  
+    }
+
   }
 
 
@@ -373,11 +388,6 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   } else if(select_implementation == "NAIVE") {  
     extract_hits_naive(destination_ptr, timestamp);
   }
-
-  if (total_hits < 100) {
-    save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
-  }
-  is_hit = false;
 
 }
 
@@ -399,6 +409,10 @@ main(int argc, char** argv)
     app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
   
     app.add_option("-i,--implementation", select_implementation, "TPG implementation (AVX / NAIVE)");
+
+    //"VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap", "FiftyLChannelMap"
+    app.add_option("-m,--channel_map", select_channel_map, "Select channel map (FiftyLChannelMap, PD2HDChannelMap, VDColdboxChannelMap, etc.)");
+
 
     int num_TR_to_read = -1;
     app.add_option("-n,--num_TR_to_read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs.");
@@ -446,6 +460,8 @@ main(int argc, char** argv)
     // =================================================================
 
     fh.initialize(swtpg_threshold);
+    channel_map = dunedaq::detchannelmaps::make_map(select_channel_map);
+
 
 
     
@@ -518,25 +534,18 @@ main(int argc, char** argv)
             } // loop over time samples    
   
   
-            // AAA: the following lines are useful for debugging if we manage to 
-            // read the ADC values of the Trigger Records correctly  
-            // std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
-            // if (record_idx_TR == 26) {
-            //   for (size_t j=0; j<64; ++j){
-            //     int in_index=16*(j/16)+indices[j%16];
-            //     for (size_t itime=0; itime<64; ++itime){
-            //       uint16_t in_val=frame.get_adc(in_index, itime);
-            //       std::cout << "Time " << itime << " channel " << in_index << " ADC_value " << in_val << std::endl;
-            //     } // loop over channels
-            //   } // loop over time samples            
-            // }
-
-            // Set timestamp of the frame
+            // Set timestamp of the frame and the header information
             frame.set_timestamp(fr->get_timestamp());
+            frame.daq_header.crate_id = fr->daq_header.crate_id;
+            frame.daq_header.slot_id = fr->daq_header.slot_id;
+            frame.daq_header.stream_id = fr->daq_header.stream_id;
   
             // Execute the TPG algorithm on the WIBEth adapter frames
             auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(&frame);
-            if (total_hits <100) { // AAA: TODO: RESTORE IT
+      
+            
+      
+            if (total_hits <500) { // AAA: TODO: RESTORE IT
               execute_tpg(fp);
             }
   
