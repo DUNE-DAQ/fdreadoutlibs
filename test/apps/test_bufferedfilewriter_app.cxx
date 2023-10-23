@@ -10,7 +10,6 @@
 #include "readoutlibs/utils/RateLimiter.hpp"
 
 #include "logging/Logging.hpp"
-//#include "readoutlibs/ReadoutTypes.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 
 #include <atomic>
@@ -18,7 +17,6 @@
 #include <memory>
 #include <string>
 
-//using namespace dunedaq::readoutlibs;
 using namespace dunedaq::fdreadoutlibs;
 
 int
@@ -31,8 +29,16 @@ main(int argc, char* argv[])
   }
   remove(argv[1]); // NOLINT
   std::string filename(argv[1]);
-  double buffer_size = std::stod(argv[2]);
-  //types::DUMMY_FRAME_STRUCT chunk;
+  int buffer_size = std::stoi(argv[2]);
+  TLOG() << "buffer_size: " << buffer_size << " Btyes";
+  double limiter_freq = 0;
+  bool use_limiter = false;
+  if (argc == 5 && std::strcmp(argv[3], " -L")) {
+    use_limiter = true;
+    limiter_freq = std::stod(argv[4]);
+    TLOG() << "ratelimiter freq: " << limiter_freq << "kHz";
+  }
+
   types::DUNEWIBEthTypeAdapter chunk;
 
   dunedaq::readoutlibs::BufferedFileWriter writer(filename, buffer_size);
@@ -59,23 +65,30 @@ main(int argc, char* argv[])
   });
 
   // Initializing limiter
-  double limiter_freq = 0;
-  if (argc == 5) limiter_freq = std::stod(argv[4]);
-  auto limiter = dunedaq::readoutlibs::RateLimiter(limiter_freq);
-
-  if (argc == 5) {
+  if (use_limiter){
     TLOG() << "Starting with ratelimiter at " << limiter_freq << "kHz";
+    auto limiter = dunedaq::readoutlibs::RateLimiter(limiter_freq);
     limiter.init();
-  }
-  
 
-  while (true) {
-    if (!writer.write(reinterpret_cast<char*>(&chunk), sizeof(chunk))) {
-      TLOG() << "Could not write to file" << std::endl;
-      exit(1);
+    while (true) {
+      if (!writer.write(reinterpret_cast<char*>(&chunk), sizeof(chunk))) {
+        TLOG() << "Could not write to file" << std::endl;
+        exit(1);
+      }
+      bytes_written_total += sizeof(chunk);
+      bytes_written_since_last_statistics += sizeof(chunk);
+      limiter.limit();
     }
-    bytes_written_total += sizeof(chunk);
-    bytes_written_since_last_statistics += sizeof(chunk);
-    if (argc == 4) limiter.limit();
   }
+  else {
+    while (true) {
+      if (!writer.write(reinterpret_cast<char*>(&chunk), sizeof(chunk))) {
+        TLOG() << "Could not write to file" << std::endl;
+        exit(1);
+      }
+      bytes_written_total += sizeof(chunk);
+      bytes_written_since_last_statistics += sizeof(chunk);
+    }
+  }
+
 }
