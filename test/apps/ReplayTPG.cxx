@@ -65,6 +65,7 @@ struct swtpg_output{
 unsigned int total_hits = 0;
 unsigned int total_hits_trigger_primitive = 0;
 bool first_hit = true;
+bool is_hit = false;
 
 dunedaq::fdreadoutlibs::WIBEthFrameHandler fh;
 
@@ -160,8 +161,11 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
     
         //int16_t adc_value = input16[index];    
         int16_t adc_value = register_array.uint16(index);
-        out_file << " Time " << iframe << " channel " <<  in_index << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
-        t_current += 32;
+        out_file << " Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
+        if (is_hit) {
+          std::cout << " Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
+        }
+        t_current += 32; // AAA: TODO: RESTORE THIS LINE
       } 
 
     }
@@ -271,6 +275,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
   constexpr int clocksPerTPCTick = 32;
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
 
+  int turns = 0;
   while (*output_location != swtpg_wibeth::MAGIC) {
     for (int i = 0; i < 16; ++i) {
       chan[i] = *output_location++; 
@@ -295,40 +300,39 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
 
 
-          uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
-          uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
-
-          // May be needed for TPSet:
-          // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
-          //
-
-          // For quick n' dirty debugging: print out time/channel of hits.
-          // Can then make a text file suitable for numpy plotting with, eg:
-          //
-          //
-          //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
-
-          triggeralgs::TriggerPrimitive trigprim;
-          trigprim.time_start = tp_t_begin;
-          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
-          trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
-          trigprim.channel = chan[i];
-          trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
-          trigprim.detid = 666;          
-          trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
-          trigprim.version = 1;
-
-          if (save_trigprim){
-            save_hit_data(trigprim, "AVX");
-          }          
+        uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
+          timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i]));       // NOLINT(build/unsigned)
+        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
+        // May be needed for TPSet:
+        // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
+        //
+        // For quick n' dirty debugging: print out time/channel of hits.
+        // Can then make a text file suitable for numpy plotting with, eg:
+        //
+        //
+        //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
+        triggeralgs::TriggerPrimitive trigprim;
+        trigprim.time_start = tp_t_begin;
+        trigprim.time_peak = int64_t(hit_end[i]); // AAA: TODO: RESTORE THIS!!!!!
+        trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
+        trigprim.channel = chan[i];
+        trigprim.adc_integral = hit_charge[i];
+        trigprim.adc_peak = hit_charge[i] / 20;
+        trigprim.detid = 666;          
+        trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+        trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+        trigprim.version = 1;
+        if (save_trigprim){
+          save_hit_data(trigprim, "AVX");
+        }          
 
         ++total_hits;
+        std::cout << "FOUND_A_HIT AT CHAN " << chan[i] << " INDEX " << i << "/16 " << " TURNS "   << turns << " TIMESTMAP " << timestamp << " TIME_OVER_THRESHOLD " << hit_tover[i] << std::endl;
+        is_hit = true;
       }
-    } // loop over 16 registers   
-  } // while not magic    
+    } // loop over 16 registers 
+    ++turns;  
+  } // while not magic   
 
 }
 
@@ -349,11 +353,12 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
     // Save ADC info
-    if (save_adc_data){
-      save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
-    }
+    //if (save_adc_data){
+    //  save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
+    //}
   }
-         
+
+
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
   *destination_ptr = swtpg_wibeth::MAGIC;
@@ -364,10 +369,15 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   //swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
     
   if (select_implementation == "AVX") {
-    extract_hits_avx(destination_ptr, timestamp);
+    extract_hits_avx(fh.m_tpg_processing_info->output, timestamp);
   } else if(select_implementation == "NAIVE") {  
     extract_hits_naive(destination_ptr, timestamp);
   }
+
+  if (total_hits < 100) {
+    save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
+  }
+  is_hit = false;
 
 }
 
@@ -393,7 +403,7 @@ main(int argc, char** argv)
     int num_TR_to_read = -1;
     app.add_option("-n,--num_TR_to_read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs.");
 
-    int swtpg_threshold = 500;
+    int swtpg_threshold = 145;
     app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the TPG threshold");
 
     app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
@@ -526,8 +536,9 @@ main(int argc, char** argv)
   
             // Execute the TPG algorithm on the WIBEth adapter frames
             auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(&frame);
-            execute_tpg(fp);
-  
+            if (total_hits <100) { // AAA: TODO: RESTORE IT
+              execute_tpg(fp);
+            }
   
           } // end loop over number of frames      
   
@@ -547,7 +558,8 @@ main(int argc, char** argv)
       } // loop over all the fragments in a single trigger record    
     } // loop over all trigger records
 
-    // Calculate elapsed time in seconds  
+    // Calculate elapsed time in seconds 
+    // AAA: to be remove it if not useufl?
     auto now = std::chrono::high_resolution_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_test).count();  
     std::cout << "Elapsed time for reading input file [ms]: " << elapsed_milliseconds << std::endl;      
