@@ -59,11 +59,6 @@ using namespace dunedaq::hdf5libs;
 //                       PUBLIC VARIABLES
 // =================================================================
 
-struct swtpg_output{
-  uint16_t* output_location;
-  uint64_t timestamp;
-};
-
 unsigned int total_hits = 0;
 unsigned int total_hits_trigger_primitive = 0;
 bool first_hit = true;
@@ -118,7 +113,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
   out_file << trigprim.channel << "," << trigprim.time_start << "," << trigprim.time_over_threshold << "," 
-	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "\n";  
+	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "," << trigprim.detid << "," << trigprim.type << "\n";
 
   out_file.close();
 }
@@ -357,8 +352,8 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   swtpg_wibeth::MessageRegisters registers_array;
   swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
 
-  if (first_hit) {                     
-    register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, channel_map);
+  
+  if (first_hit) {                         
     fh.m_tpg_processing_info->setState(registers_array);
     first_hit = false;    
     // Save ADC info
@@ -380,8 +375,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   fh.m_tpg_processing_info->output = destination_ptr;
   m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
        
-  // Insert output of the AVX processing into the swtpg_output 
-  //swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
+
     
   if (select_implementation == "AVX") {
     extract_hits_avx(fh.m_tpg_processing_info->output, timestamp);
@@ -420,9 +414,9 @@ main(int argc, char** argv)
     int swtpg_threshold = 145;
     app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the TPG threshold");
 
-    app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
+    app.add_flag("--save_adc_data", save_adc_data, "Save ADC data");
 
-    app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
+    app.add_flag("--save_trigprim", save_trigprim, "Save trigger primitive data");
 
 
     CLI11_PARSE(app, argc, argv);
@@ -525,7 +519,8 @@ main(int argc, char** argv)
             auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
               static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
             );
-  
+           
+            /*
             // Unpack the ADC values
             for (size_t j=0; j<n_smpl; ++j){
               for (size_t k=0; k<n_ch; ++k){
@@ -539,11 +534,17 @@ main(int argc, char** argv)
             frame.daq_header.crate_id = fr->daq_header.crate_id;
             frame.daq_header.slot_id = fr->daq_header.slot_id;
             frame.daq_header.stream_id = fr->daq_header.stream_id;
+            frame.daq_header.seq_id = fr->daq_header.seq_id;
+
   
-            // Execute the TPG algorithm on the WIBEth adapter frames
             auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(&frame);
-      
-            
+            */
+
+            // Execute the TPG algorithm on the WIBEth adapter frames
+            auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(fr);
+
+            register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, channel_map); 
+
       
             if (total_hits <500) { // AAA: TODO: RESTORE IT
               execute_tpg(fp);
