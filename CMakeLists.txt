@@ -77,6 +77,7 @@ daq_add_application(WIB2AddFakeHits WIB2AddFakeHits.cxx TEST LINK_LIBRARIES fdre
 daq_add_application(WIBEthAddFakeHits WIBEthAddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(TestTPGAlgorithmsDUNEWIB TestTPGAlgorithmsDUNEWIB.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
 daq_add_application(TestTPGAlgorithmsWIBEth TestTPGAlgorithmsWIBEth.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
+daq_add_application(fdreadoutlibs_test_bufferedfilewriter test_bufferedfilewriter_app.cxx TEST LINK_LIBRARIES fdreadoutlibs ${BOOST_LIBS})
 
 
 ##############################################################################
