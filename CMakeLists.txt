@@ -67,7 +67,13 @@ daq_add_library(
 )
 
 ##############################################################################
-# Apps
+# Test Apps
+
+daq_add_application(tpg_algorithms_emulator_WIB2 tpg_algorithms_emulator_WIB2.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
+daq_add_application(tpg_algorithms_emulator_WIBEth tpg_algorithms_emulator_WIBEth.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
+
+##############################################################################
+# Test Apps
 
 daq_add_application(TDEFileCreator TDEFileCreator.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 daq_add_application(WIB2TestBench WIB2TestBench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
@@ -75,8 +81,6 @@ daq_add_application(WIB2BinaryFrameReader WIB2BinaryFrameReader.cxx TEST LINK_LI
 daq_add_application(WIBEthBinaryFrameReader WIBEthBinaryFrameReader.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(WIB2AddFakeHits WIB2AddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(WIBEthAddFakeHits WIBEthAddFakeHits.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
-daq_add_application(TestTPGAlgorithmsDUNEWIB TestTPGAlgorithmsDUNEWIB.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
-daq_add_application(TestTPGAlgorithmsWIBEth TestTPGAlgorithmsWIBEth.cxx TEST LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
 
 
 ##############################################################################
