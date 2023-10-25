@@ -59,7 +59,8 @@ struct swtpg_output{
 };
 
 int WIBEth_FRAME_SIZE = 7200;
-int TIME_TEST = 120;
+
+int duration_test = 120; // default value
 unsigned int total_hits = 0;
 bool first_hit = true;
 
@@ -342,6 +343,8 @@ main(int argc, char** argv)
     app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
   
     app.add_option("-i,--implementation", select_implementation, "TPG implementation (AVX / NAIVE)");
+    
+    app.add_option("-d,--duration_test", duration_test, "Duration (in seconds) to run the test");
 
     int num_frames_to_read = -1;
     app.add_option("-n,--num_frames_to_read", num_frames_to_read, "Number of frames to read. Default: select all frames.");
@@ -449,7 +452,7 @@ main(int argc, char** argv)
 	frame_repeat_index = 0;        
 
         // stop the testing after a time a condition
-        if (elapsed_seconds > TIME_TEST) {
+        if (elapsed_seconds > duration_test) {
           wibeth_frame_index = num_frames_to_read;
         }
       }
