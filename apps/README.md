@@ -1,6 +1,8 @@
 # TPG Applications
 Here is a short summary of the applications available in this directory. Refer to the code for further details. 
 
+## Emulator
+
 `wibeth_tpg_algorithms_emulator` is a emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. 
 
 To use the tool use the following:
@@ -29,6 +31,7 @@ $ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm Simpl
 $ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm AbsRS --implementation AVX  --save_trigprim 
 ```
 
+## Utility applications
 
 `wibeth_binary_frame_reader`: reads a WIBEth frame file (`.bin` file) and prints all the ADC values. Usage `WIBEthBinwibeth_binary_frame_readeraryFrameReader <input_file_name>`.  
 
