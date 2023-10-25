@@ -478,7 +478,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
       hit_peak_adc[i] = *output_location++;
     }
     for (int i = 0; i < 16; ++i) {
-      hit_peak_offset[i] = 0;
+      hit_peak_offset[i] = abs(*output_location++);
     }
 
     // Now that we have all the register values in local
@@ -493,13 +493,15 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
         std::cout << "Timestamp: " << timestamp << std::endl;
         std::cout << "Channel number: " << chan[i] << std::endl;
         std::cout << "Hit charge: " << hit_charge[i] << std::endl;
-        std::cout << "Hit end: " << hit_end[i] << std::endl;
+        std::cout << "Hit end: " << hit_end[i] << " max " << UINT16_MAX << std::endl;
         std::cout << "Hit tover: " << hit_tover[i] << std::endl;
         std::cout << "Hit peak time: " << hit_peak_time[i] << std::endl;
         std::cout << "Hit peak adc: " << hit_peak_adc[i] << std::endl;
         std::cout << "Hit peak offset: " << hit_peak_offset[i] << std::endl;
         }
 
+        hit_end[i] = hit_end[i] != UINT16_MAX ? hit_end[i] : 64;
+        std::cout << "Hit end: " << hit_end[i] << std::endl;
 
 	  /*
           uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
