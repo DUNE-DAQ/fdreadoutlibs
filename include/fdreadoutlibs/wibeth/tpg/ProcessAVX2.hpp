@@ -25,7 +25,8 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
+  //const __m256i adcMax = _mm256_set1_epi16(info.adcMax); // if FIR filtering
+  const __m256i adcMax = _mm256_set1_epi16(INT16_MAX); // no FIR filtering
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
@@ -98,7 +99,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // FIXED THRESHOLD
       __m256i threshold = _mm256_set1_epi16(info.threshold);
       __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
-      
+      prev_was_over = _mm256_blendv_epi8(prev_was_over, is_over, is_over);
+
       // Mask for channels that left "over threshold" state this step
       // Comparison with previous TP
       __m256i left = _mm256_andnot_si256(is_over, prev_was_over);
@@ -112,6 +114,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // Really want an epi16 version of this, but the cmpgt and
       // cmplt functions set their epi16 parts to 0xff or 0x0,
       // so treating everything as epi8 works the same
+      //__m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
       __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
       // Divide by the multiplier before adding (implemented as a shift-right)
       hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
@@ -119,27 +122,16 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // Avoid overflow of the hit charge
       hit_charge = _mm256_min_epi16(hit_charge, adcMax);
 
-      //if(ireg==0){
-      //     printf("itime=%ld\n", itime);
-      //     printf("ADC value:             "); print256_as16_dec(s);             printf("\n\n");
-      //     printf("median:        "); print256_as16_dec(median);        printf("\n");
-      //     printf("sigma:         "); print256_as16_dec(sigma);         printf("\n");
-      //     printf("threshold:         "); print256_as16_dec(threshold);         printf("\n");
-      //     printf("to_add_charge: "); print256_as16_dec(to_add_charge); printf("\n");
-      //     printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
-      //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");
-      //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
-      //     printf("left:          "); print256_as16_dec(left);          printf("\n");
-      //}
-
       __m256i to_add_tover = _mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
       hit_tover = _mm256_adds_epi16(hit_tover, to_add_tover);
 
 
       // Calculation of the hit peak time and ADC
       __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
-      hit_peak_time = _mm256_blendv_epi8(hit_tover, hit_peak_time, is_sample_over_adc_peak);
-      hit_peak_adc = _mm256_blendv_epi8(s, hit_peak_adc, is_sample_over_adc_peak);
+      //hit_peak_time = _mm256_blendv_epi8(hit_tover, hit_peak_time, is_sample_over_adc_peak);
+      //hit_peak_adc = _mm256_blendv_epi8(s, hit_peak_adc, is_sample_over_adc_peak);
+      hit_peak_time = _mm256_blendv_epi8(hit_peak_time, timenow, is_sample_over_adc_peak);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak);
       
       
 
@@ -156,6 +148,22 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // %XMM1, and sets the carry-flag if everything that is
       // set in %XMM0 is also set in %XMM1:
       const int no_hits_to_store = _mm256_testc_si256(_mm256_setzero_si256(), left);
+
+      if(ireg==0){
+           printf("itime=%ld\n", itime);
+           printf("ADC value: \t\t"); print256_as16_dec(s);             printf("\n\n");
+           //printf("median: \t\t"); print256_as16_dec(median);        printf("\n");
+           //printf("sigma: \t\t"); print256_as16_dec(sigma);         printf("\n");
+           printf("threshold: \t\t"); print256_as16_dec(threshold);         printf("\n");
+           printf("to_add_charge: \t\t"); print256_as16_dec(to_add_charge); printf("\n");
+           printf("hit_charge: \t\t"); print256_as16_dec(hit_charge);    printf("\n");
+           printf("channels: \t\t"); print256_as16_dec(channels);    printf("\n");
+           printf("is_over:  \t\t"); print256_as16_dec(is_over);          printf("\n");
+           printf("prev_was_over: \t\t"); print256_as16_dec(prev_was_over);          printf("\n");
+           printf("left: \t\t"); print256_as16_dec(left);          printf("\n");
+           printf("flag: \t\t"); printf("%d",no_hits_to_store);          printf("\n");
+           printf("!flag: \t\t"); printf("%d",!no_hits_to_store);          printf("\n");
+      }
 
       if (!no_hits_to_store) {
 
@@ -175,12 +183,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         // the caller. This saves faffing with hits that span
         // a message boundary, hopefully
 
-        _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
+        _mm256_storeu_si256(output_loc++, timenow-1); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
         _mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
                             _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
 
-        _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
+        _mm256_storeu_si256(output_loc++, hit_tover-1); // NOLINT(runtime/increment_decrement)
 
         _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)
 
@@ -214,7 +222,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
   } // end loop over ireg (the 8 registers in this frame)
 
   // Store the output
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 6; ++i) {
     _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 

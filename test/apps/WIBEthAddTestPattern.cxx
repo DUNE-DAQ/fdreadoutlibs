@@ -36,6 +36,7 @@
 #include <sstream>
 #include <string>
 
+#include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "TestTPGAlgorithmsWIBEth.hpp"
 
 using namespace dunedaq::hdf5libs;
@@ -281,7 +282,7 @@ int main(int argc, char** argv)
 
   // Write output file 
   std::fstream output_file;
-  std::string patt_name; 
+  std::string patt_name, name_suffix; 
   int patt_time_offset = 1;
   if (cfg.count("patt_time_offset") == 1) {
     patt_time_offset = stoi(cfg["patt_time_offset"]);
@@ -343,7 +344,7 @@ int main(int argc, char** argv)
 
       for (int itime=0; itime<64; ++itime) {
         for (int ch=0; ch<64; ++ch) {
-          output_frame->set_adc(ch, itime, 0);
+          output_frame->set_adc(ch, itime, 0); // set pedestal value, make it configurable
         }
         //if (i==0 && itime < npatt && std::find(patt_time, patt_time + npatt, itime) == patt_time + npatt ) {
         if (i==0 && itime < patt_time[0]) {
@@ -427,12 +428,34 @@ int main(int argc, char** argv)
     std::cout << "Number of frames " << num_frames << std::endl;
 
     std::fstream output_file_pedsub;
-    output_file_pedsub.open("wibeth_output_pedsub.bin", std::ios::app | std::ios::binary);
+    if (cfg.count("do_filter") == 1 && cfg["do_filter"] == "true") {
+      name_suffix = "_fir";
+    }
+    output_file_pedsub.open(patt_name+"_wibeth_output_pedsub"+name_suffix+".bin", std::ios::app | std::ios::binary);
     int16_t median_ssr[64] = { 0 };
     int16_t accum_ssr[64] = { 0 };
     int16_t median = 0;
     int16_t accum = 0;
-
+    // filtering
+    const size_t NTAPS = 8;
+    uint16_t absTimeModNTAPS;
+    int16_t* prev_samp = new int16_t[64*64];
+    for (size_t it = 0; it < 64 * 64; ++it) {
+      for (size_t jt = 0; jt < NTAPS; ++jt) {
+        prev_samp[it * NTAPS + jt] = 0;
+      }
+    }
+    const uint8_t tap_exponent = 6;
+    int16_t multiplier{1 << tap_exponent};
+    int16_t adcMax{INT16_MAX / multiplier};
+    std::vector<int16_t> tpg_taps = swtpg_wibeth::firwin_int(7, 0.1, multiplier);
+    int16_t* taps = new int16_t[tpg_taps.size()];
+    for (size_t it = 0; it < tpg_taps.size(); ++it) {
+      std::cout << "DBG fir filter taps " << it << " : " << tpg_taps[it] << std::endl;
+      taps[it] = tpg_taps[it];
+    }
+    std::cout << "DBG fir filter consts: multiplier, adcMax, INT16_MAX: " << multiplier << ", " << adcMax << ", " << INT16_MAX << std::endl;
+    
     for (size_t i=0; i<num_frames; i++) {
       std::cout << "========== FRAME_NUM " << i <<  std::endl;
       output_frame_pedsub = input_file_fake.frame(i);
@@ -454,9 +477,20 @@ int main(int argc, char** argv)
             accum_ssr[ch] = accum;
 	    sample -= median;
 	    //std::cout << "DBG frugal after sample " << sample << std::endl;
+	    // filtering
+	    if (cfg.count("do_filter") == 1 && cfg["do_filter"] == "true") {
+              int16_t filt = swtpg_wibeth::fir_filter(sample, adcMax, NTAPS, absTimeModNTAPS, taps, prev_samp); 
+	      std::cout << "Filtering before / after: " << sample << " / " << filt << " where " << absTimeModNTAPS << std::endl;
+	      sample = filt >> tap_exponent;
+            }
 	  }
-	  std::cout << "DBG pedsub write to file sample 2 " << sample << ", " << median << ", " << accum << std::endl;
-	  output_frame_pedsub->set_adc(ch, itime, sample);
+	  std::cout << "DBG pedsub write to file sample 2: " << sample << ", " << median << ", " << accum << ", " << adcMax << std::endl;
+	  // NB TDAQ ERROR ADC value out of range 
+	  if (sample > 0 && sample < INT16_MAX) {
+	    output_frame_pedsub->set_adc(ch, itime, sample);
+	  } else {
+            output_frame_pedsub->set_adc(ch, itime, 0);
+          }
           std::cout << "Pedsub ADC value: " << sample << "\t\t\tFrame: " << i << " \t\tChannel: " << input_ch << " \t\tTimeSample: " << itime << " \t\tiCh: " << ch <<  std::endl;
         }
       }
@@ -475,25 +509,28 @@ int main(int argc, char** argv)
     // hit finding - ADCs stored in long vector - works for small number of frames -> text file
     dunedaq::fddetdataformats::WIBEthFrame* input_frame_pedsub; 
     std::string input_file_name = patt_name+"_wibeth_output.bin";
+
+    std::string file_name_hits = patt_name+"_wibeth_output_hits.txt";
     if (cfg.count("do_pedsub") == 1 && cfg["do_pedsub"] == "true") {
-      input_file_name = patt_name+"_wibeth_output_pedsub.bin";
+      input_file_name = patt_name+"_wibeth_output_pedsub"+name_suffix+".bin";
+      file_name_hits = patt_name+"_wibeth_output_pedsub"+name_suffix+"_hits.txt";
     }
     FrameFile input_file_pedsub = FrameFile(input_file_name.c_str()); 
-    std::cout << "Size of the input file wibeth_output_pedsub.bin: " << input_file_pedsub.length() << std::endl;
+    std::cout << "Size of the input file " << input_file_name << ": " << input_file_pedsub.length() << std::endl;
     //std::cout << "Number of frames " << input_file_pedsub.num_frames() << std::endl;
     std::cout << "Number of frames " << num_frames << std::endl;
 
     //std::fstream output_file_pedsub;
     //output_file_pedsub.open("wibeth_output_hits.txt", std::ios::app | std::ios::binary);
     std::ofstream output_file_pedsub;
-    std::string file_name_pedsub = patt_name+"_wibeth_output_hits.txt";
-    output_file_pedsub.open(file_name_pedsub.c_str(), std::ofstream::app);
+    output_file_pedsub.open(file_name_hits.c_str(), std::ofstream::app);
 
     if (cfg.count("threshold") == 1) {	    
       threshold = stoi(cfg["threshold"]);
     }
 
     for (int ch=0; ch<64; ++ch) {
+      if (ch != input_ch) continue;
       //std::vector<int16_t> adcs;
       std::vector<int> adcs;
       std::vector<std::vector<int>> tmp_out;

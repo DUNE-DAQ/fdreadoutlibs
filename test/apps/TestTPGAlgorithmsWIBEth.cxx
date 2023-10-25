@@ -73,6 +73,7 @@ std::string select_algorithm = "";
 std::string select_implementation = "";
 bool save_adc_data = false;
 bool save_trigprim = false;
+std::string name_suffix = "";
 std::map<std::string, std::string> cfg;
 
 // =================================================================
@@ -91,7 +92,7 @@ void SetAffinityThread(int executorId) {
 }
 
 // Function save the TP data to a file 
-void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_name ){
+void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_name, std::string name_suffix=""){
   std::ofstream out_file; 
 
   auto t = std::time(nullptr);
@@ -100,7 +101,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
   oss << std::put_time(&tm, "%d-%m-%Y_%H-%M");
   auto date_time_str = oss.str();
 
-  std::string file_name = "TP_dump_" + source_name + "_" + date_time_str + ".txt";
+  std::string file_name = "TP_dump_" + source_name + "_" + date_time_str + name_suffix + ".txt";
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
@@ -249,7 +250,7 @@ void save_raw_data_bin(swtpg_wibeth::MessageRegisters register_array,
 // =================================================================
 //                       TPG FUNCTIONS
 // =================================================================
-void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
+void extract_hits_naive(uint16_t* output_location, uint64_t timestamp, std::string name_siffix="") {
 
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
@@ -339,7 +340,7 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       trigprim.version = 1;
 
       if (save_trigprim) {
-        save_hit_data(trigprim, "NAIVE");
+        save_hit_data(trigprim, "NAIVE", name_suffix); // pass these parameters from the CLI arguments
       }
       ++total_hits;
 
@@ -452,8 +453,128 @@ void save_naive_pedsub(uint16_t* output_location, uint64_t timestamp,
 }
 
 
+void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string name_siffix="") {
 
-void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
+  constexpr int clocksPerTPCTick = 32;
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], hit_peak_offset[16];
+
+  while (*output_location != swtpg_wibeth::MAGIC) {
+    for (int i = 0; i < 16; ++i) {
+      chan[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_end[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_charge[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_tover[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_time[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_adc[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_offset[i] = 0;
+    }
+
+    // Now that we have all the register values in local
+    // variables, loop over the register index (ie, channel) and
+    // find the channels which actually had a hit, as indicated by
+    // nonzero value of hit_charge
+    for (int i = 0; i < 16; ++i) {
+      if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
+        //std::cout << "Channel number: " << chan[i] << std::endl;
+        //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
+        if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+        std::cout << "Timestamp: " << timestamp << std::endl;
+        std::cout << "Channel number: " << chan[i] << std::endl;
+        std::cout << "Hit charge: " << hit_charge[i] << std::endl;
+        std::cout << "Hit end: " << hit_end[i] << std::endl;
+        std::cout << "Hit tover: " << hit_tover[i] << std::endl;
+        std::cout << "Hit peak time: " << hit_peak_time[i] << std::endl;
+        std::cout << "Hit peak adc: " << hit_peak_adc[i] << std::endl;
+        std::cout << "Hit peak offset: " << hit_peak_offset[i] << std::endl;
+        }
+
+
+	  /*
+          uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
+            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
+          uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
+
+          // May be needed for TPSet:
+          // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
+          //
+
+          // For quick n' dirty debugging: print out time/channel of hits.
+          // Can then make a text file suitable for numpy plotting with, eg:
+          //
+          //
+          //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
+
+          triggeralgs::TriggerPrimitive trigprim;
+          trigprim.time_start = tp_t_begin;
+          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+          trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
+          trigprim.channel = chan[i];
+          trigprim.adc_integral = hit_charge[i];
+          trigprim.adc_peak = hit_charge[i] / 20;
+          trigprim.detid = 666;
+          trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+          trigprim.version = 1;
+          */
+
+      hit_peak_offset[i] *= 64;
+
+      int64_t set_hit_end = int64_t(hit_end[i] - hit_peak_offset[i]);
+      if (set_hit_end == 0) {
+        set_hit_end -= 1;
+      } else if (set_hit_end < 0) {
+        set_hit_end = int64_t(64 - hit_peak_offset[i] + hit_end[i]);
+      }
+
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - hit_tover[i]);
+      uint64_t tp_t_end   = timestamp + clocksPerTPCTick * int64_t(hit_end[i] ); // NB not needed 
+      uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time[i] - hit_peak_offset[i]);
+
+      tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + 64 * clocksPerTPCTick;
+      if (is_cfg_value(cfg, std::string("debug_level"), std::string("on"))) {
+        std::cout << "DBG tp_t_begin " << "timestamp, channel: " << timestamp << ", " << chan[i] << ", hit_end[i]: "  << (int64_t(hit_end[i])) << ", hit_over:" << hit_tover[i] << ", hit_peak_time: " << hit_peak_time[i] << ", hit_peak_offset: " << hit_peak_offset[i] << ", diff: " << (int64_t(hit_end[i] ) - hit_tover[i] ) << " --> " << tp_t_begin << std::endl;
+      }
+
+      triggeralgs::TriggerPrimitive trigprim;
+      trigprim.time_start = tp_t_begin;
+      trigprim.time_peak = tp_t_peak;
+
+      trigprim.time_over_threshold = hit_tover[i]  * clocksPerTPCTick;
+
+
+      trigprim.channel = chan[i];
+      trigprim.adc_integral = hit_charge[i];
+      trigprim.adc_peak = hit_peak_adc[i];
+      trigprim.detid = 666;
+      trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+      trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+      trigprim.version = 1;
+
+
+
+          if (save_trigprim){
+            save_hit_data(trigprim, "AVX", name_suffix);
+          }
+
+        ++total_hits;
+      }
+    } // loop over 16 registers
+  } // while not magic
+
+}
+void extract_hits_avx_old(uint16_t* output_location, uint64_t timestamp) {
 
   constexpr int clocksPerTPCTick = 32;
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
@@ -571,7 +692,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   if (select_implementation == "AVX") {
     extract_hits_avx(destination_ptr, timestamp);
   } else if (select_implementation == "NAIVE") {  
-    extract_hits_naive(destination_ptr, timestamp);
+    extract_hits_naive(destination_ptr, timestamp, name_suffix);
   } else if (select_implementation == "NAIVE_PEDSUB") {
     extract_naive_pedsub(destination_ptr, timestamp);
     save_naive_pedsub(destination_ptr, timestamp, -1, select_algorithm + "_" + select_implementation, wfptr);
@@ -610,6 +731,8 @@ main(int argc, char** argv)
     app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
 
     app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
+
+    app.add_option("-s ,--out_suffix", name_suffix, "Append string to output hit file name");
 
     std::string app_cfg_fn = "app.cfg";  
     app.add_option("-c", app_cfg_fn, "App config file. Default: app.cfg");

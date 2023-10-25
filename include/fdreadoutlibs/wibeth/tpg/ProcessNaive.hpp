@@ -37,6 +37,23 @@ frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acc
   }
 }
 
+int16_t
+fir_filter(int16_t sample, const int16_t adcMax, const size_t NTAPS, uint16_t& absTimeModNTAPS, const int16_t* taps, int16_t* prev_samp) {
+  // Don't let the sample exceed adcMax, which is the value
+  // at which its filtered version might overflow
+  sample = std::min(sample, adcMax);
+  int16_t filt_tmp = 0;
+  for (size_t j = 0; j < NTAPS; ++j) {
+    std::cout << "DBG fir filter taps used: " << j << " : " << taps[j] << " prev_samp " << prev_samp[(j + absTimeModNTAPS) % NTAPS] << " where " << absTimeModNTAPS << ", " << (j + absTimeModNTAPS) % NTAPS << ", " << j + absTimeModNTAPS << ", " << (j + absTimeModNTAPS) % NTAPS  << std::endl;
+    filt_tmp += taps[j] * prev_samp[(j + absTimeModNTAPS) % NTAPS];
+  }
+  prev_samp[absTimeModNTAPS % NTAPS] = sample;
+
+  absTimeModNTAPS = (absTimeModNTAPS + 1) % NTAPS;
+  return filt_tmp;
+}
+
+
 /*
 template<size_t NREGISTERS>
 void
@@ -170,7 +187,11 @@ template<size_t NREGISTERS>
 void
 process_window_naive(ProcessingInfo<NREGISTERS>& info)
 {
-
+  std::cout << "IRH process_window_naive " << std::endl; // IRH
+  // Start with taps as floats that add to 1. Multiply by some
+  // power of two (2**N) and round to int. Before filtering, cap the
+  // value of the input to INT16_MAX/(2**N)
+  const size_t NTAPS = 8;
   const int16_t adcMax = info.adcMax;
 
   uint16_t* output_loc = info.output;           // NOLINT
@@ -192,6 +213,9 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     int16_t& median = state.pedestals[ichan];
     int16_t& accum = state.accum[ichan];
 
+    // Variables for filtering
+    int16_t* prev_samp = state.prev_samp + NTAPS * ichan;
+    uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
     // Variables for hit finding
     int16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
@@ -223,11 +247,20 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       frugal_accum_update(median, sample, accum, 10);
       printf("Sample before pedsub % 5d:sample % 5d:median % 5d:accum \n", (int16_t)sample, median, accum);
 
-      // Subtract the baseline - pedestal subtraction on/off
-      //sample -= median;
+      // Subtract the baseline - pedestal subtraction on/off, enable/disable pedestal substraction
+      sample -= median;
       printf("Sample after pedsub % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
-      //sample = sample >> info.tap_exponent;
       printf("Sample after shift % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
+
+      /*
+      // --------------------------------------------------------------
+      // Filtering
+      // --------------------------------------------------------------
+      int16_t filt = fir_filter(sample, adcMax, NTAPS, absTimeModNTAPS, info.taps, prev_samp);
+      filt = filt >> info.tap_exponent;
+      printf("Filtering before / after: % 5d / % 5d \n", sample, filt);
+      sample = filt;
+      */
 
       // --------------------------------------------------------------
       // Hit finding
@@ -246,7 +279,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 	}
         hit_charge = (int16_t)tmp_charge;
         hit_tover++;
-        prev_was_over = true;
+        //prev_was_over = true;
+        prev_was_over = is_over;
       }
       printf("DBG check % 5d:prev_was_over % 5d:is_over % 5d:itime \n", prev_was_over, is_over, itime);
       if (prev_was_over && !is_over) {
