@@ -113,7 +113,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
   out_file << trigprim.channel << "," << trigprim.time_start << "," << trigprim.time_over_threshold << "," 
-	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "," << trigprim.detid << "," << trigprim.type << "\n";
+	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "\n";
 
   out_file.close();
 }
@@ -361,11 +361,6 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
       save_raw_data(registers_array, timestamp, -1, select_algorithm + "_" + select_implementation);
     }
 
-    // Register the offline channel numbers
-    for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-      m_register_channels[i] = register_channel_map.channel[i];  
-    }
-
   }
 
 
@@ -519,32 +514,16 @@ main(int argc, char** argv)
             auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
               static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
             );
-           
-            /*
-            // Unpack the ADC values
-            for (size_t j=0; j<n_smpl; ++j){
-              for (size_t k=0; k<n_ch; ++k){
-                frame.set_adc(k, j, fr->get_adc(k, j));
-              } // loop over channels
-            } // loop over time samples    
-  
-  
-            // Set timestamp of the frame and the header information
-            frame.set_timestamp(fr->get_timestamp());
-            frame.daq_header.crate_id = fr->daq_header.crate_id;
-            frame.daq_header.slot_id = fr->daq_header.slot_id;
-            frame.daq_header.stream_id = fr->daq_header.stream_id;
-            frame.daq_header.seq_id = fr->daq_header.seq_id;
-
-  
-            auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(&frame);
-            */
 
             // Execute the TPG algorithm on the WIBEth adapter frames
             auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(fr);
 
+            // AAA: TODO: FIND A BETTER WAY TO REGISTER THE CHANNEL MAP
             register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, channel_map); 
-
+            // Register the offline channel numbers
+            for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
+              m_register_channels[i] = register_channel_map.channel[i];  
+            }
       
             if (total_hits <500) { // AAA: TODO: RESTORE IT
               execute_tpg(fp);
@@ -553,7 +532,6 @@ main(int argc, char** argv)
           } // end loop over number of frames      
   
           // Finished processing all the frames for the given WIBEth fragment.
-          // Incrementing the pointer
           ++record_idx_TR;
 
         } // if trigger record is WIBEth type
