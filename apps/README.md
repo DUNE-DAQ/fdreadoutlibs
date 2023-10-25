@@ -1,8 +1,9 @@
 # TPG Applications
 Here is a short summary of the applications available in this directory. Refer to the code for further details. 
 
-`wibeth_tpg_algorithms_emulator` is a testing tool for validating different TPG algorithms, either in a naive or in AVX implementation. To use the tool use the following. Refer to the code for further details.
+`wibeth_tpg_algorithms_emulator` is a emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. 
 
+To use the tool use the following:
 ```sh
 $ wibeth_tpg_algorithms_emualator --help 
 Test TPG algorithms
@@ -24,8 +25,8 @@ The command line option `save_adc_data` allows to save the raw ADC values in a t
 
 Example of usage: 
 ```sh
-$ ./TestTPGAlgorithmsWIBEth --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation NAIVE --save_adc_data 1
-$ ./TestTPGAlgorithmsWIBEth.cxx --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation AVX  --save_trigprim 1
+$ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation AVX --save_adc_data
+$ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm AbsRS --implementation AVX  --save_trigprim 
 ```
 
 
