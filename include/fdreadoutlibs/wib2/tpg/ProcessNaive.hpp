@@ -39,7 +39,7 @@ frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acc
 
 template<size_t NREGISTERS>
 void
-process_window_naive(ProcessingInfo<NREGISTERS>& info, size_t channel_offset)
+process_window_naive(ProcessingInfo<NREGISTERS>& info, size_t /*channel_offset*/)
 {
   // Start with taps as floats that add to 1. Multiply by some
   // power of two (2**N) and round to int. Before filtering, cap the
