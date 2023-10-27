@@ -63,6 +63,8 @@ unsigned int total_hits = 0;
 bool first_hit = true;
 
 dunedaq::fdreadoutlibs::WIB2FrameHandler fh(0);
+int duration_test = 120; // default value
+
 
 std::function<void(swtpg_wib2::ProcessingInfo<swtpg_wib2::NUM_REGISTERS_PER_FRAME>& info, size_t channel_offset)> m_assigned_tpg_algorithm_function;
 
@@ -248,9 +250,6 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
     // nonzero value of hit_charge
     for (int i = 0; i < 16; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wib2::MAGIC) {
-        std::cout << "Channel number: " << chan[i] << std::endl;
-        std::cout << "Hit charge: " << hit_charge[i] << std::endl;
-
 
           uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
             timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
@@ -361,15 +360,17 @@ main(int argc, char** argv)
   
     app.add_option("-i,--implementation", select_implementation, "TPG implementation (AVX / NAIVE)");
 
+    app.add_option("-d,--duration_test", duration_test, "Duration (in seconds) to run the test");    
+
     int num_frames = -1;
     app.add_option("-n,--num_frames", num_frames, "Number of frames to read. Default: select all frames.");
 
     int swtpg_threshold = 100;
     app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the TPG threshold");
 
-    app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
+    app.add_flag("--save_adc_data", save_adc_data, "Save ADC data");
 
-    app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
+    app.add_flag("--save_trigprim", save_trigprim, "Save trigger primitive data");
 
 
     CLI11_PARSE(app, argc, argv);
@@ -466,6 +467,12 @@ main(int argc, char** argv)
         auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
         std::cout << "Elapsed time [s]: " << elapsed_seconds << std::endl;
 	frame_repeat = 0;
+
+        // stop the testing after a time a condition
+        if (elapsed_seconds > duration_test) {
+          superchunk_index = num_frames;
+        }
+	
       }
 	
 
