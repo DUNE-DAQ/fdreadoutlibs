@@ -41,6 +41,17 @@ $ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm AbsRS
 ```sh
 python3 plot_trigprim_output_data.py  -f TP_OUTPUT.TXT
 ```
+* `hdf5_converter.py` converts the HDF5 files from the DUNE DAQ to a more readable format.
+You can change the output format by changing the value of the variable `FORMAT`. The possible values are:
+  - `txt`: the output is a text file
+  - `npy`: the output is a numpy array
+  - `img_groups`: TPs are grouped, and an image is produced for each group
+  - `img_all`: an image with all the tps is produced. 
+
+You can simply run the script by using:
+```sh
+python hdf5_converter.py --input_file <input-file> --output_folder <output-folder> --make_fixed_size
+```
 
 #### Setup matplotlib on NP04 machines (e.g. `np04-srv-019`)
 To use the `matplotlib` python module run the following command on a console where the DUNE-DAQ software area has not been sourced:
