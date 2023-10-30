@@ -48,11 +48,6 @@ You can change the output format by changing the value of the variable `FORMAT`.
   - `img_groups`: TPs are grouped, and an image is produced for each group
   - `img_all`: an image with all the tps is produced. 
 
-You can simply run the script by using:
-```sh
-python hdf5_converter.py --input_file <input-file> --output_folder <output-folder> --make_fixed_size
-```
-This script requires the use of `matplotlib` to produce the images.
 
 #### Setup matplotlib on NP04 machines (e.g. `np04-srv-019`)
 To use the `matplotlib` python module run the following command on a console where the DUNE-DAQ software area has not been sourced:
