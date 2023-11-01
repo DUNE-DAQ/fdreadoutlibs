@@ -37,17 +37,6 @@ $ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm AbsRS
 
 * `wibeth_binary_frame_modifier` is used to create a custom WIBEth frame file suitable for testing different patterns. The application will produce an output file `wibeth_output.bin`. There are no command line options, please refer to the code for further details (e.g. what ADC value to set, which time frame to use, etc.). 
 
-* `plot_trigprim_output_data.py.py` plots the Trigger Primitive output file obtained through `wibeth_tpg_algorithms_emulator` (when `save_trigprim` flag is enabled) and produces a plot called `output_trigger_primitives.png` . This script requires the use of `matplotlib`. To use the script run the following command: 
-```sh
-python3 plot_trigprim_output_data.py  -f TP_OUTPUT.TXT
-```
-
-#### Setup matplotlib on NP04 machines (e.g. `np04-srv-019`)
-To use the `matplotlib` python module run the following command on a console where the DUNE-DAQ software area has not been sourced:
-```sh
-pip install --prefix=$PREFIX_PATH matplotlib
-```
-
 
 ## Notes
 - The tools and scripts developed have been used for TPG related activities. They have not been generalized to cover all use-cases. If there is a need or feature request, ask mainteners of the repository.  
