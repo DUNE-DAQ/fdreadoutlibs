@@ -1,5 +1,5 @@
 # fdreadoutlibs - Far Detector readout libraries
-Collection of Far Detector FrontEnd specific readout specializations. This includes type definitions to be used with the implementations in `readoutlibs` and frontend specific specializations (i.e. frame processors or software hit finding). It is the glue between `readoutlibs` and `readoutmodules` that specifies types and implementations for the use of `readoutlibs` that can then be imported by `readoutmodules` to be initialized in the `DataLinkHandler` module.
+Collection of Far Detector FrontEnd specific readout specializations. This includes type definitions to be used with the implementations in `readoutlibs` and frontend specific specializations (i.e. frame processors or software hit finding). It is the glue between `readoutlibs` and `readoutmodules` that specifies types and implementations for the use of `readoutlibs` that can then be imported by `fdreadoutmodules` to be initialized in the `DataLinkHandler` module.
 
 ## Building and setting up the workarea
 
