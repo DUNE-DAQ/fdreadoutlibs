@@ -3,7 +3,7 @@ Collection of Far Detector FrontEnd specific readout specializations. This inclu
 
 ## Building and setting up the workarea
 
-How to clone and build DUNE DAQ packages, including `readout`, is covered in [the daq-buildtools instructions](https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-buildtools/). For examples on how to run the standalone readout app, take a look at the `readoutmodules` documentation.
+How to clone and build DUNE DAQ packages, including `readout`, is covered in [the daq-buildtools instructions](https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-buildtools/). For examples on how to run the standalone readout app, take a look at the `fdreadoutmodules` documentation.
 
 ## Frontends and features provided by `fdreadoutlibs`
 The following frontends and features are provided by this package:
