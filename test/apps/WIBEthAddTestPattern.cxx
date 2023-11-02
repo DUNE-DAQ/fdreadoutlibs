@@ -238,6 +238,125 @@ void hit_finder(std::vector<int>& adcs, std::vector<std::vector<int>>& out, cons
       }
 }
 
+void hit_finder2(std::vector<uint16_t>& adcs, std::vector<std::vector<int>>& out, const int& channel, 
+		const int& threshold, const uint64_t timestamp) {
+
+  //int threshold = (int)m_threshold;
+
+      // index of ADCs above threshold
+      //int threshold = (int)m_threshold;
+      std::cout << "DBG threshold " << threshold << std::endl;
+      std::cout << "DBG ADC sample length " << adcs.size() << std::endl;
+      for(long unsigned int m = 0; m < adcs.size(); m++){
+        std::cout << "DBG ADC sample, value " << m << ", " << adcs[m] << std::endl;
+      }
+
+      int m_tov_min = 2;
+
+      bool dbg = false;
+      int sz = adcs.size();
+      if (sz == 64) {
+        for (auto& t : adcs) std::cout << "DBG pattgen 64 adcs " << t << std::endl;
+      }
+
+      std::vector<int> igt;
+      std::vector<uint16_t>::iterator it_adcs = adcs.begin();
+      while ((it_adcs = find_if(it_adcs, adcs.end(), [&threshold](int x){return x > threshold; })) != adcs.end())
+      {
+        igt.push_back(distance(adcs.begin(), it_adcs));
+        // cout << distance(adcs.begin(), it_adcs) << endl;
+        it_adcs++;
+      }
+
+      if (dbg && sz == 64) std::cout << "DBG pattgen 64 igt " << igt.size() << std::endl;
+
+      // cout << "igt.size = " << igt.size() << endl;
+      // cout << (igt.size() < m_tov_min) << endl;
+
+      if(igt.size() < m_tov_min){
+        // cout << "m_tov_min condition not fulfilled for whole packet!" << endl;
+        return void();
+      }
+
+      std::vector<int> igt_diff;
+      adjacent_difference (igt.begin(), igt.end(), back_inserter(igt_diff));
+      igt_diff.erase(igt_diff.begin());
+
+      // find start and end of hits
+      std::vector<int> istart;
+      std::vector<int> iend;
+      istart.push_back(0);
+      std::vector<int>::iterator it_igt = igt_diff.begin();
+      while ((it_igt = find_if(it_igt, igt_diff.end(), [ ](int x){return x != 1; })) != igt_diff.end())
+      {
+        istart.push_back(distance(igt_diff.begin(), it_igt)+1);
+        iend.push_back(distance(igt_diff.begin(), it_igt));
+        it_igt++;
+      }
+      iend.push_back(igt.size()-1);
+
+      std::vector<int> start;
+      std::vector<int> end;
+      std::vector<int> hitcontinue;
+      for(long unsigned int i = 0; i < istart.size(); i++){
+        start.push_back(igt[istart[i]]);
+        end.push_back(igt[iend[i]]);
+        if(end[i] == 63){
+          hitcontinue.push_back(1);
+        }else{
+          hitcontinue.push_back(0);
+        }
+      }
+
+      // find hit sums
+      std::vector<int> sums;
+      for(long unsigned int j = 0; j < start.size(); j++){
+	std::vector<uint16_t>::iterator it_start = adcs.begin()+start[j];
+	std::vector<uint16_t>::iterator it_end = adcs.begin()+end[j]+1;
+        int sum = accumulate(it_start, it_end, 0);
+        sums.push_back(sum);
+      }
+
+      // find peak adcs and times
+      std::vector<int> peak_adcs;
+      std::vector<int> peak_times;
+      for(long unsigned int j = 0; j < start.size(); j++){
+	std::vector<uint16_t>::iterator it_start = adcs.begin()+start[j];
+	std::vector<uint16_t>::iterator it_end = adcs.begin()+end[j]+1;
+	std::vector<uint16_t>::iterator max = max_element(it_start, it_end);
+        int peak = *max;
+        int time = distance(adcs.begin(), max);
+        peak_adcs.push_back(peak);
+        peak_times.push_back(time);
+      }
+
+      if (dbg && sz == 64) {
+	std::cout << "DBG pattgen 64 hit sizes " << channel << " : " << start.size() << " " << end.size() << " " << peak_times.size() << " " << sums.size() << " " << peak_adcs.size() << " " << hitcontinue.size() << std::endl;
+      }
+
+      // check output hits fullfil the m_tov_min condition
+      for(long unsigned int k = 0; k < start.size(); k++){
+        if (peak_adcs[k] > 16384) {
+          if (dbg && sz == 64) std::cout << "DBG pattgen 64 peak adc is too big " << peak_adcs[k] << std::endl;
+          continue; // 2**14
+        }
+        if (end[k]-start[k] >= m_tov_min-1){
+          //std::vector<int> aux = {start[k], end[k], peak_times[k], peak_adcs[k], sums[k], hitcontinue[k]};
+          //std::vector<int> aux = {k, start[k], end[k], peak_times[k], peak_adcs[k], sums[k], hitcontinue[k]};
+          // start, end, peak_time, channel, sum_adc, peak_adc, hitcotninue
+	  std::vector<int> aux = {start[k], end[k], peak_times[k], channel, sums[k], peak_adcs[k], hitcontinue[k]};
+          out.push_back(aux);
+
+	  std::cout << "# hit " << "[" << adcs.size() << "]"<< k << ", start time " << start[k] << ", end time " << end[k] << ", peak time " << peak_times[k] << ", peak adc " << peak_adcs[k] << ", sum adc " << sums[k] << ", hit continue " << hitcontinue[k] << ", timestamp " << timestamp << std::endl;
+          
+	  uint64_t ts_tov = (end[k]-start[k])*32;
+	  uint64_t ts_start = start[k] * 32 + timestamp;
+	  uint64_t ts_peak = peak_times[k] * 32 + timestamp;
+	  std::cout << channel << "," << ts_start << "," << ts_tov << "," << ts_peak << "," << sums[k] << "," << peak_adcs[k] << std::endl;
+	}
+      }
+}
+
 
 
 int main(int argc, char** argv)
@@ -532,22 +651,26 @@ int main(int argc, char** argv)
     for (int ch=0; ch<64; ++ch) {
       if (ch != input_ch) continue;
       //std::vector<int16_t> adcs;
-      std::vector<int> adcs;
+      //std::vector<int> adcs;
+      std::vector<uint16_t> adcs;
       std::vector<std::vector<int>> tmp_out;
       uint64_t timestamp;
       for (size_t i=0; i<num_frames; i++) {
-        std::cout << "========== FRAME_NUM " << i <<  std::endl;
+        std::cout << "========== FRAME_NUM " << i << " max " << std::vector<int>().max_size() <<  std::endl;
+        //std::cout << "========== FRAME_NUM " << i << " max " << std::vector<std::vector<int> >().max_size() <<  std::endl;
         input_frame_pedsub = input_file_pedsub.frame(i);
 	if (i==0) {
 	  timestamp = input_frame_pedsub->get_timestamp();
 	}
         for (int itime=0; itime<64; ++itime) {
 	  //int16_t adc = input_frame_pedsub->get_adc(ch, itime);
-	  int adc = (int)input_frame_pedsub->get_adc(ch, itime);
+	  //int adc = (int)input_frame_pedsub->get_adc(ch, itime);
+	  uint16_t adc = input_frame_pedsub->get_adc(ch, itime);
 	  adcs.push_back(adc);
         }
       }
-      hit_finder(adcs, tmp_out, ch, threshold, timestamp);
+      //hit_finder(adcs, tmp_out, ch, threshold, timestamp);
+      hit_finder2(adcs, tmp_out, ch, threshold, timestamp);
       for (auto& it : tmp_out) {
         // start[k], end[k], peak_times[k], channel, sums[k], peak_adcs[k], hitcontinue[k]
         uint64_t ts_tov = (it[1]-it[0])*32;

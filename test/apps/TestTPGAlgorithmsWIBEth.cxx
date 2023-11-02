@@ -715,6 +715,7 @@ main(int argc, char** argv)
 {
 
     CLI::App app{ "Test TPG algorithms" };
+    app.config_formatter(std::make_shared<CLI::ConfigINI>());
 
     // Set default input frame file
     std::string frame_file_path = "./wibeth-frames.bin";
@@ -736,11 +737,35 @@ main(int argc, char** argv)
 
     app.add_option("-s ,--out_suffix", name_suffix, "Append string to output hit file name");
 
+    // custom config file - to be removed
     std::string app_cfg_fn = "app.cfg";  
-    app.add_option("-c", app_cfg_fn, "App config file. Default: app.cfg");
+    app.add_option("-c", app_cfg_fn, "App config file. Default: app.cfg (to be replaced by -c option)");
+ 
+    // CLI11 configuration file 
+    //app.set_config(option_name="", default_file_name="app.ini", help_string="Read an ini file", required=false);
+    int config_val = 0;
+    app.add_option("-v ,--value", config_val, "Test configuration value");
+    app.set_config("--config", "app.ini", "Read an ini file", true);
+
+    // before CLI11_PARSE
+    //auto fmtr=app.get_config_formatter();
+    //fmtr->to_config(&app,true,true,"");
+    //std::cout << app.config_to_str(true,true) << std::endl;
+    //std::cout << "DBG before: " << fmtr->to_config(&app,true,true,"") << std::endl;
+
+    //CLI::Option* config = app.get_config_ptr();
+    //std::vector<std::string> results = config->results();
 
 
-    CLI11_PARSE(app, argc, argv);
+    //CLI11_PARSE(app, argc, argv);
+    try {
+      app.parse(argc, argv);
+    } catch (CLI::Error &e) {
+      return app.exit(e);
+    }
+
+    std::cout << app.config_to_str(true, true) << std::endl;
+    //std::cout << "DBG after: " << fmtr->to_config(&app,true,true,"") << std::endl;
 
     if (select_algorithm == "SimpleThreshold") {
       if (select_implementation == "NAIVE") {
@@ -772,7 +797,16 @@ main(int argc, char** argv)
       return 1;
     }
 
-    // parse/print app configuration file
+    /*
+    CLI::Option* config = app.get_config_ptr();
+    std::vector<std::string> results = config->results();
+    std::cout << "DBG results as: " << app.get_config_ptr()->as<std::string>() << std::endl;
+    for (auto& t : results) {
+      std::cout << "DBG results: " << t << std::endl;
+    }
+    */
+
+    // parse/print app configuration file - to be removed
     //AppCfg ac = AppCfg(app_cfg_fn);
     std::ifstream file(app_cfg_fn);
     //AppCfg ac = AppCfg(file, cfg);
@@ -785,7 +819,18 @@ main(int argc, char** argv)
     //if (cfg.count("save_adc_data_bin") == 1 && cfg["save_adc_data_bin"] == "true") {
     //}
 
-    
+    // from CLI11 configration file
+    bool save_adc_data_bin = true;
+    /*std::filebuf fb;
+    if (fb.open ("test.txt",std::ios::in))
+    {
+      std::istream is(&fb);
+      //std::vector<CLI::ConfigItem> res = config->from_config(is);
+      //parse_from_stream(std::istream &input);
+      std::vector<CLI::ConfigItem> from_config(&is) const;
+      fb.close();
+    }*/
+
     // =================================================================
     //                       READ THE FRAMES.BIN FILE
     // =================================================================
