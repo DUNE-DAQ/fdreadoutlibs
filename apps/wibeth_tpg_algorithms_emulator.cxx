@@ -10,10 +10,6 @@
 // DUNE-DAQ
 #include "fddetdataformats/WIBEthFrame.hpp"
 #include "fddetdataformats/WIBEthFrame.hpp"
-#include "iomanager/IOManager.hpp"
-#include "readoutlibs/utils/RateLimiter.hpp"
-#include "readoutlibs/utils/FileSourceBuffer.hpp"
-#include "readoutlibs/utils/BufferedFileWriter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
@@ -25,6 +21,7 @@
 #include "triggeralgs/TriggerPrimitive.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "hdf5libs/HDF5RawDataFile.hpp"
+
 
 // system
 #include "CLI/CLI.hpp"
@@ -48,8 +45,7 @@
 #include "tpg_emulator_utilities.hpp"
 
 using namespace dunedaq::hdf5libs;
-
-
+using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 
 
 
@@ -73,7 +69,7 @@ swtpg_wibeth::RegisterChannelMap register_channel_map;
 std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels = {};
 
 std::string select_algorithm = "";
-std::string select_channel_map = "";
+std::string select_channel_map = "None";
 bool save_adc_data = false;
 bool save_trigprim = false;
 
@@ -138,12 +134,11 @@ main(int argc, char** argv)
 
     app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
   
-    //"VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap", "FiftyLChannelMap"
-    app.add_option("-m,--channel-map", select_channel_map, "Select channel map (FiftyLChannelMap, PD2HDChannelMap, VDColdboxChannelMap, etc.)");
+    app.add_option("-m,--channel-map", select_channel_map, "Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap, etc.");
 
 
     int num_TR_to_read = -1;
-    app.add_option("-n,--num-TR-to-read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs.");
+    app.add_option("-n,--num-TR-to-read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs. ");
 
     int tpg_threshold = 145;
     app.add_option("-t,--tpg-threshold", tpg_threshold, "Value of the TPG threshold");
@@ -160,7 +155,7 @@ main(int argc, char** argv)
     } else if (select_algorithm == "AbsRS") {
       m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
     } else {
-      std::cout << "Select at least an algorithm. Use --help for further details." << std::endl;
+      TLOG() << "*** Select at least an algorithm. Use --help for further details.";
       return 1;
     }
 
@@ -170,7 +165,14 @@ main(int argc, char** argv)
     // =================================================================
 
     fh.initialize(tpg_threshold);
-    channel_map = dunedaq::detchannelmaps::make_map(select_channel_map);
+
+    // Initialize the channel map if a valid name has been selected
+    if (select_channel_map != "None") {
+      std::cout << "Using channel map: " << select_channel_map << std::endl;
+      channel_map = dunedaq::detchannelmaps::make_map(select_channel_map);
+    } else {
+      TLOG() << "*** No channel map has been provided. " ;
+    }
 
 
 
@@ -198,70 +200,84 @@ main(int argc, char** argv)
     uint32_t n_ch = dunedaq::fddetdataformats::WIBEthFrame::s_num_channels;
     uint32_t n_smpl = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
 
-    std::cout << "Run number: " << run_number << std::endl;
-    std::cout << "Recorded size [bytes]: " << recorded_size << std::endl;
-    std::cout << "Recorded type: " << record_type << std::endl;
+    std::cout << "Run number: " << run_number << std::endl; 
+    std::cout << "Recorded size [bytes]: " << recorded_size << std::endl; 
+    std::cout << "Recorded type: " << record_type << std::endl; 
 
 
     auto records = h5_raw_data_file.get_all_record_ids();
 
     if (records.empty()) {
-      std::cout << "\n\nNO TRIGGER RECORDS FOUND" << std::endl;    
+      TLOG() << "*** NO TRIGGER RECORDS FOUND" ;    
       return 0;
     }
 
     int record_idx_TR = 0;
     int record_idx_TP = 0;
 
+    uint32_t element_id; // part of the source id
+
     // Measure the time taken to read the whole trigger record file
     auto start_test = std::chrono::high_resolution_clock::now();  
 
-
+   
     for (auto const& rid : records) {
       for(auto const& frag_dataset : h5_raw_data_file.get_fragment_dataset_paths(rid)) {
         auto frag_ptr = h5_raw_data_file.get_frag_ptr(frag_dataset);
 
-        if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
-          int num_frames =
-            (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
-  
-          std::cout << "Trigger Record number " << record_idx_TR << " [ " << frag_ptr->get_element_id() << "] has "   << num_frames << " frames" << std::endl;
-          
-          for (int i = 0; i < num_frames; ++i) {
-  
-            // The safest way for reading is to create a frame 
-            // to hold the ADC values of the Trigger Record for the TPG algorithm
-            dunedaq::fddetdataformats::WIBEthFrame frame;
-            std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIBEthFrame));
-  
-            // Read the Trigger Record data as a WIBEth frame
-            auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
-              static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
-            );
+        if (record_idx_TR <= num_TR_to_read || num_TR_to_read == -1 ) {     
 
-            // Execute the TPG algorithm on the WIBEth adapter frames
-            auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(fr);
-
-            // Register the offline channel numbers
-            // AAA: TODO: find a more elegant way of register the channel map
-            register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, channel_map);             
-            for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-              m_register_channels[i] = register_channel_map.channel[i];  
-            }
-      
-            execute_tpg(fp);
+          if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
+            element_id = frag_ptr->get_element_id().id;
+            int num_frames =
+              (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
+    
+            TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Record number " << record_idx_TR << " has "   << num_frames << " frames" ;
+            
+            for (int i = 0; i < num_frames; ++i) {
+              // The safest way for reading is to create a frame 
+              // to hold the ADC values of the Trigger Record for the TPG algorithm
+              dunedaq::fddetdataformats::WIBEthFrame frame;
+              std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIBEthFrame));
+    
+              // Read the Trigger Record data as a WIBEth frame
+              auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
+                static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
+              );
   
-          } // end loop over number of frames      
+              // Execute the TPG algorithm on the WIBEth adapter frames
+              auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(fr);
   
-          // Finished processing all the frames for the given WIBEth fragment
-          ++record_idx_TR;
-
-        } // if trigger record is WIBEth type
+              // Register the offline channel numbers
+              // AAA: TODO: find a more elegant way of register the channel map
+              if (select_channel_map != "None") {
+                register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, channel_map);             
+                for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
+                  m_register_channels[i] = register_channel_map.channel[i];                
+                }
+              } else {
+                std::iota(m_register_channels.begin(), m_register_channels.end(), 0);  
+              }
         
-        if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
-          print_tps(std::move(frag_ptr), record_idx_TP, total_hits_trigger_primitive, save_hit_data);
-          ++record_idx_TP;
-        }
+              execute_tpg(fp);
+    
+            } // end loop over number of frames      
+    
+            // Finished processing all the frames for the given WIBEth fragment
+            ++record_idx_TR;
+  
+          } // if trigger record is WIBEth type
+          
+          if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
+            // Parse only the Trigger Primitives with the same ID of the ones with data frames
+            // AAA: NOT SURE OF THIS STATEMENT!! (INTRODUCED TO AVOID SAME TPs from multiple trigger id values)
+            if (frag_ptr->get_element_id().id == element_id) {
+              print_tps(std::move(frag_ptr), record_idx_TP, total_hits_trigger_primitive, save_hit_data);
+              ++record_idx_TP;
+            }          
+            
+          }
+        } // if statement number of trigger records
         
 
         
@@ -272,15 +288,14 @@ main(int argc, char** argv)
     // AAA: to be remove it if not useufl?
     auto now = std::chrono::high_resolution_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_test).count();  
-    std::cout << "Elapsed time for reading input file [ms]: " << elapsed_milliseconds << std::endl;      
 
 
 
-    std::cout << "\n\n===============================" << std::endl;
-    std::cout << "Found in total " << total_hits << " hits." << std::endl;
-    std::cout << "Found in total  (from Trigger Primitive objects) " << total_hits_trigger_primitive << " TPs." << std::endl;
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Elapsed time for reading input file [ms]: " << elapsed_milliseconds;
+    std::cout << "Found in total " << total_hits << " hits" << std::endl;
+    std::cout << "Found in total  (from Trigger Primitive objects) " << total_hits_trigger_primitive << " TPs" << std::endl;
     
-    std::cout << "\n\nFinished testing." << std::endl;
+
 
 }
 

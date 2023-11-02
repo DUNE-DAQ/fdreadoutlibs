@@ -24,6 +24,11 @@
 #include "triggeralgs/TriggerPrimitive.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "hdf5libs/HDF5RawDataFile.hpp"
+#include "logging/Logging.hpp"
+
+
+using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
+
 
  // =================================================================
 //                       FUNCTIONS and UTILITIES
@@ -55,7 +60,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
   out_file << trigprim.channel << "," << trigprim.time_start << "," << trigprim.time_over_threshold << "," 
-	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "\n";
+	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak <<  ","  << trigprim.type << "\n";  
 
   out_file.close();
 }
@@ -140,10 +145,11 @@ save_tp(const dunedaq::trgdataformats::TriggerPrimitive& prim, bool save_trigpri
   
     //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
     out_file << prim.channel << "," << prim.time_start << "," << prim.time_over_threshold << "," 
-	     << prim.time_peak << "," << prim.adc_integral << ","  << prim.adc_peak << "," << prim.detid << "," << prim.type << "\n";  
+	     << prim.time_peak << "," << prim.adc_integral << ","  << prim.adc_peak << "," << prim.type << "\n";  
   
   }
   out_file.close();
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Saved TriggerPrimitives output file." ;
   
 }
 
@@ -155,7 +161,7 @@ void print_tps(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag,
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
   size_t n_tps = payload_size / sizeof(dunedaq::trgdataformats::TriggerPrimitive);
-  std::cout << "Trigger Primitive number " << TP_index << " with SourceID[" << frag->get_element_id() << "] has " << n_tps << " TPs" << std::endl;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Primitive number " << TP_index << " with SourceID[" << frag->get_element_id() << "] has " << n_tps << " TPs";
   total_tp_hits = total_tp_hits + n_tps ; 
   size_t remainder = payload_size % sizeof(dunedaq::trgdataformats::TriggerPrimitive);
   assert(remainder == 0);
