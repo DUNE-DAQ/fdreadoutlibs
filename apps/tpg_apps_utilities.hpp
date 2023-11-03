@@ -26,6 +26,7 @@
 #include "hdf5libs/HDF5RawDataFile.hpp"
 #include "logging/Logging.hpp"
 
+#include "tpg_apps_issues.hpp"
 
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 
@@ -244,3 +245,174 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp,
 
 }
 
+
+
+
+
+
+class tpg_emulator {
+
+public:
+
+  tpg_emulator(int tpg_threshold, bool save_adc_data, bool save_trigprim, std::string select_algorithm, std::string select_channel_map) {
+
+    m_tpg_threshold = tpg_threshold;
+    m_save_adc_data = save_adc_data;
+    m_save_trigprim = save_trigprim;
+    m_select_algorithm = select_algorithm;
+    m_select_channel_map = select_channel_map;
+
+
+  }
+
+
+  int get_total_hit_number () {
+    return m_total_hits;
+  } 
+
+  void initialize() {
+
+    if (m_select_algorithm == "SimpleThreshold") {
+      m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    } else if (m_select_algorithm == "AbsRS") {
+      m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    } else {
+      throw tpgtools::fdreadoutlibs::TPGAlgorithmInexistent(ERS_HERE, m_select_algorithm);     
+    }
+
+    // Initialize the channel map if a valid name has been selected
+    if (m_select_channel_map != "None") {
+      TLOG() << "Using channel map: " << m_select_channel_map;
+      m_channel_map = dunedaq::detchannelmaps::make_map(m_select_channel_map);
+    } else {
+      TLOG() << "*** No channel map has been provided. " ;
+    }
+
+    // Initialize frame handler
+    m_frame_handler.initialize(m_tpg_threshold);
+
+  }
+
+
+  void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
+
+  // Set CPU affinity of the TPG thread
+  SetAffinityThread(0);
+
+  // Parse the WIBEth frames
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
+  uint64_t timestamp = wfptr->get_timestamp();     
+
+  // Frame expansion
+  swtpg_wibeth::MessageRegisters registers_array;
+  swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
+
+  
+  if (m_first_hit) {   
+    m_frame_handler.m_tpg_processing_info->setState(registers_array);
+    m_first_hit = false;    
+    // Save ADC info
+    if (m_save_adc_data){
+      save_raw_data(registers_array, timestamp, -1, m_select_algorithm );
+    }
+
+  }
+
+
+  m_frame_handler.m_tpg_processing_info->input = &registers_array;
+  uint16_t* destination_ptr = m_frame_handler.get_hits_dest();
+  *destination_ptr = swtpg_wibeth::MAGIC;
+  m_frame_handler.m_tpg_processing_info->output = destination_ptr;
+  m_assigned_tpg_algorithm_function(*m_frame_handler.m_tpg_processing_info);
+       
+
+  // Parse the output from the TPG    
+  extract_hits_avx(m_frame_handler.m_tpg_processing_info->output, timestamp, m_register_channels, m_total_hits, m_save_trigprim);
+
+}
+
+
+  void process_fragment(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag_ptr, int& record_idx_TR) {
+
+    if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
+      auto element_id = frag_ptr->get_element_id().id;
+      int num_frames =
+        (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Record number " << record_idx_TR << " has "   << num_frames << " frames" ;
+      
+      for (int i = 0; i < num_frames; ++i) {
+        // Read the Trigger Record data as a WIBEth frame
+        auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
+          static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
+        );
+
+        // Execute the TPG algorithm on the WIBEth adapter frames
+        auto fp = reinterpret_cast<dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter*>(fr);
+
+
+        // Register the offline channel numbers
+        // AAA: TODO: find a more elegant way of register the channel map
+        if (m_select_channel_map != "None") {
+          m_register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, m_channel_map);             
+          for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
+            m_register_channels[i] = m_register_channel_map.channel[i];                
+          }
+        } else {
+          // If no channel map is not selected use the values from 0 to 63
+          std::iota(m_register_channels.begin(), m_register_channels.end(), 0);  
+        }
+  
+        execute_tpg(fp);
+
+
+      } // end loop over number of frames      
+      // Finished processing all the frames for the given WIBEth fragment
+      ++record_idx_TR;
+    } // if trigger record is WIBEth type
+
+    /*
+      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
+        // Parse only the Trigger Primitives with the same ID of the ones with data frames
+        // AAA: NOT SURE OF THIS STATEMENT!! (INTRODUCED TO AVOID SAME TPs from multiple trigger id values)
+        if (frag_ptr->get_element_id().id == element_id) {
+          print_tps(std::move(frag_ptr), record_idx_TP, total_hits_trigger_primitive, save_hit_data);
+          ++record_idx_TP;
+        }          
+        
+      }
+    */
+
+
+  }
+
+private: 
+ 
+  bool m_save_adc_data = false; 
+  bool m_save_trigprim = false;  
+
+  std::string m_select_algorithm = "";
+  std::string m_select_channel_map = "None";
+
+  dunedaq::fdreadoutlibs::WIBEthFrameHandler m_frame_handler;
+
+
+  std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+  
+  // Channel mapping
+  std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> m_channel_map;  
+  // Map from expanded AVX register position to offline channel number
+  swtpg_wibeth::RegisterChannelMap m_register_channel_map;   
+  // Mapping from expanded AVX register position to offline channel number
+  std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels = {};
+
+
+  unsigned int m_total_hits = 0;
+  unsigned int m_total_hits_trigger_primitive = 0;
+  bool m_first_hit = true;
+
+
+  int m_tpg_threshold = 500; 
+
+
+  
+}; 
