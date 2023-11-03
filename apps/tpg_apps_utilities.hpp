@@ -1,7 +1,7 @@
 /**
- * @file tpg_emulator_utilities.hpp 
- * Utility functions needed for a standalone
- * TPG application
+ * @file tpg_apps_utilities.hpp 
+ * Utility functions needed for standalone
+ * TPG applications
  *
  * This is part of the DUNE DAQ , copyright 2023.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -30,7 +30,7 @@
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 
 
- // =================================================================
+// =================================================================
 //                       FUNCTIONS and UTILITIES
 // =================================================================
 
@@ -243,5 +243,4 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp,
   } // while not magic   
 
 }
-
 

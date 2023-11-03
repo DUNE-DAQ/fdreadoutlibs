@@ -42,12 +42,13 @@
 #include <memory>
 
 // Local
-#include "tpg_emulator_utilities.hpp"
+#include "tpg_apps_utilities.hpp"
+#include "tpg_apps_issues.hpp"
 
 using namespace dunedaq::hdf5libs;
+using namespace tpgtools;
+
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-
-
 
 // =================================================================
 //                       PUBLIC VARIABLES
@@ -155,8 +156,7 @@ main(int argc, char** argv)
     } else if (select_algorithm == "AbsRS") {
       m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
     } else {
-      TLOG() << "*** Select at least an algorithm. Use --help for further details.";
-      return 1;
+      throw tpgtools::fdreadoutlibs::TPGAlgorithmInexistent(ERS_HERE, select_algorithm);     
     }
 
 
@@ -225,7 +225,9 @@ main(int argc, char** argv)
       for(auto const& frag_dataset : h5_raw_data_file.get_fragment_dataset_paths(rid)) {
         auto frag_ptr = h5_raw_data_file.get_frag_ptr(frag_dataset);
 
-        if (record_idx_TR <= num_TR_to_read || num_TR_to_read == -1 ) {     
+        if (record_idx_TR <= num_TR_to_read || num_TR_to_read == -1 ) {  
+
+          process_fragment(std::move(frag_ptr));   
 
           if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
             element_id = frag_ptr->get_element_id().id;
@@ -235,11 +237,7 @@ main(int argc, char** argv)
             TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Record number " << record_idx_TR << " has "   << num_frames << " frames" ;
             
             for (int i = 0; i < num_frames; ++i) {
-              // The safest way for reading is to create a frame 
-              // to hold the ADC values of the Trigger Record for the TPG algorithm
-              dunedaq::fddetdataformats::WIBEthFrame frame;
-              std::memset(&frame, 0, sizeof(dunedaq::fddetdataformats::WIBEthFrame));
-    
+   
               // Read the Trigger Record data as a WIBEth frame
               auto fr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(
                 static_cast<char*>(frag_ptr->get_data()) + i * sizeof(dunedaq::fddetdataformats::WIBEthFrame)
@@ -256,6 +254,7 @@ main(int argc, char** argv)
                   m_register_channels[i] = register_channel_map.channel[i];                
                 }
               } else {
+                // If no channel map is not selected use the values from 0 to 63
                 std::iota(m_register_channels.begin(), m_register_channels.end(), 0);  
               }
         

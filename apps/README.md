@@ -3,7 +3,7 @@ Here is a short summary of the applications available in this directory. Refer t
 
 ## Emulator
 
-`wibeth_tpg_algorithms_emulator` is a emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. 
+`wibeth_tpg_algorithms_emulator` is an emulator application for TPG algorithms. It takes as input a Trigger Record file (`*.hdf5` file) and it will execute the selected TPG algorithm on the Trigger Record data.  
 
 To use the tool use the following:
 ```sh
@@ -13,11 +13,10 @@ Usage: wibeth_tpg_algorithms_emulator [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
-  -f,--frame-file-path TEXT   Path to the input frame file
+  -f,--file-path-input TEXT   Path to the input file
   -a,--algorithm TEXT         TPG Algorithm (SimpleThreshold / AbsRS)
-  -i,--implementation TEXT    TPG implementation (AVX / NAIVE)
-  -d,--duration-test INT      Duration (in seconds) to run the test
-  -n,--num-frames-to-read INT Number of frames to read. Default: select all frames.
+  -m,--channel-map TEXT       Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap, etc.
+  -n,--num-TR-to-read INT     Number of Trigger Records to read. Default: select all TRs. 
   -t,--tpg-threshold INT      Value of the TPG threshold
   --save-adc-data             Save ADC data
   --save-trigprim             Save trigger primitive data
@@ -27,11 +26,13 @@ The command line option `save_adc_data` allows to save the raw ADC values in a t
 
 Example of usage: 
 ```sh
-$ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm SimpleThreshold --implementation AVX --save_adc_data
-$ wibeth_tpg_algorithms_emulator --frame_file_path FRAMES_FILE --algorithm AbsRS --implementation AVX  --save_trigprim 
+$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a SimpleThreshold -m PD2HDChannelMap -t 500 --save-trigprim
+$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a AbsRS -m PD2HDChannelMap -t 500 --save-trigprim -n 5 
 ```
 
 ## Utility tools
+
+* `wibeth_simple_tpg_emulator` is a simple emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. 
 
 * `wibeth_binary_frame_reader`: reads a WIBEth frame file (`.bin` file) and prints all the ADC values on screen. Usage `wibeth_binary_frame_reader <input_file_name>`.  
 
