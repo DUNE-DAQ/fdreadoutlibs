@@ -47,7 +47,7 @@ void SetAffinityThread(int executorId) {
 }
 
 // Function save the TP data to a file 
-void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_name ){
+void save_TP_object( triggeralgs::TriggerPrimitive trigprim, std::string algo ){
   std::ofstream out_file; 
 
   auto t = std::time(nullptr);
@@ -56,7 +56,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
   oss << std::put_time(&tm, "%d-%m-%Y_%H-%M");
   auto date_time_str = oss.str();
 
-  std::string file_name = "TP_dump_" + source_name + "_" + date_time_str + ".txt";
+  std::string file_name = "TP_dump_" + algo + "_" + date_time_str + ".txt";
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
@@ -70,7 +70,7 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
 // Function to save raw ADC data to a file (only for debugging) 
 void save_raw_data(swtpg_wibeth::MessageRegisters register_array, 
 	       uint64_t t0, int channel_number,
-           std::string source_name)
+           std::string algo)
 {
   std::ofstream out_file;
 
@@ -83,20 +83,15 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   
   std::string file_name;
   if (channel_number == -1) {
-    file_name = "all_channels_" + source_name + "_data" + date_time_str + ".txt";
+    file_name = "all_channels_" + algo + "_data" + date_time_str + ".txt";
   } else {
-    file_name = "Channel_" + std::to_string(channel_number) + "_" + source_name + "_data" + date_time_str + ".txt";
+    file_name = "Channel_" + std::to_string(channel_number) + "_" + algo + "_data" + date_time_str + ".txt";
   }
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   uint64_t t_current= t0 ; 
   
-  const uint16_t* input16 = register_array.data();
-
-  std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
   for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
-
-    int in_index=16*(ichan/16)+indices[ichan%16];
 
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
     // Parse only selected channel number. To select all channels choose -1
@@ -114,7 +109,6 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
         const size_t offset_within_msg = register_t0_start + swtpg_wibeth::SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
         const size_t index = msg_start_index + offset_within_msg;
     
-        //int16_t adc_value = input16[index];    
         int16_t adc_value = register_array.uint16(index);
         out_file << " Time " << iframe << " channel " <<  ichan << " ADC_value " <<  adc_value <<  " timestamp " << t_current << std::endl;
 
@@ -155,14 +149,14 @@ save_tp(const dunedaq::trgdataformats::TriggerPrimitive& prim, bool save_trigpri
 }
 
 
-void print_tps(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag, 
+void process_trigger_primitive(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag, 
                int TP_index, 
                unsigned int& total_tp_hits, 
                bool save_trigprim)
 {
   size_t payload_size = frag->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader);
   size_t n_tps = payload_size / sizeof(dunedaq::trgdataformats::TriggerPrimitive);
-  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Primitive number " << TP_index << " with SourceID[" << frag->get_element_id() << "] has " << n_tps << " TPs";
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Primitive number " << TP_index << " with SourceID[" << frag->get_element_id() << "] has " << n_tps << " TPs" ;  
   total_tp_hits = total_tp_hits + n_tps ; 
   size_t remainder = payload_size % sizeof(dunedaq::trgdataformats::TriggerPrimitive);
   assert(remainder == 0);
@@ -235,7 +229,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp,
         trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
         trigprim.version = 1;
         if (save_trigprim){
-          save_hit_data(trigprim, "AVX");
+          save_TP_object(trigprim, "AVX");
         }          
 
         ++total_hits;
@@ -246,29 +240,85 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp,
 }
 
 
+void extract_hits_naive(uint16_t* output_location, uint64_t timestamp,
+                      std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER>& register_channels,
+                      unsigned int& total_hits,
+                      bool save_trigprim) {
+
+    constexpr int clocksPerTPCTick = 32;
+    uint16_t chan, hit_end, hit_charge, hit_tover; 
+
+    size_t i = 0;
+    while (*output_location != swtpg_wibeth::MAGIC) {
+      chan   = *output_location++;
+      hit_end    = *output_location++;
+      hit_charge  = *output_location++;
+      hit_tover     = *output_location++;
+    
+      i += 1;
+      uint64_t tp_t_begin =                                                        
+        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
+      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
+
+      triggeralgs::TriggerPrimitive trigprim;
+      trigprim.time_start = tp_t_begin;
+      trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+
+      trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
 
 
+      trigprim.channel = register_channels[chan]; //offline channel map;
+      trigprim.adc_integral = hit_charge ;
+      trigprim.adc_peak = hit_charge  / 20;
+      trigprim.detid = 666; 
+      trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+      trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+      trigprim.version = 1;
+    
+      if (save_trigprim) {
+        save_TP_object(trigprim, "NAIVE");
+      }
+      ++total_hits;
+
+    }
+}
+
+
+
+
+// =================================================================
+//                       EMULATOR
+// =================================================================
 
 
 class tpg_emulator {
 
 public:
 
-  tpg_emulator(int tpg_threshold, bool save_adc_data, bool save_trigprim, std::string select_algorithm, std::string select_channel_map) {
+  tpg_emulator(bool save_adc_data, bool save_trigprim, bool parse_trigger_primitive, std::string select_algorithm, std::string select_channel_map) {
 
-    m_tpg_threshold = tpg_threshold;
     m_save_adc_data = save_adc_data;
     m_save_trigprim = save_trigprim;
+    m_parse_trigger_primitive = parse_trigger_primitive;
     m_select_algorithm = select_algorithm;
     m_select_channel_map = select_channel_map;
 
-
   }
 
+  void set_tpg_threshold(int tpg_threshold){
+    m_tpg_threshold = tpg_threshold;
+  }
 
   int get_total_hit_number () {
     return m_total_hits;
   } 
+  int get_total_hits_trigger_primitive () {
+    return m_total_hits_trigger_primitive;
+  }   
+
+  void set_CPU_affinity(int core_number) {
+    m_CPU_core = core_number;
+  }
 
   void initialize() {
 
@@ -297,7 +347,7 @@ public:
   void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
 
   // Set CPU affinity of the TPG thread
-  SetAffinityThread(0);
+  SetAffinityThread(m_CPU_core);
 
   // Parse the WIBEth frames
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
@@ -315,9 +365,8 @@ public:
     if (m_save_adc_data){
       save_raw_data(registers_array, timestamp, -1, m_select_algorithm );
     }
-
+    
   }
-
 
   m_frame_handler.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = m_frame_handler.get_hits_dest();
@@ -332,10 +381,13 @@ public:
 }
 
 
-  void process_fragment(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag_ptr, int& record_idx_TR) {
+  void process_fragment(std::unique_ptr<dunedaq::daqdataformats::Fragment>&& frag_ptr,
+                        int& record_idx_TR, int& record_idx_TP) {
 
+    uint32_t element_id = 0;
     if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kWIBEth) {
-      auto element_id = frag_ptr->get_element_id().id;
+      
+      element_id = frag_ptr->get_element_id().id;
       int num_frames =
         (frag_ptr->get_size() - sizeof(dunedaq::daqdataformats::FragmentHeader)) / sizeof(dunedaq::fddetdataformats::WIBEthFrame);                
       TLOG_DEBUG(TLVL_BOOKKEEPING) << "Trigger Record number " << record_idx_TR << " has "   << num_frames << " frames" ;
@@ -370,17 +422,17 @@ public:
       ++record_idx_TR;
     } // if trigger record is WIBEth type
 
-    /*
-      if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
-        // Parse only the Trigger Primitives with the same ID of the ones with data frames
-        // AAA: NOT SURE OF THIS STATEMENT!! (INTRODUCED TO AVOID SAME TPs from multiple trigger id values)
-        if (frag_ptr->get_element_id().id == element_id) {
-          print_tps(std::move(frag_ptr), record_idx_TP, total_hits_trigger_primitive, save_hit_data);
+    else if (frag_ptr->get_fragment_type() == dunedaq::daqdataformats::FragmentType::kTriggerPrimitive) {
+      // Parse only the Trigger Primitives with the same ID of the ones with data frames
+      // AAA: NOT SURE OF THIS STATEMENT!! (INTRODUCED TO AVOID SAME TPs from multiple trigger id values)
+      if (frag_ptr->get_element_id().id == element_id) {
+        if (m_parse_trigger_primitive) {
+          process_trigger_primitive(std::move(frag_ptr), record_idx_TP, m_total_hits_trigger_primitive, m_save_trigprim);
           ++record_idx_TP;
-        }          
-        
-      }
-    */
+        }
+      }                  
+    }
+ 
 
 
   }
@@ -389,6 +441,7 @@ private:
  
   bool m_save_adc_data = false; 
   bool m_save_trigprim = false;  
+  bool m_parse_trigger_primitive = false;
 
   std::string m_select_algorithm = "";
   std::string m_select_channel_map = "None";
@@ -411,8 +464,8 @@ private:
   bool m_first_hit = true;
 
 
-  int m_tpg_threshold = 500; 
-
+  int m_tpg_threshold = 500; //default value 
+  int m_CPU_core = 0;
 
   
 }; 

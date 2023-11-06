@@ -3,31 +3,33 @@ Here is a short summary of the applications available in this directory. Refer t
 
 ## Emulator
 
-`wibeth_tpg_algorithms_emulator` is an emulator application for TPG algorithms. It takes as input a Trigger Record file (`*.hdf5` file) and it will execute the selected TPG algorithm on the Trigger Record data.  
+`wibeth_tpg_algorithms_emulator` is an emulator application for TPG algorithms. It takes as input a Trigger Record file (`*.hdf5` file) and it will execute the selected TPG algorithm on the Trigger Record data. The application is single threaded, pinned to core 0. The core number is configurable.   
 
 To use the tool use the following:
 ```sh
 $ wibeth_tpg_algorithms_emualator --help 
-Test TPG algorithms
+TPG algorithms emulator
 Usage: wibeth_tpg_algorithms_emulator [OPTIONS]
 
 Options:
   -h,--help                   Print this help message and exit
   -f,--file-path-input TEXT   Path to the input file
   -a,--algorithm TEXT         TPG Algorithm (SimpleThreshold / AbsRS)
-  -m,--channel-map TEXT       Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap, etc.
-  -n,--num-TR-to-read INT     Number of Trigger Records to read. Default: select all TRs. 
-  -t,--tpg-threshold INT      Value of the TPG threshold
-  --save-adc-data             Save ADC data
+  -m,--channel-map TEXT       Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap
+  -n,--num-TR-to-read INT     Number of Trigger Records to read. Default: select all TRs.
+  -t,--tpg-threshold INT      Value of the TPG threshold. Default value is 500.
+  -c,--core INT               Set core number of the executing TPG thread. Default value is 0.
+  --save-adc-data             Save ADC data (first frame only)
   --save-trigprim             Save trigger primitive data
+  --parse_trigger_primitive   Parse Trigger Primitive records
 ```
 
 The command line option `save_adc_data` allows to save the raw ADC values in a txt file after the 14-bit to 16-bit expansion. The command line option `save_trigprim`  allows to save the in a file the Trigger Primitive object information in a txt file. 
 
 Example of usage: 
 ```sh
-$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a SimpleThreshold -m PD2HDChannelMap -t 500 --save-trigprim
-$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a AbsRS -m PD2HDChannelMap -t 500 --save-trigprim -n 5 
+$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a SimpleThreshold -m PD2HDChannelMap -t 500 --save-trigprim --parse_trigger_primitive
+$ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0_20231102T083908.hdf5  -a AbsRS -m PD2HDChannelMap -t 500 --save-adc-data  -n 5 
 ```
 
 ## Utility tools

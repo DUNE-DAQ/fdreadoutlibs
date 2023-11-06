@@ -50,73 +50,6 @@ using namespace tpgtools;
 
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 
-// =================================================================
-//                       PUBLIC VARIABLES
-// =================================================================
-
-unsigned int total_hits = 0;
-unsigned int total_hits_trigger_primitive = 0;
-bool first_hit = true;
-
-dunedaq::fdreadoutlibs::WIBEthFrameHandler fh;
-
-std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
-std::shared_ptr<dunedaq::detchannelmaps::TPCChannelMap> channel_map;
-
-// Map from expanded AVX register position to offline channel number
-swtpg_wibeth::RegisterChannelMap register_channel_map; 
-
-// Mapping from expanded AVX register position to offline channel number
-std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels = {};
-
-std::string select_algorithm = "";
-std::string select_channel_map = "None";
-bool save_adc_data = false;
-bool save_trigprim = false;
-
-
-
-// =================================================================
-//                       TPG 
-// =================================================================
-
-
-void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp) {
-
-  // Set CPU affinity of the TPG thread
-  SetAffinityThread(0);
-
-  // Parse the WIBEth frames
-  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp);
-  uint64_t timestamp = wfptr->get_timestamp();     
-
-  // Frame expansion
-  swtpg_wibeth::MessageRegisters registers_array;
-  swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
-
-  
-  if (first_hit) {                         
-    fh.m_tpg_processing_info->setState(registers_array);
-    first_hit = false;    
-    // Save ADC info
-    if (save_adc_data){
-      save_raw_data(registers_array, timestamp, -1, select_algorithm );
-    }
-
-  }
-
-
-  fh.m_tpg_processing_info->input = &registers_array;
-  uint16_t* destination_ptr = fh.get_hits_dest();
-  *destination_ptr = swtpg_wibeth::MAGIC;
-  fh.m_tpg_processing_info->output = destination_ptr;
-  m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
-       
-
-  // Parse the output from the TPG    
-  extract_hits_avx(fh.m_tpg_processing_info->output, timestamp, m_register_channels, total_hits, save_trigprim);
-
-}
 
 
 // =================================================================
@@ -126,36 +59,47 @@ int
 main(int argc, char** argv)
 {
 
-    CLI::App app{ "Test TPG algorithms" };
+    CLI::App app{ "TPG algorithms emulator" };
 
     // Set default input frame file
     std::string file_path_input = "";
     app.add_option("-f,--file-path-input", file_path_input, "Path to the input file");
 
-
+    std::string select_algorithm = "";
     app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
   
-    app.add_option("-m,--channel-map", select_channel_map, "Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap, etc.");
-
+    std::string select_channel_map = "None";
+    app.add_option("-m,--channel-map", select_channel_map, "Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap");
 
     int num_TR_to_read = -1;
-    app.add_option("-n,--num-TR-to-read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs. ");
+    app.add_option("-n,--num-TR-to-read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs.");
 
     int tpg_threshold = 500;
-    app.add_option("-t,--tpg-threshold", tpg_threshold, "Value of the TPG threshold");
+    app.add_option("-t,--tpg-threshold", tpg_threshold, "Value of the TPG threshold. Default value is 500.");
 
-    app.add_flag("--save-adc-data", save_adc_data, "Save ADC data");
+    int core_number = 0;
+    app.add_option("-c,--core", core_number, "Set core number of the executing TPG thread. Default value is 0.");
 
+    bool save_adc_data = false;
+    app.add_flag("--save-adc-data", save_adc_data, "Save ADC data (first frame only)");
+
+    bool save_trigprim = false;
     app.add_flag("--save-trigprim", save_trigprim, "Save trigger primitive data");
+
+    bool parse_trigger_primitive = false;
+    app.add_flag("--parse_trigger_primitive", parse_trigger_primitive, "Parse Trigger Primitive records");
 
 
     CLI11_PARSE(app, argc, argv);
 
     // =================================================================
-    //                       Setup the SWTPG
+    //                       Setup the TPG emulator
     // =================================================================
 
-    tpg_emulator emulator(tpg_threshold, save_adc_data, save_trigprim, select_algorithm, select_channel_map) ;
+    // AAA: maybe this constructor should accept a config file...
+    tpg_emulator emulator(save_adc_data, save_trigprim, parse_trigger_primitive, select_algorithm, select_channel_map) ;
+    emulator.set_tpg_threshold(tpg_threshold);
+    emulator.set_CPU_affinity(core_number);
     emulator.initialize();
 
     
@@ -166,7 +110,7 @@ main(int argc, char** argv)
     // open our file reading
     const std::string ifile_name = file_path_input;
     if (ifile_name.empty()) {
-      throw std::runtime_error("Please select a valid input file.");
+      throw tpgtools::fdreadoutlibs::FileInexistent(ERS_HERE, ifile_name);    
     } 
     HDF5RawDataFile h5_raw_data_file(ifile_name);
 
@@ -174,13 +118,11 @@ main(int argc, char** argv)
     auto record_type = h5_raw_data_file.get_record_type();
 
     auto run_number = h5_raw_data_file.get_attribute<unsigned int>("run_number");
-    auto file_index = h5_raw_data_file.get_attribute<unsigned int>("file_index");
+    //auto file_index = h5_raw_data_file.get_attribute<unsigned int>("file_index");
   
     auto creation_timestamp = h5_raw_data_file.get_attribute<std::string>("creation_timestamp");
     auto app_name = h5_raw_data_file.get_attribute<std::string>("application_name");
 
-    uint32_t n_ch = dunedaq::fddetdataformats::WIBEthFrame::s_num_channels;
-    uint32_t n_smpl = dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame;
 
     std::cout << "Run number: " << run_number << std::endl; 
     std::cout << "Recorded size [bytes]: " << recorded_size << std::endl; 
@@ -197,8 +139,6 @@ main(int argc, char** argv)
     int record_idx_TR = 0;
     int record_idx_TP = 0;
 
-    uint32_t element_id; // part of the source id
-
     // Measure the time taken to read the whole trigger record file
     auto start_test = std::chrono::high_resolution_clock::now();  
 
@@ -209,18 +149,16 @@ main(int argc, char** argv)
 
         if (record_idx_TR <= num_TR_to_read || num_TR_to_read == -1 ) {  
 
-          //process_fragment(std::move(frag_ptr));   
-          emulator.process_fragment(std::move(frag_ptr), record_idx_TR);
+          emulator.process_fragment(std::move(frag_ptr), record_idx_TR, record_idx_TP);
         
-        } // if statement number of trigger records
+        } 
         
-
         
       } // loop over all the fragments in a single trigger record    
     } // loop over all trigger records
 
     // Calculate elapsed time in seconds 
-    // AAA: to be remove it if not useufl?
+    // AAA: to be removed if not useufl?
     auto now = std::chrono::high_resolution_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_test).count();  
 
@@ -228,7 +166,10 @@ main(int argc, char** argv)
 
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Elapsed time for reading input file [ms]: " << elapsed_milliseconds;
     std::cout << "Found in total " << emulator.get_total_hit_number() << " hits" << std::endl;
-    //std::cout << "Found in total  (from Trigger Primitive objects) " << total_hits_trigger_primitive << " TPs" << std::endl;
+
+    if (parse_trigger_primitive) {
+      std::cout << "Found in total  (from Trigger Primitive objects) " << emulator.get_total_hits_trigger_primitive() << " TPs" << std::endl;
+    }
     
 
 

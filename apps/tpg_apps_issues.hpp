@@ -24,6 +24,11 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   "The selected algorithm does not exist: " << algorithm_selection << " . Check your command line options and select either SimpleThreshold or AbsRS.",
                   ((std::string)algorithm_selection))
 
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  FileInexistent,
+                  "The selected input file does not exist. Input file: " << input_file_path << "  Check the path of the input file.",
+                  ((std::string)input_file_path))
+
 
 
 } // namespace dunedaq
