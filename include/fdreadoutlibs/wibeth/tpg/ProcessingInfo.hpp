@@ -35,6 +35,7 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
+      hit_peak_offset[i] = 0;
       for (size_t j = 0; j < NTAPS; ++j) {
         prev_samp[i * NTAPS + j] = 0;
       }
@@ -63,13 +64,13 @@ struct ChanState
   alignas(32) int16_t __restrict__ prev_samp[NREGISTERS * SAMPLES_PER_REGISTER * NTAPS];
 
   // Variables for hit finding
-  alignas(32) int16_t
-    __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
-  alignas(32) int16_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
-  alignas(32) int16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
+  alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
+  alignas(32) uint16_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) uint16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 
-  alignas(32) int16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
-  alignas(32) int16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+  alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
+  alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+  alignas(32) uint16_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
 };
 
 template<size_t NREGISTERS>

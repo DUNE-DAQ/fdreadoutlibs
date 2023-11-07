@@ -172,17 +172,22 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
-    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100];
+    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset;
     unsigned int nhits = 0;
+
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
     size_t i = 0;
     while (*output_location != swtpg_wibeth::MAGIC) {
-      chan   = *output_location++;
-      hit_end    = *output_location++;
-      hit_charge  = *output_location++;
-      hit_tover     = *output_location++;
 
+      chan            = *output_location++;
+      hit_end         = *output_location++;
+      hit_charge      = *output_location++;
+      hit_tover       = *output_location++;
+      hit_peak_adc    = *output_location++;
+      hit_peak_time   = *output_location++;
+      hit_peak_offset = *output_location++;
 
       //if (hit_charge && chan != swtpg_wibeth::MAGIC) {
       //  std::cout << "Channel number: " << chan << std::endl;
@@ -191,20 +196,32 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
       
       i += 1;
-      uint64_t tp_t_begin =                                                        
-        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
-      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
+      chan = 16*(chan/16)+indices[chan%16];
+      hit_end = hit_end != UINT16_MAX ? hit_end : 64;
+      hit_peak_offset *= 64;
+
+      int64_t set_hit_end = int64_t(hit_end - hit_peak_offset);
+      if (set_hit_end == 0) {
+        set_hit_end -= 1;
+      } else if (set_hit_end < 0) {
+        set_hit_end = int64_t(64 - hit_peak_offset + hit_end);
+      }
+
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - hit_tover);
+      uint64_t tp_t_end   = timestamp + clocksPerTPCTick * int64_t(hit_end );
+      uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time - hit_peak_offset);
+      tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + 64 * clocksPerTPCTick;
+
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
-      trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+      trigprim.time_peak = tp_t_peak;
 
       trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
 
-
       trigprim.channel = chan;
       trigprim.adc_integral = hit_charge ;
-      trigprim.adc_peak = hit_charge  / 20;
+      trigprim.adc_peak = hit_peak_adc;
       trigprim.detid = 666; 
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
       trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
@@ -225,7 +242,7 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 
   constexpr int clocksPerTPCTick = 32;
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], hit_peak_offset[16];
 
   while (*output_location != swtpg_wibeth::MAGIC) {
     for (int i = 0; i < 16; ++i) {
@@ -239,7 +256,16 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
     }
     for (int i = 0; i < 16; ++i) {        
       hit_tover[i] = *output_location++; 
-    }  
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_time[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_adc[i] = *output_location++;
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_offset[i] = abs(*output_location++);
+    }
     
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
@@ -250,10 +276,20 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
         //std::cout << "Channel number: " << chan[i] << std::endl;
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
 
+	  hit_end[i] = hit_end[i] != UINT16_MAX ? hit_end[i] : 64;
+          hit_peak_offset[i] *= 64;
 
-          uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
-          uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
+          int64_t set_hit_end = int64_t(hit_end[i] - hit_peak_offset[i]);
+          if (set_hit_end == 0) {
+            set_hit_end -= 1;
+          } else if (set_hit_end < 0) {
+            set_hit_end = int64_t(64 - hit_peak_offset[i] + hit_end[i]);
+          }
+
+          uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - hit_tover[i]);
+          uint64_t tp_t_end   = timestamp + clocksPerTPCTick * int64_t(hit_end[i] ); // NB not needed 
+          uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * (int64_t)(hit_peak_time[i] - hit_peak_offset[i]);
+          tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + 64 * clocksPerTPCTick;
 
           // May be needed for TPSet:
           // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
@@ -264,14 +300,13 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
           //
           //
           //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
-
           triggeralgs::TriggerPrimitive trigprim;
           trigprim.time_start = tp_t_begin;
-          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+          trigprim.time_peak = tp_t_peak;
           trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
           trigprim.channel = chan[i];
           trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
+          trigprim.adc_peak = hit_peak_adc[i];
           trigprim.detid = 666;          
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
           trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
@@ -366,6 +401,11 @@ main(int argc, char** argv)
 
     app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
 
+    // additional options 
+    bool enable_repeat_timer = true;
+    app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing after certain time elapsed (true/false)");
+    app.set_config("--config", "app.cfg", "Read a configuration file. Default: app.cfg", true);
+ 
 
     CLI11_PARSE(app, argc, argv);
 
@@ -448,6 +488,11 @@ main(int argc, char** argv)
 
       ++wibeth_frame_index;
 
+      if (!enable_repeat_timer) {
+        if (wibeth_frame_index == num_frames_to_read) {
+          continue;
+        }
+      }
 
       // If end of the file is reached, restart the index counter
       if (wibeth_frame_index == num_frames_to_read) {
@@ -455,24 +500,24 @@ main(int argc, char** argv)
 	      frame_repeat_index++;
       }
 
-      // Some printouts 
-      if (frame_repeat_index % 500  == 0) {
+      if (enable_repeat_timer) {
+        // Some printouts 
+        if (frame_repeat_index % 500  == 0) {
 
-        // Calculate elapsed time in seconds  
-        auto now = std::chrono::high_resolution_clock::now();
-        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
-        std::cout << "Elapsed time [s]: " << elapsed_seconds << std::endl;      
-	      frame_repeat_index = 0;        
+          // Calculate elapsed time in seconds  
+          auto now = std::chrono::high_resolution_clock::now();
+          auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
+          std::cout << "Elapsed time [s]: " << elapsed_seconds << std::endl;      
+	        frame_repeat_index = 0;        
 
-        // stop the testing after a time a condition
-        if (elapsed_seconds > 120) {
-          wibeth_frame_index = num_frames_to_read;
+          // stop the testing after a time a condition
+          if (elapsed_seconds > 120) {
+            wibeth_frame_index = num_frames_to_read;
+          }
         }
+
+        limiter.limit();
       }
-
-	
-
-      limiter.limit();
 
     }
     std::cout << "\n\n===============================" << std::endl;
