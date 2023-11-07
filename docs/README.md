@@ -31,8 +31,9 @@ Usage: wibeth_tpg_algorithms_emulator [OPTIONS]
 Options:
   -h,--help                   Print this help message and exit
   -f,--file-path-input TEXT   Path to the input file
-  -a,--algorithm TEXT         TPG Algorithm (SimpleThreshold / AbsRS)
-  -m,--channel-map TEXT       Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap
+  -a,--algorithm TEXT         TPG Algorithm (SimpleThreshold / AbsRS). Default: SimpleThreshold
+  -i,--implementation TEXT    TPG implementation (AVX / NAIVE). Default: AVX
+  -m,--channel-map TEXT       Select a valid channel map: VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap
   -n,--num-TR-to-read INT     Number of Trigger Records to read. Default: select all TRs.
   -t,--tpg-threshold INT      Value of the TPG threshold. Default value is 500.
   -c,--core INT               Set core number of the executing TPG thread. Default value is 0.
@@ -52,7 +53,7 @@ $ wibeth_tpg_algorithms_emulator -f swtest_run000035_0000_dataflow0_datawriter_0
 
 ## Utility tools and scripts
 
-* `wibeth_simple_tpg_emulator` is a simple emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. 
+* `wibeth_simple_tpg_emulator` is a simple emulator for validating different TPG algorithms, either in a naive or in AVX implementation. The application allows to emulate the workload when running a TPG algorithm and therefore monitor performance metrics. It requires an input binary frame file (check assets-list for valid input files) and it will execute the desired TPG algorithm for a configurable duration (default value is 120 seconds). The application is single threaded, pinned to core 0. Check the hlper page for more details. Usage: `wibeth_simple_tpg_emulator -f wibeth_frame_file.bin` 
 
 * `wibeth_binary_frame_reader`: reads a WIBEth frame file (`.bin` file) and prints all the ADC values on screen. Usage `wibeth_binary_frame_reader <input_file_name>`.  
 
