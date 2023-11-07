@@ -295,12 +295,18 @@ class tpg_emulator {
 
 public:
 
-  tpg_emulator(bool save_adc_data, bool save_trigprim, bool parse_trigger_primitive, std::string select_algorithm, std::string select_channel_map) {
+  tpg_emulator(bool save_adc_data, 
+               bool save_trigprim, 
+               bool parse_trigger_primitive, 
+               std::string select_algorithm, 
+               std::string select_implementation, 
+               std::string select_channel_map) {
 
     m_save_adc_data = save_adc_data;
     m_save_trigprim = save_trigprim;
     m_parse_trigger_primitive = parse_trigger_primitive;
     m_select_algorithm = select_algorithm;
+    m_select_implementation = select_implementation;
     m_select_channel_map = select_channel_map;
 
   }
@@ -331,7 +337,7 @@ public:
     }
 
     // Initialize the channel map if a valid name has been selected
-    if (m_select_channel_map != "None") {
+    if (!m_select_channel_map.empty()) {
       TLOG() << "Using channel map: " << m_select_channel_map;
       m_channel_map = dunedaq::detchannelmaps::make_map(m_select_channel_map);
     } else {
@@ -375,8 +381,14 @@ public:
   m_assigned_tpg_algorithm_function(*m_frame_handler.m_tpg_processing_info);
        
 
-  // Parse the output from the TPG    
-  extract_hits_avx(m_frame_handler.m_tpg_processing_info->output, timestamp, m_register_channels, m_total_hits, m_save_trigprim);
+  // Parse the output from the TPG
+  if (m_select_implementation == "AVX") {   
+    extract_hits_avx(m_frame_handler.m_tpg_processing_info->output, timestamp, m_register_channels, m_total_hits, m_save_trigprim);
+  } else if (m_select_implementation == "NAIVE"){
+    extract_hits_naive(m_frame_handler.m_tpg_processing_info->output, timestamp, m_register_channels, m_total_hits, m_save_trigprim);
+  } else {
+    throw tpgtools::fdreadoutlibs::TPGImplementationInvalid(ERS_HERE, m_select_implementation); 
+  } 
 
 }
 
@@ -404,7 +416,7 @@ public:
 
         // Register the offline channel numbers
         // AAA: TODO: find a more elegant way of register the channel map
-        if (m_select_channel_map != "None") {
+        if (!m_select_channel_map.empty()) {
           m_register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(fr, m_channel_map);             
           for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
             m_register_channels[i] = m_register_channel_map.channel[i];                
@@ -443,8 +455,10 @@ private:
   bool m_save_trigprim = false;  
   bool m_parse_trigger_primitive = false;
 
-  std::string m_select_algorithm = "";
-  std::string m_select_channel_map = "None";
+  std::string m_select_algorithm = "SimpleThreshold"; // default value
+  std::string m_select_implementation = "AVX"; // default value
+
+  std::string m_select_channel_map = "";
 
   dunedaq::fdreadoutlibs::WIBEthFrameHandler m_frame_handler;
 

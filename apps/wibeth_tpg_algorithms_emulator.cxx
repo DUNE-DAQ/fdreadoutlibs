@@ -65,11 +65,14 @@ main(int argc, char** argv)
     std::string file_path_input = "";
     app.add_option("-f,--file-path-input", file_path_input, "Path to the input file");
 
-    std::string select_algorithm = "";
-    app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
+    std::string select_algorithm = "SimpleThreshold";
+    app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS). Default: SimpleThreshold");
   
-    std::string select_channel_map = "None";
-    app.add_option("-m,--channel-map", select_channel_map, "Select a valid channel map: None, VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap");
+    std::string select_implementation = "AVX";
+    app.add_option("-i,--implementation", select_implementation, "TPG implementation (AVX / NAIVE). Default: AVX");
+
+    std::string select_channel_map = "";
+    app.add_option("-m,--channel-map", select_channel_map, "Select a valid channel map: VDColdboxChannelMap, ProtoDUNESP1ChannelMap, PD2HDChannelMap, HDColdboxChannelMap, FiftyLChannelMap");
 
     int num_TR_to_read = -1;
     app.add_option("-n,--num-TR-to-read", num_TR_to_read, "Number of Trigger Records to read. Default: select all TRs.");
@@ -97,7 +100,7 @@ main(int argc, char** argv)
     // =================================================================
 
     // AAA: maybe this constructor should accept a config file...
-    tpg_emulator emulator(save_adc_data, save_trigprim, parse_trigger_primitive, select_algorithm, select_channel_map) ;
+    tpg_emulator emulator(save_adc_data, save_trigprim, parse_trigger_primitive, select_algorithm, select_implementation, select_channel_map) ;
     emulator.set_tpg_threshold(tpg_threshold);
     emulator.set_CPU_affinity(core_number);
     emulator.initialize();
