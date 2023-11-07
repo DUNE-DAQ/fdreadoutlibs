@@ -404,7 +404,7 @@ main(int argc, char** argv)
     // additional options 
     bool enable_repeat_timer = true;
     app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing after certain time elapsed (true/false)");
-    app.set_config("--config", "app.cfg", "Read a configuration file. Default: app.cfg", true);
+    app.set_config("--config", "app.cfg", "Read a configuration file. Default: app.cfg", false);
  
 
     CLI11_PARSE(app, argc, argv);
