@@ -114,12 +114,12 @@ int main()
     }  
 
     // Check that the ADC values have been properly set
-    for (int itime=0; itime<time_samples_per_frame; ++itime) {
-      for(int j=0; j<num_channels; ++j){
-          uint16_t adc_val = frame.get_adc(j, itime);
-          //std::cout << "Index " << j << " time sample " << itime << " : " << adc_val << std::endl;
-      }
-    }
+    //for (int itime=0; itime<time_samples_per_frame; ++itime) {
+    //  for(int j=0; j<num_channels; ++j){
+    //      uint16_t adc_val = frame.get_adc(j, itime);
+    //      std::cout << "Index " << j << " time sample " << itime << " : " << adc_val << std::endl;
+    //  }
+    //}
 
 
     

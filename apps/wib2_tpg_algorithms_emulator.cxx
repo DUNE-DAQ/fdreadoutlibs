@@ -177,8 +177,7 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100]; 
     uint16_t chan, hit_end, hit_charge, hit_tover; 
-    unsigned int nhits = 0;
-
+    
     size_t i = 0;
     while (*output_location != swtpg_wib2::MAGIC) {
       chan   = *output_location++;
@@ -328,7 +327,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBSuperChunkTypeAdapt
 
 
   // Insert output of the AVX processing into the swtpg_output 
-  swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
+  //swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
     
   if (select_implementation == "AVX") {
     extract_hits_avx(destination_ptr, timestamp);
