@@ -65,12 +65,12 @@ struct ChanState
 
   // Variables for hit finding
   alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
-  alignas(32) uint16_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
-  alignas(32) uint16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
+  alignas(32) uint32_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) uint32_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 
   alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
   alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
-  alignas(32) uint16_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
+  alignas(32) uint32_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
 };
 
 template<size_t NREGISTERS>

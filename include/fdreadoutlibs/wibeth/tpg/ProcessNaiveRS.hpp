@@ -67,8 +67,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
     // Variables for hit finding
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    uint16_t& hit_charge = state.hit_charge[ichan];
-    uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint32_t& hit_charge = state.hit_charge[ichan];
+    uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
 
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
