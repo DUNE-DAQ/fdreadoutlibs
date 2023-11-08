@@ -69,16 +69,17 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
     // Variables for hit finding
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    uint16_t& hit_charge = state.hit_charge[ichan];
-    uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint32_t& hit_charge = state.hit_charge[ichan];
+    uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
-    uint16_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
+    uint32_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
 
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
     if (prev_was_over) {
       hit_peak_offset += 1;
+      //if (hit_peak_offset > 1) hit_tover -= info.timeWindowNumFrames;
     }
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
@@ -104,14 +105,14 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       bool is_over = sample > info.threshold;
       if (is_over) {
         // Simulate saturated add
-        int32_t tmp_charge = hit_charge;
+        uint32_t tmp_charge = hit_charge;
         tmp_charge += sample;
-        tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<uint16_t>::max());
+        tmp_charge = std::min(tmp_charge, (uint32_t)std::numeric_limits<uint16_t>::max());
         if (sample > hit_peak_adc) {
           hit_peak_adc = (uint16_t)sample;
           hit_peak_time = itime;
         }
-        hit_charge = (uint16_t)tmp_charge;
+        hit_charge = tmp_charge;
         hit_tover++;
         prev_was_over = is_over;
       }
