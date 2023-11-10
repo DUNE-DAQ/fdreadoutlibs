@@ -177,15 +177,7 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-//<<<<<<< HEAD:test/apps/TestTPGAlgorithmsWIBEth.cxx
-//    //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100];
-//    //uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time;
-//    uint16_t chan, hit_end, hit_peak_adc, hit_peak_time;
-//    uint32_t hit_charge, hit_tover;
-//    unsigned int nhits = 0;
-//=======
     uint16_t chan, hit_end, hit_charge, hit_tover; 
-//>>>>>>> develop:apps/wibeth_tpg_algorithms_emulator.cxx
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
@@ -194,29 +186,11 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     size_t i = 0;
     while (*output_location != swtpg_wibeth::MAGIC) {
-//<<<<<<< HEAD:test/apps/TestTPGAlgorithmsWIBEth.cxx
-//
-//      chan            = *output_location++;
-//      hit_end         = *output_location++;
-//      hit_charge      = *output_location++;
-//      hit_tover       = *output_location++;
-//      hit_peak_adc    = *output_location++;
-//      hit_peak_time   = *output_location++;
-//
-//      //if (hit_charge && chan != swtpg_wibeth::MAGIC) {
-//      //  std::cout << "Channel number: " << chan << std::endl;
-//      //  std::cout << "Hit charge: " << hit_charge << std::endl;
-//      //}
-//
-//      //std::cout << "DBG hit_peak_offset " << hit_peak_offset << std::endl;
-//      
-//=======
       chan   = *output_location++;
       hit_end    = *output_location++;
       hit_charge  = *output_location++;
       hit_tover     = *output_location++;
     
-//>>>>>>> develop:apps/wibeth_tpg_algorithms_emulator.cxx
       i += 1;
       chan = 16*(chan/16)+indices[chan%16];
      
@@ -317,13 +291,8 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
           trigprim.time_over_threshold = uint64_t(hit_tover[i] * clocksPerTPCTick);
           trigprim.channel = chan[i];
           trigprim.adc_integral = hit_charge[i];
-//<<<<<<< HEAD:test/apps/TestTPGAlgorithmsWIBEth.cxx
-//          trigprim.adc_peak = hit_peak_adc[i];
-//          trigprim.detid = 666;          
-//=======
           trigprim.adc_peak = hit_charge[i] / 20;
           trigprim.detid = 666;           
-//>>>>>>> develop:apps/wibeth_tpg_algorithms_emulator.cxx
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
           trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
           trigprim.version = 1;
@@ -509,22 +478,6 @@ main(int argc, char** argv)
 	frame_repeat_index++;
       }
 
-//<<<<<<< HEAD:test/apps/TestTPGAlgorithmsWIBEth.cxx
-//      if (enable_repeat_timer) {
-//        // Some printouts 
-//        if (frame_repeat_index % 500  == 0) {
-//
-//          // Calculate elapsed time in seconds  
-//          auto now = std::chrono::high_resolution_clock::now();
-//          auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_test).count();  
-//          std::cout << "Elapsed time [s]: " << elapsed_seconds << std::endl;      
-//	        frame_repeat_index = 0;        
-//
-//          // stop the testing after a time a condition
-//          if (elapsed_seconds > 120) {
-//            wibeth_frame_index = num_frames_to_read;
-//          }
-//=======
       if (frame_repeat_index % 500  == 0) {
         // Calculate elapsed time in seconds  
         auto now = std::chrono::high_resolution_clock::now();
@@ -536,7 +489,6 @@ main(int argc, char** argv)
         // stop the testing after a time a condition
         if (elapsed_seconds > duration_test) {
           wibeth_frame_index = num_frames_to_read;
-//>>>>>>> develop:apps/wibeth_tpg_algorithms_emulator.cxx
         }
 
         limiter.limit();
