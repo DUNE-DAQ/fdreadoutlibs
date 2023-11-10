@@ -122,13 +122,11 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         (*output_loc++) = hit_tover-1;     // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
         (*output_loc++) = hit_peak_time;   // NOLINT
-        (*output_loc++) = hit_peak_offset; // NOLINT
 
         hit_charge = 0;
         hit_tover = 0;
         hit_peak_adc = 0;
         hit_peak_time = 0;
-        hit_peak_offset = 0;
 
         ++nhits;
         prev_was_over = is_over;
@@ -143,7 +141,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
   // Write a magic "end-of-hits" value into the list of hits
-  for (int i = 0; i < 7; ++i) {
+  for (int i = 0; i < 6; ++i) {
     (*output_loc++) = MAGIC; // NOLINT
   }
 }
