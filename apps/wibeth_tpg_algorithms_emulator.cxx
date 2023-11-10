@@ -177,7 +177,8 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc;
+    uint32_t hit_peak_time; 
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
