@@ -173,9 +173,9 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
     //uint16_t chan[100], hit_end[100], hit_charge[100], hit_tover[100];
-    //uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time, hit_peak_offset;
+    //uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc, hit_peak_time;
     uint16_t chan, hit_end, hit_peak_adc, hit_peak_time;
-    uint32_t hit_charge, hit_tover, hit_peak_offset;
+    uint32_t hit_charge, hit_tover;
     unsigned int nhits = 0;
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
@@ -192,7 +192,6 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       hit_tover       = *output_location++;
       hit_peak_adc    = *output_location++;
       hit_peak_time   = *output_location++;
-      hit_peak_offset = *output_location++;
 
       //if (hit_charge && chan != swtpg_wibeth::MAGIC) {
       //  std::cout << "Channel number: " << chan << std::endl;
@@ -203,12 +202,18 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       
       i += 1;
       chan = 16*(chan/16)+indices[chan%16];
-      
+     
+      /* 
       int64_t set_hit_peak_offset = hit_peak_offset * fh.m_tpg_processing_info->timeWindowNumFrames;
       int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
       uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
       uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * ((int64_t)hit_peak_time - set_hit_peak_offset);
       tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + set_hit_peak_offset * clocksPerTPCTick;
+      */
+
+      int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
+      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
