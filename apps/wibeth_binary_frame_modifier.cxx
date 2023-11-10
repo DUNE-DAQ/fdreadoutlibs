@@ -1,5 +1,7 @@
 /**
- * @file WIBEthBinaryFrameReader.cxx: binary frame reader
+ * @file wibeth_binary_frame_modifier: quick and dirty solution to modify the adc values in
+ * an input binary file at specific channel numbers 
+ * Usage: ./wibeth_binary_frame_modifier INPUT_FRAME_FILE 
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -40,7 +42,7 @@ using namespace dunedaq::daqdataformats;
 void
 print_usage()
 {
-  TLOG() << "Usage: WIBEthBinaryFrameReader <input_file_name> <input_channel>";
+  TLOG() << "Usage: wibeth_binary_frame_modifier <input_file_name> <input_channel>";
 }
 
 

@@ -26,8 +26,6 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
   // Start with taps as floats that add to 1. Multiply by some
   // power of two (2**N) and round to int. Before filtering, cap the
   // value of the input to INT16_MAX/(2**N)
-  const size_t  NTAPS = 8;
-  const int16_t adcMax = info.adcMax;
   const int16_t sigmaMax = (1 << 15) / (info.multiplier * 5);
   const float   R = 0.8; //"deweighting factor" for running sum
   //scaling factor to stop the ADCs from overflowing (may not needs this, depends on magnitude of FIR output) 
@@ -62,15 +60,10 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     int16_t& quantile25 = state.quantile25[ichan];
     int16_t& quantile75 = state.quantile75[ichan];
 
-    // Variables for filtering
-    int16_t* prev_samp = state.prev_samp + NTAPS * ichan;
-
     // Variables for hit finding
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint32_t& hit_charge = state.hit_charge[ichan];
     uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
-
-    uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
@@ -96,25 +89,6 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       ss << "\tsample: " << sample;
 
-      // --------------------------------------------------------------
-      // Filtering
-      // --------------------------------------------------------------
-      /*
-      // Don't let the sample exceed adcMax, which is the value
-      // at which its filtered version might overflow
-      sample = std::min(sample, adcMax);
-      int16_t filt_tmp = 0;
-      for (size_t j = 0; j < NTAPS; ++j) {
-        filt_tmp += info.taps[j] * prev_samp[(j + absTimeModNTAPS) % NTAPS];
-      }
-      prev_samp[absTimeModNTAPS % NTAPS] = sample;
-
-      absTimeModNTAPS = (absTimeModNTAPS + 1) % NTAPS;
-      int16_t filt = filt_tmp;
-      
-      ss << "\tFilt: " << filt;
-      */
-     
       //--------------------------------------------------------------
       // Absolute Running Sum
       //--------------------------------------------------------------
@@ -218,8 +192,6 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
   //if (nhits > 0) { 
   //  std::cout << "FOUND HITS: " << nhits << std::endl;
   //} 
-
-  info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
 
   printf("Found %d hits\n", nhits);

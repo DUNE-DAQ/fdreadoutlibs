@@ -1,5 +1,6 @@
 /**
- * @file WIBEthBinaryFrameReader.cxx: binary frame reader
+ * @file wibeth_binary_frame_reader.cxx: reads a WIBEth frame file
+ *  and prints the ADC values 
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -40,7 +41,7 @@ using namespace dunedaq::daqdataformats;
 void
 print_usage()
 {
-  TLOG() << "Usage: WIBEthBinaryFrameReader <input_file_name> <input_channel>";
+  TLOG() << "Usage: wibeth_binary_frame_reader <input_file_name> ";
 }
 
 
@@ -117,14 +118,12 @@ int main(int argc, char** argv)
 {
  
 
-  if (argc != 3) {
+  if (argc != 2) {
     print_usage();
     return 1;
   }
 
   const std::string ifile_name = std::string(argv[1]);
-
-  const size_t input_ch = atoi(argv[2]);
 
   // Read file
   FrameFile input_file = FrameFile(ifile_name.c_str()); 
@@ -134,16 +133,13 @@ int main(int argc, char** argv)
    
 
   dunedaq::fddetdataformats::WIBEthFrame* output_frame; 
-  //for (size_t i=0; i<input_file.num_frames(); i++) {
-  for (size_t i=0; i< 20000; i++) {
+  for (size_t i=0; i<input_file.num_frames(); i++) {
     std::cout << "========== FRAME_NUM " << i <<  std::endl;
     output_frame = input_file.frame(i);
     for (int itime=0; itime<64; ++itime) {
       for (int ch=0; ch<64; ++ch) {
         uint16_t adc_val = output_frame->get_adc(ch, itime);
         std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << ch << " \t\tTimeSample: " << itime <<  std::endl;
-	//break;
-	
       }
    }
   }

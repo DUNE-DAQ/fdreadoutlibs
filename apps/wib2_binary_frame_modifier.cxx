@@ -1,7 +1,7 @@
 /**
- * @file WIB2AddFakeHits.cxx: quick and dirty solution to modify an input binary file and add 
- * fake hits at a predefined frame and channel numbers 
- * Usage: ./WIB2AddFakeHits /nfs/home/aabedabu/dunedaq-v3.1.1dunedaq-v3.1.1_pre_source_id/dev/test_files/output_0_3.out 
+ * @file wib2_binary_frame_modifier.cxx: quick and dirty solution to modify the adc values in
+ * an input binary file at specific channel numbers 
+ * Usage: ./wib2_binary_frame_modifier INPUT_FRAME_FILE 
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -42,7 +42,7 @@ using namespace dunedaq::daqdataformats;
 void
 print_usage()
 {
-  TLOG() << "Usage: WIB2AddFakeHits <input_file_name> <input_channel>";
+  TLOG() << "Usage: wib2_binary_frame_modifier <input_file_name> <input_channel>";
 }
 
 
