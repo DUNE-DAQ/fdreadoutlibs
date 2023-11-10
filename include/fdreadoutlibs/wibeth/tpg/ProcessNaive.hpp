@@ -73,14 +73,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
-    uint32_t& hit_peak_offset = state.hit_peak_offset[ichan]; // time over threshold
 
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
-
-    if (prev_was_over) {
-      hit_peak_offset += 1;
-      //if (hit_peak_offset > 1) hit_tover -= info.timeWindowNumFrames;
-    }
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / info.timeWindowNumFrames;
@@ -110,7 +104,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         tmp_charge = std::min(tmp_charge, (uint32_t)std::numeric_limits<uint16_t>::max());
         if (sample > hit_peak_adc) {
           hit_peak_adc = (uint16_t)sample;
-          hit_peak_time = itime;
+          hit_peak_time = hit_tover;
         }
         hit_charge = tmp_charge;
         hit_tover++;
