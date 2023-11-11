@@ -48,6 +48,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   const int16_t adcMax = info.adcMax;
 
   uint16_t* output_loc = info.output;           // NOLINT
+  uint32_t* output_loc32u = info.output32u;           // NOLINT
+  int32_t* output_loc32i = info.output32i;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
@@ -72,7 +74,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     uint32_t& hit_charge = state.hit_charge[ichan];
     uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
-    uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
+    uint32_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
 
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
@@ -116,12 +118,12 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         // }
 
         // We reached the end of the hit: write it out
-	(*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = itime-1;         // NOLINT 
-        (*output_loc++) = hit_charge;      // NOLINT
-        (*output_loc++) = hit_tover-1;     // NOLINT
+	(*output_loc32i++) = (int32_t)ichan; // NOLINT
+        (*output_loc32i++) = int32_t(itime)-1;         // NOLINT 
+        (*output_loc32u++) = hit_charge;      // NOLINT
+        (*output_loc32u++) = hit_tover-1;     // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
-        (*output_loc++) = hit_peak_time;   // NOLINT
+        (*output_loc32u++) = hit_peak_time;   // NOLINT
 
         hit_charge = 0;
         hit_tover = 0;
@@ -141,8 +143,14 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
   // Write a magic "end-of-hits" value into the list of hits
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 1; ++i) {
     (*output_loc++) = MAGIC; // NOLINT
+  }
+  for (int i = 0; i < 3; ++i) {
+    (*output_loc32u++) = MAGIC32u; // NOLINT
+  }
+  for (int i = 0; i < 2; ++i) {
+    (*output_loc32i++) = MAGIC32i; // NOLINT
   }
 }
 

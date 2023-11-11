@@ -15,6 +15,8 @@
 namespace swtpg_wibeth {
 
 const constexpr std::uint16_t MAGIC = std::numeric_limits<std::uint16_t>::max(); // NOLINT
+const constexpr std::uint32_t MAGIC32u = std::numeric_limits<std::uint32_t>::max(); // NOLINT
+const constexpr std::int32_t MAGIC32i  = std::numeric_limits<std::int32_t>::max(); // NOLINT
 
 const constexpr std::int16_t THRESHOLD = 2000;
 
