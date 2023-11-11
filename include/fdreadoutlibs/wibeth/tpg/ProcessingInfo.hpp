@@ -68,7 +68,7 @@ struct ChanState
   alignas(32) uint32_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) uint32_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 
-  alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
+  alignas(32) uint32_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
   alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
   alignas(32) uint32_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
 };
@@ -81,6 +81,8 @@ struct ProcessingInfo
                  uint8_t first_register_,           // NOLINT
                  uint8_t last_register_,            // NOLINT
                  uint16_t* __restrict__ output_,    // NOLINT
+                 uint32_t* __restrict__ output32u_,    // NOLINT
+                 int32_t* __restrict__ output32i_,    // NOLINT
                  const int16_t* __restrict__ taps_, // NOLINT
                  int16_t ntaps_,
                  const uint8_t tap_exponent_, // NOLINT
@@ -92,6 +94,8 @@ struct ProcessingInfo
     , first_register(first_register_)
     , last_register(last_register_)
     , output(output_)
+    , output32u(output32u_)
+    , output32i(output32i_)
     , taps(taps_)
     , ntaps(ntaps_)
     , tap_exponent(tap_exponent_)
@@ -151,6 +155,8 @@ struct ProcessingInfo
   uint8_t first_register;        // NOLINT
   uint8_t last_register;         // NOLINT
   uint16_t* __restrict__ output; // NOLINT
+  uint32_t* __restrict__ output32u; // NOLINT
+  int32_t* __restrict__ output32i; // NOLINT
   const int16_t* __restrict__ taps;
   int16_t ntaps;
   uint8_t tap_exponent; // NOLINT

@@ -61,9 +61,13 @@ public:
   void initialize(int threshold_value);
  
   uint16_t* get_hits_dest();
+  uint32_t* get_hits_dest32u();
+  int32_t* get_hits_dest32i();
 private: 
   int m_register_selector;    
-  uint16_t* m_hits_dest ;
+  uint16_t* m_hits_dest;
+  uint32_t* m_hits_dest32u;
+  int32_t* m_hits_dest32i;
   uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
   const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
   const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64

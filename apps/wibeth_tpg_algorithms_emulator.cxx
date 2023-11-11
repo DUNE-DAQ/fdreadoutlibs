@@ -55,6 +55,8 @@
 
 struct swtpg_output{
   uint16_t* output_location;
+  uint32_t* output_location32u;
+  int32_t*  output_location32i;
   uint64_t timestamp;
 };
 
@@ -102,12 +104,20 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
-  out_file << trigprim.time_start 
+  /*out_file << trigprim.time_start 
            << " " << trigprim.time_over_threshold 
            << " " << trigprim.time_peak 
            << " " << trigprim.channel 
            << " " << trigprim.adc_integral 
-           << " "  << trigprim.adc_peak << "\n";  
+           << " "  << trigprim.adc_peak << "\n";*/
+  // DBG temporary for the sake of comparison 
+  out_file << trigprim.channel
+	   << "," << trigprim.time_start 
+           << "," << trigprim.time_over_threshold 
+           << "," << trigprim.time_peak 
+           << "," << trigprim.adc_integral 
+           << ","  << trigprim.adc_peak << "\n";  
+
 
   out_file.close();
 }
@@ -174,37 +184,97 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 // =================================================================
 //                       TPG FUNCTIONS
 // =================================================================
-void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
+void extract_hits_naive(uint16_t* output_location, uint32_t* output_location32u, int32_t* output_location32i, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-    uint16_t chan, hit_end, hit_charge, hit_tover, hit_peak_adc;
-    uint32_t hit_peak_time; 
+    uint16_t hit_peak_adc;
+    uint32_t hit_charge, hit_tover, hit_peak_time;
+    int32_t chan, hit_end;
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
 
     //std::cout << "DBG ProcessingInfo: timeWindowNumFrames " << fh.m_tpg_processing_info->timeWindowNumFrames << std::endl;
+    //std::cout << "DBG nhits " << fh.m_tpg_processing_info->nhits << std::endl;
 
     size_t i = 0;
-    while (*output_location != swtpg_wibeth::MAGIC) {
-      chan   = *output_location++;
-      hit_end    = *output_location++;
-      hit_charge  = *output_location++;
-      hit_tover     = *output_location++;
-    
+    //while (*output_location != swtpg_wibeth::MAGIC) {
+    for (size_t n=0; n<fh.m_tpg_processing_info->nhits; n++) {
+      chan            = *output_location32i++;
+      hit_end         = *output_location32i++;
+      hit_charge      = *output_location32u++;
+      hit_tover       = *output_location32u++;
+      hit_peak_adc    = *output_location++;
+      hit_peak_time   = *output_location32u++;
+
       i += 1;
       chan = 16*(chan/16)+indices[chan%16];
      
-      /* 
-      int64_t set_hit_peak_offset = hit_peak_offset * fh.m_tpg_processing_info->timeWindowNumFrames;
+      //std::cout << "DBG hit_end " << n << ": " << hit_end << std::endl;
+      /*
       int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
       uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
-      uint64_t tp_t_peak  = timestamp + clocksPerTPCTick * ((int64_t)hit_peak_time - set_hit_peak_offset);
-      tp_t_peak = int64_t(tp_t_peak - tp_t_begin) > 0 ? tp_t_peak : tp_t_peak + set_hit_peak_offset * clocksPerTPCTick;
+      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
       */
 
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
+      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
+
+      triggeralgs::TriggerPrimitive trigprim;
+      trigprim.time_start = tp_t_begin;
+      trigprim.time_peak = tp_t_peak;
+
+      trigprim.time_over_threshold = uint64_t(hit_tover * clocksPerTPCTick);
+
+      trigprim.channel = chan;
+      trigprim.adc_integral = hit_charge;
+      trigprim.adc_peak = hit_peak_adc;
+      trigprim.detid = 666; 
+      trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+      trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+      trigprim.version = 1;
+    
+      if (save_trigprim) {
+        save_hit_data(trigprim, "NAIVE");
+      }
+      ++total_hits;
+
+    }
+}
+
+
+void extract_hits_naive_dbg(uint16_t* output_location, uint32_t* output_location32u, int32_t* output_location32i, uint64_t timestamp) {
+
+    constexpr int clocksPerTPCTick = 32;
+    uint16_t hit_peak_adc;
+    uint32_t hit_charge, hit_tover, hit_peak_time;
+    int32_t chan, hit_end;
+
+    std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
+
+
+    //std::cout << "DBG ProcessingInfo: timeWindowNumFrames " << fh.m_tpg_processing_info->timeWindowNumFrames << std::endl;
+    std::cout << "DBG hit_end " << hit_end << std::endl;
+
+    size_t i = 0;
+    while (*output_location != swtpg_wibeth::MAGIC) {
+      chan            = *output_location++;
+      hit_end         = *output_location++;
+      hit_charge      = *output_location++;
+      hit_tover       = *output_location++;
+      hit_peak_adc    = *output_location++;
+      hit_peak_time   = *output_location++;
+
+      i += 1;
+      chan = 16*(chan/16)+indices[chan%16];
+     
+      /*
       int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
       uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
+      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
+      */
+
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
       uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
 
       triggeralgs::TriggerPrimitive trigprim;
@@ -292,7 +362,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
           trigprim.time_over_threshold = uint64_t(hit_tover[i] * clocksPerTPCTick);
           trigprim.channel = chan[i];
           trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
+          trigprim.adc_peak = hit_peak_adc[i];
           trigprim.detid = 666;           
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
           trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
@@ -335,10 +405,17 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
 
   }  
        
+  fh.m_tpg_processing_info->nhits = 0;
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
+  uint32_t* destination_ptr32u = fh.get_hits_dest32u();
+  int32_t* destination_ptr32i = fh.get_hits_dest32i();
   *destination_ptr = swtpg_wibeth::MAGIC;
+  *destination_ptr32u = swtpg_wibeth::MAGIC32u;
+  *destination_ptr32i = swtpg_wibeth::MAGIC32i;
   fh.m_tpg_processing_info->output = destination_ptr;
+  fh.m_tpg_processing_info->output32u = destination_ptr32u;
+  fh.m_tpg_processing_info->output32i = destination_ptr32i;
   m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
        
   // Insert output of the AVX processing into the swtpg_output 
@@ -347,7 +424,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   if (select_implementation == "AVX") {
     extract_hits_avx(destination_ptr, timestamp);
   } else if(select_implementation == "NAIVE") {  
-    extract_hits_naive(destination_ptr, timestamp);
+    extract_hits_naive(destination_ptr, destination_ptr32u, destination_ptr32i, timestamp);
   }
 
 }
@@ -384,7 +461,7 @@ main(int argc, char** argv)
 
     // additional options 
     bool enable_repeat_timer = true;
-    app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing after certain time elapsed (true/false)");
+    app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing while certain time elapsed (true/false)");
     app.set_config("--config", "app.cfg", "Read a configuration file. Default: app.cfg", false);
  
 
