@@ -51,5 +51,14 @@ print256_as16_dec(__m256i var)
     printf("%+6d ", val[i]); // NOLINT(runtime/output_format)
 }
 
+//==============================================================================
+// Print a 256-bit register interpreting it as packed 32-bit values
+void
+print256_as32_dec(__m256i var)
+{
+  int32_t* val = (int32_t*)&var; // NOLINT
+  for (int i = 0; i < 8; ++i)
+    printf("%+6d ", val[i]); // NOLINT(runtime/output_format)
+}
 
 } // namespace swtpg_wibeth

@@ -20,9 +20,52 @@ namespace swtpg_wibeth {
 
 // A little wrapper around an array of 256-bit registers, so that we
 // can explicitly access it as an array of 256-bit registers or as an
-// array of uint16_t
+// array of uint32_t
 template<size_t N>
 class RegisterArray
+{
+public:
+  // RegisterArray() = default;
+
+  // RegisterArray(RegisterArray& other)
+  // {
+  //     memcpy(m_array, other.m_array, N*sizeof(uint16_t)); NOLINT(build/unsigned)
+  // }
+
+  // RegisterArray(RegisterArray&& other) = default;
+
+  // Get the value at the ith position as a 256-bit register
+  inline __m256i ymm(size_t i) const
+  {
+    return _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(m_array) + i); // NOLINT
+  }
+  inline void set_ymm(size_t i, __m256i val)
+  {
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(m_array) + i, val); // NOLINT
+  }
+  inline uint32_t uint16(size_t i) const { return m_array[i]; }        // NOLINT(build/unsigned)
+  inline void set_uint16(size_t i, uint32_t val) { m_array[i] = val; } // NOLINT(build/unsigned)
+
+  // Access the jth entry in the ith register
+  inline uint32_t uint16(size_t i, size_t j) const { return m_array[32 * i + j]; }        // NOLINT(build/unsigned)
+  inline void set_uint16(size_t i, size_t j, uint32_t val) { m_array[32 * i + j] = val; } // NOLINT(build/unsigned)
+
+  inline uint32_t* data() { return m_array; }             // NOLINT(build/unsigned)
+  inline const uint32_t* data() const { return m_array; } // NOLINT(build/unsigned)
+
+  inline size_t size() const { return N; }
+
+private:
+  alignas(32) uint32_t __restrict__ m_array[N * 32]; // NOLINT(build/unsigned)
+};
+
+
+
+// A little wrapper around an array of 256-bit registers, so that we
+// can explicitly access it as an array of 256-bit registers or as an
+// array of uint16_t
+template<size_t N>
+class RegisterArray16
 {
 public:
   // RegisterArray() = default;
@@ -79,6 +122,11 @@ print256_as16(__m256i var);
 // Print a 256-bit register interpreting it as packed 16-bit values
 void
 print256_as16_dec(__m256i var);
+
+//==============================================================================
+// Print a 256-bit register interpreting it as packed 32-bit values
+void
+print256_as32_dec(__m256i var);
 
 //==============================================================================
 inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame::word_t* first_word)
@@ -263,7 +311,8 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
       const size_t msg_index = itime / TIME_WINDOW_NUM_FRAMES;
       const size_t msg_time_offset = itime % TIME_WINDOW_NUM_FRAMES;
 
-      const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
+      //const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint16_t); // NOLINT
+      const size_t msg_start_index = msg_index * (swtpg_wibeth::ADCS_SIZE) / sizeof(uint32_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
       // The index in uint16_t of the start of the message we want. 
       const size_t index = msg_start_index + offset_within_msg;

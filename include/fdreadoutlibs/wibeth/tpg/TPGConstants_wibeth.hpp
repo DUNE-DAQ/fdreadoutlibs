@@ -24,13 +24,15 @@ const constexpr std::int16_t THRESHOLD = 2000;
 const constexpr std::size_t FRAMES_PER_MSG = 64;
 
 // How many AVX2 registers are returned per frame.
-const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 4;
+//const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 4;
+const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 8;
 
 // How many bytes are in an AVX2 register
 const constexpr std::size_t BYTES_PER_REGISTER = 32;
 
 // How many samples are in a register
-const constexpr std::size_t SAMPLES_PER_REGISTER = 16;
+//const constexpr std::size_t SAMPLES_PER_REGISTER = 16;
+const constexpr std::size_t SAMPLES_PER_REGISTER = 8;
 
 // One netio message's worth of channel ADCs after
 // expansion: 64 frames per message times 4 registers per frame times

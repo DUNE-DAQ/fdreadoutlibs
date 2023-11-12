@@ -45,8 +45,10 @@ struct ChanState
   // TODO: DRY July-22-2021 Philip Rodrigues (rodriges@fnal.gov)
   static const int NTAPS = 8;
 
-  alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
-  alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
+  //alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
+  //alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int32_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) int32_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
   
   //Variables for running sum
   alignas(32) int16_t __restrict__ RS[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -64,12 +66,14 @@ struct ChanState
   alignas(32) int16_t __restrict__ prev_samp[NREGISTERS * SAMPLES_PER_REGISTER * NTAPS];
 
   // Variables for hit finding
-  alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
+  //alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
+  alignas(32) uint32_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
   alignas(32) uint32_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) uint32_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 
   alignas(32) uint32_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
-  alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+  //alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+  alignas(32) uint32_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
   alignas(32) uint32_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
 };
 
@@ -130,7 +134,8 @@ struct ProcessingInfo
         const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
         const size_t index = msg_start_index + offset_within_msg;
 
-        const uint16_t* input16 = first_tick_registers.data(); // NOLINT
+        //const uint16_t* input16 = first_tick_registers.data(); // NOLINT
+        const uint32_t* input16 = first_tick_registers.data(); // NOLINT
 
         ped = input16[index];
 

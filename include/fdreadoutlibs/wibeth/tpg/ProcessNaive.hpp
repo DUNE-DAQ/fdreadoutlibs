@@ -50,7 +50,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   uint16_t* output_loc = info.output;           // NOLINT
   uint32_t* output_loc32u = info.output32u;           // NOLINT
   int32_t* output_loc32i = info.output32i;           // NOLINT
-  const uint16_t* input16 = info.input->data(); // NOLINT
+  //const uint16_t* input16 = info.input->data(); // NOLINT
+  const uint32_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
   for (size_t ichan = 0; ichan < NREGISTERS * SAMPLES_PER_REGISTER; ++ichan) {
@@ -63,17 +64,21 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
     // Get all the state variables by reference so they "automatically" get saved for the next go-round
     ChanState<NREGISTERS>& state = info.chanState;
-    int16_t& median = state.pedestals[ichan];
-    int16_t& accum = state.accum[ichan];
+    //int16_t& median = state.pedestals[ichan];
+    //int16_t& accum = state.accum[ichan];
+    int32_t& median = state.pedestals[ichan];
+    int32_t& accum = state.accum[ichan];
 
     // Variables for filtering
     int16_t* prev_samp = state.prev_samp + NTAPS * ichan;
 
     // Variables for hit finding
-    uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
+    //uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
+    uint32_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint32_t& hit_charge = state.hit_charge[ichan];
     uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
-    uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
+    //uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
+    uint32_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     uint32_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
 
     uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
@@ -91,7 +96,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       int16_t sample = input16[index];
 
-      frugal_accum_update(median, sample, accum, 10);
+      //frugal_accum_update(median, sample, accum, 10);
+      frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
 
       sample -= median;
 
@@ -103,9 +109,10 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         // Simulate saturated add
         uint32_t tmp_charge = hit_charge;
         tmp_charge += sample;
-        tmp_charge = std::min(tmp_charge, (uint32_t)std::numeric_limits<uint16_t>::max());
+        tmp_charge = std::min(tmp_charge, (uint32_t)std::numeric_limits<uint32_t>::max());
         if (sample > hit_peak_adc) {
-          hit_peak_adc = (uint16_t)sample;
+          //hit_peak_adc = (uint16_t)sample;
+          hit_peak_adc = (uint32_t)sample;
           hit_peak_time = hit_tover;
         }
         hit_charge = tmp_charge;
@@ -122,7 +129,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         (*output_loc32i++) = int32_t(itime)-1;         // NOLINT 
         (*output_loc32u++) = hit_charge;      // NOLINT
         (*output_loc32u++) = hit_tover-1;     // NOLINT
-        (*output_loc++) = hit_peak_adc;    // NOLINT
+        (*output_loc++) = (uint16_t)hit_peak_adc;    // NOLINT
         (*output_loc32u++) = hit_peak_time;   // NOLINT
 
         hit_charge = 0;
@@ -139,7 +146,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   }   // end loop over channels
 
   // printf("Found %d hits\n", nhits);
-  info.nhits += nhits;
+  info.nhits = nhits;
   info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
   // Write a magic "end-of-hits" value into the list of hits
