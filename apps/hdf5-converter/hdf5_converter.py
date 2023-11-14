@@ -1,8 +1,4 @@
 '''
-File name: main.py
-Author: Dario Pullia
-Date created: 29/09/2023
-
 Description:
 This file contains the main function that converts a HDF5 file containing TPStream data from DUNE DAQ to different formats.
 
@@ -90,7 +86,7 @@ if "img_all" in out_format:
     save_img_all = True
 
 if save_img_groups or save_img_all:
-    import create_images_from_tps_libs as tp2img
+    import hdf5_converter_libs_img as tp2img
 
 
 all_tps = tpsconv.tpstream_hdf5_converter(input_file, num_records, out_format)

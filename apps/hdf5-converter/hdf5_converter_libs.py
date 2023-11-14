@@ -1,8 +1,4 @@
 '''
-File name: tpstream_hdf5_converter.py
-Author: Dario Pullia
-Date created: 19/09/2023
-
 Description:
 This file contains the function that converts a HDF5 file containing TPStream data from DUNE DAQ to different formats.
 
