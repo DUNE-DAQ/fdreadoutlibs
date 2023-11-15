@@ -149,7 +149,7 @@ def from_tp_to_imgs(tps, make_fixed_size=False, width=500, height=1000, x_margin
             x = (tp[3] - x_min) + x_margin
             y_start = (tp[0] - t_start) + y_margin
             y_end = (tp[0] + tp[1] - t_start) + y_margin
-            img[int(y_start)-1:int(y_end)-1, int(x)-1] = tp[4]/(y_end - y_start)
+            img[int(y_start)-1:int(y_end), int(x)-1] = tp[4]/(y_end - y_start)
 
 
     else:
@@ -176,26 +176,26 @@ def from_tp_to_imgs(tps, make_fixed_size=False, width=500, height=1000, x_margin
                 x=(tp[3] - x_min)/x_range * (img_width - 2*x_margin) + x_margin
                 y_start = (tp[0] - t_start)/y_range * (img_height - 2*y_margin) + y_margin
                 y_end = (tp[0] + tp[1] - t_start)/y_range * (img_height - 2*y_margin) + y_margin
-                img[int(y_start)-1:int(y_end)-1, int(x)-1] = tp[4]/(y_end - y_start)
+                img[int(y_start)-1:int(y_end), int(x)-1] = tp[4]/(y_end - y_start)
         elif stretch_x:
             for tp in tps:                
                 x=(tp[3] - x_min)/x_range * (img_width - 2*x_margin) + x_margin
                 y_start = (tp[0] - t_start) + y_margin
                 y_end = (tp[0] + tp[1] - t_start) + y_margin
-                img[int(y_start)-1:int(y_end)-1, int(x)-1] = tp[4]/(y_end - y_start)
+                img[int(y_start)-1:int(y_end), int(x)-1] = tp[4]/(y_end - y_start)
         elif stretch_y:
             for tp in tps:
                 x = (tp[3] - x_min) + x_margin
                 y_start = (tp[0] - t_start)/y_range * (img_height - 2*y_margin) + y_margin
                 y_end = (tp[0] + tp[1] - t_start)/y_range * (img_height - 2*y_margin) + y_margin
-                img[int(y_start):int(y_end)-1, int(x)-1] = tp[4]/(y_end - y_start)
+                img[int(y_start):int(y_end), int(x)-1] = tp[4]/(y_end - y_start)
 
         else:
             for tp in tps:
                 x = (tp[3] - x_min) + x_margin
                 y_start = (tp[0] - t_start) + y_margin
                 y_end = (tp[0] + tp[1] - t_start) + y_margin
-                img[int(y_start)-1:int(y_end)-1, int(x)-1] = tp[4]/(y_end - y_start)
+                img[int(y_start)-1:int(y_end), int(x)-1] = tp[4]/(y_end - y_start)
    
     return img
 
@@ -222,6 +222,9 @@ def all_views_img_maker(tps, channel_map, min_tps_to_create_img=2, make_fixed_si
 
     # X plane, take only the tps where the corrisponding position in the channel map is 2
     tps_x = tps[np.where(channel_map[tps[:, 3]% total_channels, 1] == 2)]
+    print(tps_u.shape)
+    print(tps_v.shape)
+    print(tps_x.shape)
 
     img_u, img_v, img_x = np.array([[-1]]), np.array([[-1]]), np.array([[-1]])
 
@@ -236,6 +239,7 @@ def all_views_img_maker(tps, channel_map, min_tps_to_create_img=2, make_fixed_si
 
     if tps_x.shape[0] >= min_tps_to_create_img:
         img_x = from_tp_to_imgs(tps_x, make_fixed_size=make_fixed_size, width=width, height=height, x_margin=x_margin, y_margin=y_margin, y_min_overall=y_min_overall, y_max_overall=y_max_overall)
+
 
     return img_u, img_v, img_x
 
@@ -257,6 +261,7 @@ def save_img(all_TPs, channel_map,save_path, outname='test', min_tps_to_create_i
 
     #create images
     img_u, img_v, img_x = all_views_img_maker(all_TPs, channel_map, min_tps_to_create_img=min_tps_to_create_img, make_fixed_size=make_fixed_size, width=width, height=height, x_margin=x_margin, y_margin=y_margin)
+    max_pixel_value_overall = np.max([np.max(img_u), np.max(img_v), np.max(img_x)])
 
     #save images
     if not os.path.exists(save_path):
@@ -398,17 +403,17 @@ def save_img(all_TPs, channel_map,save_path, outname='test', min_tps_to_create_i
 
 
         if img_u[0, 0] != -1:
-            im = grid[0].imshow(img_u)
+            im = grid[0].imshow(img_u, vmin=0, vmax=max_pixel_value_overall)
             grid[0].set_title('U plane')
             # grid[0].set_xticks(np.arange(0, img_u.shape[1], img_u.shape[1]/2))
             # grid[0].set_xticklabels(xticks_labels_u)
         if img_v[0, 0] != -1:
-            im = grid[1].imshow(img_v)
+            im = grid[1].imshow(img_v, vmin=0, vmax=max_pixel_value_overall)
             grid[1].set_title('V plane')
             # grid[1].set_xticks(np.arange(0, img_v.shape[1], img_v.shape[1]/2))
             # grid[1].set_xticklabels(xticks_labels_v)
         if img_x[0, 0] != -1:
-            im = grid[2].imshow(img_x)
+            im = grid[2].imshow(img_x, vmin=0, vmax=max_pixel_value_overall)
             grid[2].set_title('X plane')
             # grid[2].set_xticks(np.arange(0, img_x.shape[1], img_x.shape[1]/2))
             # grid[2].set_xticklabels(xticks_labels_x)

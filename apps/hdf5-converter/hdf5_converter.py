@@ -19,7 +19,7 @@ import numpy as np
 parser = argparse.ArgumentParser(description='Convert TPStream HDF5 file to different formats.')
 parser.add_argument('--input_file', type=str, help='Input file name', default='')
 parser.add_argument('--output_folder', type=str, help='Output file path', default='')
-parser.add_argument('--format', type=str, help='Output file format', default=['txt', 'npy', 'img_groups', 'img_all'], nargs='+')
+parser.add_argument('--format', type=str, help='Output file format', default=['txt', 'img_all'], nargs='+')
 parser.add_argument('--num_records', type=int, help='Number of records to process', default=-1)
 parser.add_argument('--min_tps_to_group', type=int, default=9, help='minimum number of TPs to create a group')
 parser.add_argument('--drift_direction', type=int, default=1, help='0 for horizontal drift, 1 for vertical drift')
@@ -35,7 +35,7 @@ parser.add_argument('--img_save_folder', type=str, default='images/', help='fold
 parser.add_argument('--img_save_name', type=str, default='image', help='name to save the image')
 parser.add_argument('--time_start', type=int, default=-1, help='Start time to draw for IMG ALL')
 parser.add_argument('--time_end', type=int, default=-1, help='End time to draw for IMG ALL')
-
+parser.add_argument('--n_tps',type=int, help='Number of TPs to save', default=-1)
 
 args = parser.parse_args()
 input_file = args.input_file
@@ -56,6 +56,7 @@ img_save_folder = args.img_save_folder
 img_save_name = args.img_save_name
 time_start=args.time_start
 time_end=args.time_end
+n_tps = args.n_tps
 
 
 
@@ -93,6 +94,14 @@ all_tps = tpsconv.tpstream_hdf5_converter(input_file, num_records, out_format)
 
 print(f"Converted {all_tps.shape[0]} tps!")
 # Save the data
+if n_tps>0 and n_tps<all_tps.shape[0]:
+    time_shift = all_tps[0,0]
+    all_tps[:,0]=all_tps[:,0]-time_shift
+    all_tps[:,2]=all_tps[:,2]-time_shift
+
+    all_tps=all_tps[:n_tps]
+
+print(all_tps)
 
 eff_time_start=all_tps[0][0]
 eff_time_end=all_tps[-1][0]
