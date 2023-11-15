@@ -22,7 +22,7 @@ parser.add_argument('--output_folder', type=str, help='Output file path', defaul
 parser.add_argument('--format', type=str, help='Output file format', default=['txt', 'img_all'], nargs='+')
 parser.add_argument('--num_records', type=int, help='Number of records to process', default=-1)
 parser.add_argument('--min_tps_to_group', type=int, default=9, help='minimum number of TPs to create a group')
-parser.add_argument('--drift_direction', type=int, default=1, help='0 for horizontal drift, 1 for vertical drift')
+parser.add_argument('--drift_direction', type=int, default=1, help='0 for horizontal drift, 1 for vertical drift, 2 for 50L')
 parser.add_argument('--ticks_limit', type=int, default=100, help='closeness in ticks to group TPs')
 parser.add_argument('--channel_limit', type=int, default=20, help='closeness in channels to group TPs')
 parser.add_argument('--make_fixed_size', action='store_true', help='make the image size fixed')
@@ -56,7 +56,7 @@ img_save_folder = args.img_save_folder
 img_save_name = args.img_save_name
 time_start=args.time_start
 time_end=args.time_end
-n_tps = args.n_tps
+n_tps_to_convert = args.n_tps
 
 
 
@@ -90,16 +90,9 @@ if save_img_groups or save_img_all:
     import hdf5_converter_libs_img as tp2img
 
 
-all_tps = tpsconv.tpstream_hdf5_converter(input_file, num_records, out_format)
+all_tps = tpsconv.tpstream_hdf5_converter(input_file, num_records=num_records, n_tps_to_convert=n_tps_to_convert)
 
 print(f"Converted {all_tps.shape[0]} tps!")
-# Save the data
-if n_tps>0 and n_tps<all_tps.shape[0]:
-    time_shift = all_tps[0,0]
-    all_tps[:,0]=all_tps[:,0]-time_shift
-    all_tps[:,2]=all_tps[:,2]-time_shift
-
-    all_tps=all_tps[:n_tps]
 
 print(all_tps)
 

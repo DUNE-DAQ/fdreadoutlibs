@@ -24,7 +24,7 @@ def tp_to_numpy(tp):
     return np.array([tp.time_start, tp.time_over_threshold, tp.time_peak, tp.channel, tp.adc_integral, tp.adc_peak, tp.detid, tp.flag, tp.version])
 
 
-def tpstream_hdf5_converter(filename, num_records=-1, out_format=["txt"]):
+def tpstream_hdf5_converter(filename, num_records=-1, n_tps_to_convert=-1):
     h5_file = HDF5RawDataFile(filename)
 
     # Get all records (TimeSlice)
@@ -66,6 +66,11 @@ def tpstream_hdf5_converter(filename, num_records=-1, out_format=["txt"]):
             index = np.argmin(next_tp_in_datasets)
             tp = trgdataformats.TriggerPrimitive(fragments[index].get_data(one_tp_size_in_memory*(n_tps[index]-n_tps_left[index])))
             all_tps.append(tp_to_numpy(tp))
+            if len(all_tps)==n_tps_to_convert:
+                all_tps = np.array(all_tps)
+                print(f"Final shape: {all_tps.shape}")
+                return all_tps                
+
             n_tps_left[index] -= 1
             if n_tps_left[index] == 0:
                 del n_tps_left[index]
