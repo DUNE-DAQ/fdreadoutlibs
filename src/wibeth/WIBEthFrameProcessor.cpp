@@ -55,7 +55,7 @@ namespace fdreadoutlibs {
 
 
 WIBEthFrameHandler::WIBEthFrameHandler()
-  : m_hits_dest(nullptr), m_hits_dest32u(nullptr), m_hits_dest32i(nullptr)
+  : m_hits_dest(nullptr), m_hits_dest32u(nullptr), m_hits_dest16i(nullptr)
   , m_tpg_taps_p(nullptr)
 {}
 
@@ -66,7 +66,7 @@ WIBEthFrameHandler::~WIBEthFrameHandler()
   }
   if (m_hits_dest) delete[] m_hits_dest;
   if (m_hits_dest32u) delete[] m_hits_dest32u;
-  if (m_hits_dest32i) delete[] m_hits_dest32i;
+  if (m_hits_dest16i) delete[] m_hits_dest16i;
 }
 
 void
@@ -77,7 +77,7 @@ WIBEthFrameHandler::reset()
   m_tpg_taps_p = nullptr;
   if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
   if (m_hits_dest32u) { delete[] m_hits_dest32u; } m_hits_dest32u = nullptr;
-  if (m_hits_dest32i) { delete[] m_hits_dest32i; } m_hits_dest32i = nullptr;
+  if (m_hits_dest16i) { delete[] m_hits_dest16i; } m_hits_dest16i = nullptr;
 
   first_hit = true;
 }
@@ -99,7 +99,7 @@ WIBEthFrameHandler::initialize(int threshold_value)
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
   if(m_hits_dest32u == nullptr) {m_hits_dest32u = new uint32_t[100000];}
-  if(m_hits_dest32i == nullptr) {m_hits_dest32i = new int32_t[100000];}
+  if(m_hits_dest16i == nullptr) {m_hits_dest16i = new int16_t[100000];}
 
   m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
                                                                                                             swtpg_wibeth::FRAMES_PER_MSG,
@@ -107,7 +107,7 @@ WIBEthFrameHandler::initialize(int threshold_value)
                                                                                                             swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
                                                                                                             m_hits_dest,
                                                                                                             m_hits_dest32u,
-                                                                                                            m_hits_dest32i,
+                                                                                                            m_hits_dest16i,
                                                                                                             m_tpg_taps_p,
                                                                                                             (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
                                                                                                             m_tpg_tap_exponent,
@@ -127,10 +127,10 @@ WIBEthFrameHandler::get_hits_dest32u()
 {
   return m_hits_dest32u;
 }
-int32_t*
-WIBEthFrameHandler::get_hits_dest32i()
+int16_t*
+WIBEthFrameHandler::get_hits_dest16i()
 {
-  return m_hits_dest32i;
+  return m_hits_dest16i;
 }
 
 

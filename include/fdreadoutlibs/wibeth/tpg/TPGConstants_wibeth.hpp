@@ -16,7 +16,7 @@ namespace swtpg_wibeth {
 
 const constexpr std::uint16_t MAGIC = std::numeric_limits<std::uint16_t>::max(); // NOLINT
 const constexpr std::uint32_t MAGIC32u = std::numeric_limits<std::uint32_t>::max(); // NOLINT
-const constexpr std::int32_t MAGIC32i  = std::numeric_limits<std::int32_t>::max(); // NOLINT
+const constexpr std::int16_t MAGIC16i  = std::numeric_limits<std::int16_t>::max(); // NOLINT
 
 const constexpr std::int16_t THRESHOLD = 2000;
 
@@ -24,15 +24,13 @@ const constexpr std::int16_t THRESHOLD = 2000;
 const constexpr std::size_t FRAMES_PER_MSG = 64;
 
 // How many AVX2 registers are returned per frame.
-//const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 4;
-const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 8;
+const constexpr std::size_t NUM_REGISTERS_PER_FRAME = 4;
 
 // How many bytes are in an AVX2 register
 const constexpr std::size_t BYTES_PER_REGISTER = 32;
 
 // How many samples are in a register
-//const constexpr std::size_t SAMPLES_PER_REGISTER = 16;
-const constexpr std::size_t SAMPLES_PER_REGISTER = 8;
+const constexpr std::size_t SAMPLES_PER_REGISTER = 16;
 
 // One netio message's worth of channel ADCs after
 // expansion: 64 frames per message times 4 registers per frame times
