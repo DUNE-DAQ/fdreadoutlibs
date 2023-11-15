@@ -65,15 +65,9 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     // The peak adc value
     __m256i hit_peak_adc = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg); // NOLINT
 
-    // The peak offset value
-    //__m256i hit_peak_offset = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_offset) + ireg); // NOLINT
-
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
     __m256i channels = _mm256_add_epi16(channel_base, iota);
-
-    //__m256i to_add_hit_peak_offset = _mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), prev_was_over);
-    //hit_peak_offset = _mm256_adds_epi16(hit_peak_offset, to_add_hit_peak_offset);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / info.timeWindowNumFrames;
@@ -192,16 +186,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
-        //_mm256_storeu_si256(output_loc++, hit_peak_offset); // NOLINT(runtime/increment_decrement)        
-
-
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
         hit_tover = _mm256_blendv_epi8(hit_tover, zero, left);
         hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
         hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
-	      //hit_peak_offset = _mm256_blendv_epi8(hit_peak_offset, zero, left);        
       } // end if(!no_hits_to_store)
 
       prev_was_over = is_over;
@@ -217,7 +207,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg, hit_tover);         // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg, hit_peak_time);         // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg, hit_peak_adc);         // NOLINT
-    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_offset) + ireg, hit_peak_offset);         // NOLINT    
 
   } // end loop over ireg (the registers in this frame)
 
