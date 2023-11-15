@@ -52,13 +52,36 @@ print256_as16_dec(__m256i var)
 }
 
 //==============================================================================
-// Print a 256-bit register interpreting it as packed 32-bit values
+// Print a 256-bit register interpreting it as packed 16-bit values
+void
+print256_as16u_dec(__m256i var)
+{
+  uint16_t* val = (uint16_t*)&var; // NOLINT
+  for (int i = 0; i < 16; ++i)
+    printf("%+6u ", val[i]); // NOLINT(runtime/output_format)
+}
+
+//==============================================================================
+// print a 256-bit register interpreting it as packed 32-bit values
 void
 print256_as32_dec(__m256i var)
 {
-  int32_t* val = (int32_t*)&var; // NOLINT
+  int32_t* val = (int32_t*)&var; // nolint
   for (int i = 0; i < 8; ++i)
-    printf("%+6d ", val[i]); // NOLINT(runtime/output_format)
+    printf("%+11d ", val[i]); // nolint(runtime/output_format)
 }
+//==============================================================================
+// print a 256-bit register interpreting it as packed 32-bit values
+void
+print256_as32u_dec(__m256i var)
+{
+  //alignas(32) uint32_t temp32u[8];
+  //_mm256_store_si256((__m256i *)&temp32u[0], var);
+  uint32_t* val = (uint32_t*)&var; // nolint
+  for (int i = 0; i < 8; ++i)
+    printf("%+11u ", val[i]); // nolint(runtime/output_format)
+}
+
+
 
 } // namespace swtpg_wibeth
