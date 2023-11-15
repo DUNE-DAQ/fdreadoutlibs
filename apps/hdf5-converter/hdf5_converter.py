@@ -27,7 +27,7 @@ parser.add_argument('--ticks_limit', type=int, default=100, help='closeness in t
 parser.add_argument('--channel_limit', type=int, default=20, help='closeness in channels to group TPs')
 parser.add_argument('--make_fixed_size', action='store_true', help='make the image size fixed')
 parser.add_argument('--img_width', type=int, default=250, help='width of the image')
-parser.add_argument('--img_height', type=int, default=1000, help='height of the image')
+parser.add_argument('--img_height', type=int, default=3000, help='height of the image')
 parser.add_argument('--x_margin', type=int, default=30, help='margin in x')
 parser.add_argument('--y_margin', type=int, default=50, help='margin in y')
 parser.add_argument('--min_tps_to_create_img', type=int, default=2, help='minimum number of TPs to create an image')
