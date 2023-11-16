@@ -24,16 +24,10 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  //const __m256i adcMax = _mm256_set1_epi16(INT16_MAX);
-  //const __m256i adcMaxU = _mm256_set1_epi16(UINT16_MAX);
-  //const __m256i overflowMaxU = _mm256_set1_epi32(UINT32_MAX);
-  //const __m256i overflowMax = _mm256_set1_epi32(INT32_MAX);
   const __m256i overflowMax = _mm256_set1_epi16(UINT16_MAX);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
-  __m256i* output_loc32u = (__m256i*)(info.output32u); // NOLINT(readability/casting)
-  __m256i* output_loc16i = (__m256i*)(info.output16i); // NOLINT(readability/casting)
 
   const __m256i iota = _mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 
@@ -52,15 +46,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     // The accumulator that we increase/decrease when the current
     // sample is greater/less than the median
     __m256i accum = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum) + ireg);     // NOLINT
-    printf("DBG ++++++++++++++++++++++++++++ ireg=%d\n", ireg);
-    //printf("DBG median:        "); print256_as32_dec(median);        printf("\n");
-    //printf("DBG accum:        "); print256_as32_dec(accum);        printf("\n");
-    //printf("DBG adcMax16:        "); print256_as16_dec(adcMax);        printf("\n");
-    //printf("DBG adcMax32:        "); print256_as32_dec(adcMax);        printf("\n");
-    //printf("DBG adcMax16U:        "); print256_as16u_dec(adcMaxU);        printf("\n");
-    //printf("DBG adcMax32U:        "); print256_as32u_dec(adcMaxU);        printf("\n");
-    //printf("DBG overflowMax:   "); print256_as32_dec(overflowMax);        printf("\n");
-    //printf("DBG overflowMaxU:   "); print256_as32u_dec(overflowMaxU);        printf("\n");
 
     // ------------------------------------
     // Variables for hit finding
@@ -81,9 +66,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
     __m256i channels = _mm256_add_epi16(channel_base, iota);
-    //printf("DBG channels:        "); print256_as32_dec(channels);        printf("\n");
-    //printf("DBG prev_was_over:    "); print256_as32_dec(prev_was_over);    printf("\n");
-    //printf("DBG hit_peak_adc:    "); print256_as32_dec(hit_peak_adc);    printf("\n");
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / info.timeWindowNumFrames;
@@ -95,21 +77,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       __m256i s = info.input->ymm(index);
       //printf("raw ADC:          "); print256_as16_dec(s);          printf("\n");
 
-      //printf("DBG itime=%d\n", itime);
-      //printf("DBG msg_index=%d\n", msg_index);
-      //printf("DBG msg_time_offset=%d\n", msg_time_offset);
-      //printf("DBG index=%d\n", index);
-      //printf("DBG s16:        "); print256_as16_dec(s);        printf("\n");
-      //printf("DBG s32:        "); print256_as32_dec(s);        printf("\n");
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
       swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);
-      //printf("DBG s16 pedsub:        "); print256_as16_dec(s);        printf("\n");
-      //printf("DBG s32 pedsub:        "); print256_as32_dec(s);        printf("\n");
 
       // Don't let the sample exceed adcMax, which is the value
       // at which its filtered version might overflow
@@ -144,11 +117,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       //The saturated value of 0x7FFF(max) or 0x8000(min), respectively, is written to the destination vector.
       //hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
       //You must control the range of values operated upon to prevent undetected overflow conditions.
-      //printf("DBG s16 to_add_charge:        "); print256_as16_dec(to_add_charge);        printf("\n");
-      //printf("DBG s32 to_add_charge:        "); print256_as32_dec(to_add_charge);        printf("\n");
       hit_charge = _mm256_add_epi16(hit_charge, to_add_charge);
-      //printf("DBG s16 hit_charge:        "); print256_as16_dec(hit_charge);        printf("\n");
-      //printf("DBG s32 hit_charge:        "); print256_as32_dec(hit_charge);        printf("\n");
 
       // Avoid overflow of the hit charge, if needed in practice 
       //hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
@@ -164,18 +133,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");
       //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
-        /*printf("-----------------------\n");
-      	printf("itime=%ld\n", itime);
-	printf("ireg=%d, %d, %d\n", ireg, info.first_register, info.last_register);
-        printf("SAMPLES_PER_REGISTER=%ld\n", SAMPLES_PER_REGISTER);
-        printf("channels:    "); print256_as32_dec(channels);    printf("\n");
-        printf("hit_charge:    "); print256_as32_dec(hit_charge);    printf("\n");
-        printf("timenow:    "); print256_as32_dec(timenow);    printf("\n");
-        printf("s:    "); print256_as32_dec(s);    printf("\n");
-	printf("median:        "); print256_as16_dec(median);        printf("\n");
-	printf("accum:        "); print256_as16_dec(accum);        printf("\n");
-	printf("hit_peak_adc:        "); print256_as16_dec(hit_peak_adc);        printf("\n");
-        */
       }
 
       // 1. Calculation of the hit peak time and ADC
@@ -203,8 +160,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // %XMM1, and sets the carry-flag if everything that is
       // set in %XMM0 is also set in %XMM1:
       const int no_hits_to_store = _mm256_testc_si256(_mm256_setzero_si256(), left);
-      //printf("DBG loop ireg=%d, no_hits_to_store: %d\n", ireg, no_hits_to_store);
-      //printf("DBG loop hit_peak_adc:        "); print256_as16_dec(hit_peak_adc);        printf("\n");
 
       if (!no_hits_to_store) {
 
@@ -224,9 +179,9 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         // the caller. This saves faffing with hits that span
         // a message boundary, hopefully
 
-        _mm256_storeu_si256(output_loc16i++, timenow-1); // NOLINT(runtime/increment_decrement)
+        _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
-        //_mm256_storeu_si256(output_loc32u++, // NOLINT(runtime/increment_decrement)
+        //_mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
         //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
         _mm256_storeu_si256(output_loc++, hit_charge);
 
@@ -236,14 +191,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
 	_mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)
 
-        //printf("charge:"); print256_as16_dec(hit_charge);          printf("\n");
-	//printf("DBG save ireg=%d\n", ireg);
-        //printf("DBG save channels:        "); print256_as32_dec(channels);        printf("\n");
-        //printf("DBG save hit_peak_adc:        "); print256_as16_dec(hit_peak_adc);        printf("\n");
-        //printf("DBG save hit_charge:        "); print256_as16_dec(hit_charge);        printf("\n");
-        //printf("DBG save hit_charge:        "); print256_as32_dec(hit_charge);        printf("\n");
-
-
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
@@ -252,12 +199,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
         hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
 
-        //printf("DBG save hit_charge:        "); print256_as16_dec(hit_charge);        printf("\n");
-        //printf("DBG save hit_charge:        "); print256_as32_dec(hit_charge);        printf("\n");
-
 	prev_was_over = is_over;
       } // end if(!no_hits_to_store)
-
 
     } // end loop over itime (times for this register)
 
@@ -272,12 +215,10 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg, hit_peak_time);         // NOLINT
 
   } // end loop over ireg (the swtpg_wibeth::SAMPLES_PER_REGISTER, e.g. 8, registers in this frame)
-  for (int i = 0; i < 5; ++i) {
-    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
-  }
-  for (int i = 0; i < 1; ++i) {
-    _mm256_storeu_si256(output_loc16i++, _mm256_set1_epi16(swtpg_wibeth::MAGIC16i)); // NOLINT(runtime/increment_decrement)
-  }
+  // Arguably not needed, we can avoid using MAGIC
+  //for (int i = 0; i < 6; ++i) {
+  //  _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
+  //}
 
 
 

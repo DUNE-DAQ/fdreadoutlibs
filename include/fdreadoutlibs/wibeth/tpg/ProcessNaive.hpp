@@ -44,12 +44,8 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   // Start with taps as floats that add to 1. Multiply by some
   // power of two (2**N) and round to int. Before filtering, cap the
   // value of the input to INT16_MAX/(2**N)
-  const size_t NTAPS = 8;
-  const int16_t adcMax = info.adcMax;
 
   uint16_t* output_loc = info.output;           // NOLINT
-  uint32_t* output_loc32u = info.output32u;           // NOLINT
-  int16_t* output_loc16i = info.output16i;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
@@ -72,17 +68,12 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     int16_t& median = state.pedestals[ichan];
     int16_t& accum = state.accum[ichan];
 
-    // Variables for filtering
-    int16_t* prev_samp = state.prev_samp + NTAPS * ichan;
-
     // Variables for hit finding
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
-
-    uint16_t absTimeModNTAPS = info.absTimeModNTAPS; // NOLINT
 
     printf("DBG ChanState % 5d:prev_was_over % 5d:nframes \n", prev_was_over, info.timeWindowNumFrames);
 
@@ -91,7 +82,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       const size_t msg_time_offset = itime % info.timeWindowNumFrames;
       // The index in uint16_t of the start of the message we want // NOLINT
       const size_t msg_start_index = msg_index * swtpg_wibeth::ADCS_SIZE / sizeof(uint16_t); // NOLINT
-      //const size_t msg_start_index = msg_index * swtpg_wibeth::ADCS_SIZE / sizeof(uint32_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
       const size_t index = msg_start_index + offset_within_msg;
 
@@ -122,10 +112,9 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         // Simulate saturated add
         uint32_t tmp_charge = hit_charge;
         tmp_charge += sample;
-        tmp_charge = std::min(tmp_charge, (uint32_t)std::numeric_limits<uint32_t>::max());
+        tmp_charge = std::min(tmp_charge, std::numeric_limits<uint32_t>::max());
         if (sample > hit_peak_adc) {
-          //hit_peak_adc = (uint16_t)sample;
-          hit_peak_adc = (uint32_t)sample;
+          hit_peak_adc = (uint16_t)sample;
           hit_peak_time = hit_tover;
         }
         hit_charge = tmp_charge;
@@ -139,7 +128,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
 	(*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc16i++) = int16_t(itime)-1;         // NOLINT 
+        (*output_loc++) = (uint16_t)itime;         // NOLINT 
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover-1;     // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
@@ -160,15 +149,12 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
   // printf("Found %d hits\n", nhits);
   info.nhits = nhits;
-  info.absTimeModNTAPS = (info.absTimeModNTAPS + info.timeWindowNumFrames) % NTAPS;
 
   // Write a magic "end-of-hits" value into the list of hits
-  for (int i = 0; i < 5; ++i) {
-    (*output_loc++) = MAGIC; // NOLINT
-  }
-  for (int i = 0; i < 1; ++i) {
-    (*output_loc16i++) = MAGIC16i; // NOLINT
-  }
+  // Arguably not needed, we can avoid using MAGIC 
+  //for (int i = 0; i < 6; ++i) {
+  //  (*output_loc++) = MAGIC; // NOLINT
+  //}
 }
 
 } // namespace swtpg_wibeth
