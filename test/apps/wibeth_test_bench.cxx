@@ -114,13 +114,14 @@ int main()
     }  
 
     // Check that the ADC values have been properly set
+#if 0
     for (int itime=0; itime<time_samples_per_frame; ++itime) {
       for(int j=0; j<num_channels; ++j){
           uint16_t adc_val = frame.get_adc(j, itime);
           //std::cout << "Index " << j << " time sample " << itime << " : " << adc_val << std::endl;
       }
     }
-
+#endif
 
     
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
@@ -136,7 +137,7 @@ int main()
     bool success=true;
 
 	    
-    for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
+    for (int j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       // Index of the ADC frame 
       int in_index=16*(j/16)+indices[j%16];
       
@@ -145,7 +146,7 @@ int main()
       const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * TIME_FRAMES;
 
       int16_t out_val;
-      for (size_t itime = 0; itime < TIME_FRAMES; ++itime) {
+      for (int itime = 0; itime < TIME_FRAMES; ++itime) {
         const size_t msg_index = itime / TIME_FRAMES;
         const size_t msg_time_offset = itime % TIME_FRAMES;
         
