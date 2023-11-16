@@ -79,15 +79,6 @@ print256_as16(__m256i var);
 // Print a 256-bit register interpreting it as packed 16-bit values
 void
 print256_as16_dec(__m256i var);
-void
-print256_as16u_dec(__m256i var);
-
-//==============================================================================
-// Print a 256-bit register interpreting it as packed 32-bit values
-void
-print256_as32_dec(__m256i var);
-void
-print256_as32u_dec(__m256i var);
 
 //==============================================================================
 inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame::word_t* first_word)
@@ -221,25 +212,16 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
     // The register index is used to decide on which of the 
     // registers we want to unpack the ADC messages
     //int reg_index = 0;
-    printf("DBG loop reg_index before: %d\n", reg_index);
-    //if (reg_index == swtpg_wibeth::NUM_REGISTERS_PER_FRAME) {
-      reg_index = 0;
-    //} 
-    printf("DBG loop reg_index before after: %d\n", reg_index);
+    reg_index = 0;
 
     // Loop over ADC values (channels) in a given time sample
     for (int j = 0; j < num_adc_words_per_ts; j++) {
-      printf("DBG loop i/max------j/max,  reg_index: %d/%d, %d/%d, %d\n", i, swtpg_wibeth::FRAMES_PER_MSG, j, num_adc_words_per_ts, reg_index);
 
       // The words repeat every 7 iterations. 
       // In this way we can use the DUNEWIB unpacking 
       // function (unpack_one_register) 
       if (j%7 == 0 ) {
         const dunedaq::fddetdataformats::WIBEthFrame::word_t * first_half = (*(frame_words_ptr + i) + j);
-        //std::cout << "DBG ADC word_t 1 : (" << i << "," << j << ") " << std::hex << *first_half << std::dec << std::endl;
-        std::cout << "DBG ADC word_t 1 : (" << i << "," << j << ") " << std::setfill('0') << std::setw(16) << std::right << std::hex << *first_half << std::dec << std::endl;
-        std::cout << "DBG ADC set_ymm ID first half, reg_index: " << i+reg_index*swtpg_wibeth::FRAMES_PER_MSG << ", " << reg_index << std::endl;
-        //printf("DBG first half: %d, %d\n", sizeof(first_half), *first_half);
 
         // Unpack one register and add it to the register array
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(first_half));
@@ -251,8 +233,6 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         char* cursor = (char*) first_half;
         cursor += 224 / 8; // divide by 8 to get the results in bytes
         dunedaq::fddetdataformats::WIBEthFrame::word_t * second_half = (dunedaq::fddetdataformats::WIBEthFrame::word_t*) cursor;
-        std::cout << "DBG ADC word_t 2: (" << i << "," << j << ") " << std::hex << *second_half << std::dec << std::endl;
-        std::cout << "DBG ADC set_ymm ID second half, reg_index: " << i+reg_index*swtpg_wibeth::FRAMES_PER_MSG << ", " << reg_index << std::endl;
         //printf("%.16X\n", *second_half);
         // Unpack another register and add it to the register array
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
