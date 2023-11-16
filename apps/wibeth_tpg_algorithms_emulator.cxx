@@ -55,8 +55,6 @@
 
 struct swtpg_output{
   uint16_t* output_location;
-  uint32_t* output_location32u;
-  int16_t*  output_location16i;
   uint64_t timestamp;
 };
 
@@ -184,12 +182,11 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 // =================================================================
 //                       TPG FUNCTIONS
 // =================================================================
-void extract_hits_naive(uint16_t* output_location, uint32_t* output_location32u, int16_t* output_location16i, uint64_t timestamp, std::string out_suffix) {
+void extract_hits_naive(uint16_t* output_location, uint64_t timestamp, std::string out_suffix) {
 
     constexpr int clocksPerTPCTick = 32;
     const constexpr std::size_t nreg = swtpg_wibeth::SAMPLES_PER_REGISTER;
-    uint16_t chan, /* hit_end,*/ hit_peak_adc, hit_charge, hit_tover, hit_peak_time;
-    int16_t hit_end;
+    uint16_t chan, hit_end, hit_peak_adc, hit_charge, hit_tover, hit_peak_time;
 
     std::array<int, 16> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
@@ -200,7 +197,7 @@ void extract_hits_naive(uint16_t* output_location, uint32_t* output_location32u,
     //while (*output_location != swtpg_wibeth::MAGIC) {
     for (size_t n=0; n<fh.m_tpg_processing_info->nhits; n++) {
       chan            = *output_location++;     // TYPES!!!  int32_t  would be better match to triggeralgs::TriggerPrimitive
-      hit_end         = *output_location16i++;  // TYPES!!!  int16_t  better than  uint16_t
+      hit_end         = *output_location++;  // TYPES!!!  int16_t  better than  uint16_t
       hit_charge      = *output_location++;     // TYPES!!!  uint32_t  would be best
       hit_tover       = *output_location++;     // TYPES!!!  uint32_t  would be best
       hit_peak_adc    = *output_location++;
@@ -209,18 +206,10 @@ void extract_hits_naive(uint16_t* output_location, uint32_t* output_location32u,
       i += 1;
       chan = nreg*(chan/nreg)+indices[chan%nreg];
      
-      std::cout << "DBG chan " << n << ": " << chan << std::endl;
-      std::cout << "DBG hit_end " << n << ": " << hit_end << std::endl;
+      //std::cout << "DBG chan " << n << ": " << chan << std::endl;
+      //std::cout << "DBG hit_end " << n << ": " << hit_end << std::endl;
 
-      /*
-      // TYPES!!!  hit_end: uint16_t
-      int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
-      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
-      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
-      */
-
-      // TYPES!!!  hit_end: int16_t 
-      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - 1 - (int64_t)hit_tover);
       uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
 
       triggeralgs::TriggerPrimitive trigprim;
@@ -246,39 +235,32 @@ void extract_hits_naive(uint16_t* output_location, uint32_t* output_location32u,
 }
 
 
-void extract_hits_avx(uint16_t* output_location, uint32_t* output_location32u, int16_t* output_location16i, uint64_t timestamp, std::string out_suffix) {
+void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string out_suffix) {
 
   constexpr int clocksPerTPCTick = 32;
   const constexpr std::size_t nreg = swtpg_wibeth::SAMPLES_PER_REGISTER;
-  uint16_t chan[nreg], /* hit_end,*/ hit_peak_adc[nreg], hit_charge[nreg], hit_tover[nreg], hit_peak_time[nreg];
-  int16_t hit_end[nreg];
+  uint16_t chan[nreg], hit_end[nreg], hit_peak_adc[nreg], hit_charge[nreg], hit_tover[nreg], hit_peak_time[nreg];
 
   //std::cout << "DBG nhits " << fh.m_tpg_processing_info->nhits << std::endl;
 
   for (size_t n=0; n<fh.m_tpg_processing_info->nhits; n++) {
     for (int i = 0; i < nreg; ++i) {
       chan[i] = *output_location++; 
-      std::cout << "DBG Channel number: " << chan[i] << std::endl;
     }
     for (int i = 0; i < nreg; ++i) {
-      hit_end[i] = *output_location16i++; 
-      std::cout << "DBG hit end: " << hit_end[i] << std::endl;
+      hit_end[i] = *output_location++; 
     }
     for (int i = 0; i < nreg; ++i) {
       hit_charge[i] = *output_location++;
-      std::cout << "DBG hit charge: " << hit_charge[i] << std::endl;
     }
     for (int i = 0; i < nreg; ++i) {        
       hit_tover[i] = *output_location++; 
-      std::cout << "DBG hit tover: " << hit_tover[i] << std::endl;
     }
     for (int i = 0; i < nreg; ++i) {
       hit_peak_adc[i] = *output_location++;
-      std::cout << "DBG hit peak adc: " << hit_peak_adc[i] << std::endl;
     }
     for (int i = 0; i < nreg; ++i) {
       hit_peak_time[i] = *output_location++;
-      std::cout << "DBG hit peak time: " << hit_peak_time[i] << std::endl;
     }
     
     // Now that we have all the register values in local
@@ -290,15 +272,7 @@ void extract_hits_avx(uint16_t* output_location, uint32_t* output_location32u, i
         //std::cout << "Channel number: " << chan[i] << std::endl;
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
 
-        /*
-        // TYPES!!!  hit_end: uint16_t
-        int64_t set_hit_end = hit_end != UINT16_MAX ? hit_end : -1;
-        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * (set_hit_end - (int64_t)hit_tover);
-        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
-        */
-
-        // TYPES!!!  hit_end: int16_t 
-        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - 1 - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
 
           // May be needed for TPSet:
@@ -362,24 +336,17 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   fh.m_tpg_processing_info->nhits = 0;
   fh.m_tpg_processing_info->input = &registers_array;
   uint16_t* destination_ptr = fh.get_hits_dest();
-  uint32_t* destination_ptr32u = fh.get_hits_dest32u();
-  int16_t* destination_ptr16i = fh.get_hits_dest16i();
   *destination_ptr = swtpg_wibeth::MAGIC;
-  *destination_ptr32u = swtpg_wibeth::MAGIC32u;
-  *destination_ptr16i = swtpg_wibeth::MAGIC16i;
   fh.m_tpg_processing_info->output = destination_ptr;
-  fh.m_tpg_processing_info->output32u = destination_ptr32u;
-  fh.m_tpg_processing_info->output16i = destination_ptr16i;
   m_assigned_tpg_algorithm_function(*fh.m_tpg_processing_info);
        
   // Insert output of the AVX processing into the swtpg_output 
   //swtpg_output swtpg_processing_result = {destination_ptr, timestamp};
     
   if (select_implementation == "AVX") {
-    extract_hits_avx(destination_ptr, destination_ptr32u, destination_ptr16i, timestamp, out_suffix);
-    //extract_hits_avx_dbg(destination_ptr, timestamp);
+    extract_hits_avx(destination_ptr, timestamp, out_suffix);
   } else if(select_implementation == "NAIVE") {  
-    extract_hits_naive(destination_ptr, destination_ptr32u, destination_ptr16i, timestamp, out_suffix);
+    extract_hits_naive(destination_ptr, timestamp, out_suffix);
   }
 
 }
