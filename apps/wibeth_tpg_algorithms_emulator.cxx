@@ -244,22 +244,22 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
   //std::cout << "DBG nhits " << fh.m_tpg_processing_info->nhits << std::endl;
 
   for (size_t n=0; n<fh.m_tpg_processing_info->nhits; n++) {
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       chan[i] = *output_location++; 
     }
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       hit_end[i] = *output_location++; 
     }
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       hit_charge[i] = *output_location++;
     }
-    for (int i = 0; i < nreg; ++i) {        
+    for (std::size_t i = 0; i < nreg; ++i) {        
       hit_tover[i] = *output_location++; 
     }
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       hit_peak_adc[i] = *output_location++;
     }
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       hit_peak_time[i] = *output_location++;
     }
     
@@ -267,7 +267,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
     // variables, loop over the register index (ie, channel) and
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
-    for (int i = 0; i < nreg; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
         //std::cout << "Channel number: " << chan[i] << std::endl;
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;

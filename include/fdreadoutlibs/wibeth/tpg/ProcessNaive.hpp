@@ -49,9 +49,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
-  printf("DBG Info data size % 5d % 5d % 5d \n", info.input->size(), swtpg_wibeth::NUM_REGISTERS_PER_FRAME, swtpg_wibeth::FRAMES_PER_MSG);
-  printf("DBG Info NREGISTERS, SAMPLES_PER_REGISTER % 5d % 5d\n", NREGISTERS, SAMPLES_PER_REGISTER);
-
   for (size_t ichan = 0; ichan < NREGISTERS * SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / SAMPLES_PER_REGISTER;
     if (register_index < info.first_register || register_index >= info.last_register)
@@ -60,9 +57,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
     const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * FRAMES_PER_MSG;
 
-    printf("DBG DBG DBG  %5d:register_index %5d:register_offset %5d:register_t0_start %5d:ichan \n", register_index, register_offset, register_t0_start, ichan);
-
-    printf("DBG ChanState ---------------------------------------------------------------------------------------------\n");
     // Get all the state variables by reference so they "automatically" get saved for the next go-round
     ChanState<NREGISTERS>& state = info.chanState;
     int16_t& median = state.pedestals[ichan];
@@ -74,8 +68,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
     uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
-
-    printf("DBG ChanState % 5d:prev_was_over % 5d:nframes \n", prev_was_over, info.timeWindowNumFrames);
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / info.timeWindowNumFrames;
@@ -89,20 +81,11 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // Pedestal finding/coherent noise removal
       // --------------------------------------------------------------
       int16_t sample = input16[index]; 
-      //uint16_t sample = input16[index]; // NO
-      //uint32_t sample = input16[index]; // NO 
-      printf("DBG DBG DBG  %5d:msg_index %5d:msg_time_offset %5d:msg_start_index, %5d:offset_within_msg \n", msg_index, msg_time_offset, msg_start_index, offset_within_msg);
-      printf("DBG DBG DBG  %5d:ichan %5d:itime %5d:index %5d:sample \n", ichan, itime, index, sample);
 
       //frugal_accum_update(median, sample, accum, 10);
-      printf("DBG Sample before pedsub % 5d:itime % 5d:msg % 5d:sample % 5d:ichan \n", itime, msg_index, (int16_t)sample, (uint16_t)ichan);
       frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
-      printf("DBG Sample before pedsub % 5d:sample % 5d:median % 5d:accum \n", (int16_t)sample, median, accum);
 
       sample -= median;
-
-      printf("DBG Sample after pedsub % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
-      printf("DBG Sample after shift % 5d % 5d % 5d \n", itime, msg_index ,(int16_t)sample);
 
       // --------------------------------------------------------------
       // Hit finding

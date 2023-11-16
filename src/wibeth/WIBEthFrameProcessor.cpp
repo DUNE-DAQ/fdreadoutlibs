@@ -483,7 +483,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
-  while (*primfind_it != swtpg_wibeth::MAGIC) {
+  for (size_t n=0; n<m_wibeth_frame_handler->m_tpg_processing_info->nhits; n++) {
     // First, get all of the register values (including those with no hit) into local variables
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
@@ -513,13 +513,8 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
 
-        uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
-        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-        //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
-	
-	uint64_t tp_t_peak =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_peak_time[i])); // NOLINT(build/unsigned)
+	uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - 1 - (int64_t)hit_tover[i]);
+        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
 
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];

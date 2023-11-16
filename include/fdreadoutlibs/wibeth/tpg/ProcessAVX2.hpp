@@ -24,7 +24,7 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  const __m256i overflowMax = _mm256_set1_epi16(UINT16_MAX);
+  //const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
