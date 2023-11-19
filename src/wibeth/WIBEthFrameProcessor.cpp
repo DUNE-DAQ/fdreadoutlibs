@@ -513,7 +513,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
 
-	uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - 1 - (int64_t)hit_tover[i]);
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
 
         // This channel had a hit ending here, so we can create and output the hit here
@@ -532,7 +532,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = tp_t_peak;
-          tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
+	  tp.tp.time_over_threshold = uint64_t((hit_tover[i] - 1) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
           tp.tp.adc_peak = hit_peak_adc[i];

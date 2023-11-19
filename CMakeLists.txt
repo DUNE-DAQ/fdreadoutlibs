@@ -71,6 +71,7 @@ daq_add_library(
 
 daq_add_application(wib2_tpg_algorithms_emulator wib2_tpg_algorithms_emulator.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
 daq_add_application(wibeth_tpg_algorithms_emulator wibeth_tpg_algorithms_emulator.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
+daq_add_application(wibeth_tpg_pattern_generator wibeth_tpg_pattern_generator.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs CLI11::CLI11)
 
 daq_add_application(wib2_binary_frame_modifier wib2_binary_frame_modifier.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)
 daq_add_application(wibeth_binary_frame_modifier wibeth_binary_frame_modifier.cxx LINK_LIBRARIES fdreadoutlibs hdf5libs::hdf5libs)

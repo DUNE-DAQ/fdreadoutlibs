@@ -233,7 +233,6 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         char* cursor = (char*) first_half;
         cursor += 224 / 8; // divide by 8 to get the results in bytes
         dunedaq::fddetdataformats::WIBEthFrame::word_t * second_half = (dunedaq::fddetdataformats::WIBEthFrame::word_t*) cursor;
-        //printf("%.16X\n", *second_half);
         // Unpack another register and add it to the register array
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
 
@@ -262,7 +261,6 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
     const size_t register_index = j / SAMPLES_PER_REGISTER;
     const size_t register_t0_start = register_index * SAMPLES_PER_REGISTER * TIME_WINDOW_NUM_FRAMES;
     int16_t out_val;
-    //uint32_t out_val;
     for (size_t itime = 0; itime < TIME_WINDOW_NUM_FRAMES; ++itime) {
       const size_t msg_index = itime / TIME_WINDOW_NUM_FRAMES;
       const size_t msg_time_offset = itime % TIME_WINDOW_NUM_FRAMES;
@@ -275,12 +273,12 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
       //out_val = input16[index]
       out_val = register_array->uint16(index);
 
-      //if (itime  == 0) {
-        std::cout << "register_offset: " << register_offset << " register_index: " << register_index << " register_t0_start: " << register_t0_start << std::endl;
-        std::cout << "msg_index: " << msg_index << " msg_time_offset: " << msg_time_offset << " msg_start_index: " << msg_start_index << " offset_within_msg: " << offset_within_msg << " index: " << index << std::endl;
+      if (itime  == 0) {
+        //std::cout << "register_offset: " << register_offset << " register_index: " << register_index << " register_t0_start: " << register_t0_start << std::endl;
+        //std::cout << "msg_index: " << msg_index << " msg_time_offset: " << msg_time_offset << " msg_start_index: " << msg_start_index << " offset_within_msg: " << offset_within_msg << " index: " << index << std::endl;
         std::cout << "channel: " << j << " time_sample: " << itime << " index_output: " << index << "    value:   " << out_val << std::endl;
         std::cout << "============" << std::endl;
-      //}
+      }
 
     }
   }

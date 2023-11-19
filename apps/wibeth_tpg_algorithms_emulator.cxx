@@ -146,7 +146,7 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   uint64_t t_current= t0 ; 
   
   const uint16_t* input16 = register_array.data();
-  for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
+  for (int ichan = 0; ichan < static_cast<int>(swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER); ++ichan) {
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
     if (register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
        continue;
@@ -209,14 +209,14 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp, std::stri
       //std::cout << "DBG chan " << n << ": " << chan << std::endl;
       //std::cout << "DBG hit_end " << n << ": " << hit_end << std::endl;
 
-      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - 1 - (int64_t)hit_tover);
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
       uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
       trigprim.time_peak = tp_t_peak;
 
-      trigprim.time_over_threshold = uint64_t(hit_tover * clocksPerTPCTick);
+      trigprim.time_over_threshold = uint64_t((hit_tover - 1) * clocksPerTPCTick);
 
       trigprim.channel = chan;
       trigprim.adc_integral = hit_charge;
@@ -272,7 +272,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
         //std::cout << "Channel number: " << chan[i] << std::endl;
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
 
-        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - 1 - (int64_t)hit_tover[i]);
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
 
           // May be needed for TPSet:
@@ -287,7 +287,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp, std::string
           triggeralgs::TriggerPrimitive trigprim;
           trigprim.time_start = tp_t_begin;
           trigprim.time_peak = tp_t_peak;
-          trigprim.time_over_threshold = uint64_t(hit_tover[i] * clocksPerTPCTick);
+          trigprim.time_over_threshold = uint64_t((hit_tover[i] - 1) * clocksPerTPCTick);
           trigprim.channel = chan[i];
           trigprim.adc_integral = hit_charge[i];
           trigprim.adc_peak = hit_peak_adc[i];
@@ -318,7 +318,7 @@ void execute_tpg(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* fp)
   uint64_t timestamp = wfptr->get_timestamp();      
   swtpg_wibeth::MessageRegisters registers_array;
   swtpg_wibeth::expand_wibeth_adcs(fp, &registers_array);
-  swtpg_wibeth::parse_wibeth_adcs(&registers_array);
+  //swtpg_wibeth::parse_wibeth_adcs(&registers_array);
 
   
   if (first_hit) {                     
