@@ -113,7 +113,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 	(*output_loc++) = (uint16_t)ichan; // NOLINT
         (*output_loc++) = (uint16_t)itime;         // NOLINT 
         (*output_loc++) = hit_charge;      // NOLINT
-        (*output_loc++) = hit_tover-1;     // NOLINT
+        (*output_loc++) = hit_tover;     // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
         (*output_loc++) = hit_peak_time;   // NOLINT
 

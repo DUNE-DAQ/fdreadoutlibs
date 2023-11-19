@@ -64,6 +64,60 @@ To use the `matplotlib` python module run the following command on a console whe
 pip install --prefix=$PREFIX_PATH matplotlib
 ```
 
+# Validation 
+
+## Pattern Generation App 
+
+There is a separated application in the apps directory tailored for WIBEth pattern generation. 
+It shares common features with `wibeth_tpg_algorithms_emulator`. 
+
+```wibeth_tpg_pattern_generator -h
+```
+
+Examples:
+
+1. Generate binary file containing the selected pattern
+```wibeth_tpg_pattern_generator -f patt_input.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden
+```
+
+2. In addition to 1., store the hits (currently in a text file) contained in generated binary file
+```wibeth_tpg_pattern_generator -f patt_input.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden --save-trigprim
+```
+
+## Script to compare AVX and NAIVE implementation
+
+```python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py -h
+```
+Example:
+
+```python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py . -n test_01
+```
+ 
+## Test Patterns
+This section describes the available patterns. Currently the following patterns are implemented.
+1. Golden - most complicated pattern so far.
+2. Pulse - Single pulse on a single channel and single time tick.
+3. Edge square - a square pulse on the edge between two WIBEth frames.
+4. Edge left - a triangular pulse spanning two frames where the hit peak is in the first (left-side) frame.
+5. Edge reight - same as 4. but the hit peak is in the the second (right-side) frame.
+
+### Here is a description of the so-called "golden" pattern. 
+ 
+In every frame, one hit is generated and placed in the first channel.
+In every binary file, the hit start time is offset by one clock-tick. The offset is indicated by the number in the file na
+me, e.g. patt_golden_35_wibeth_output.bin   
+
+The hit ADC values and the hit parameters are[1] :
+
+ADC values               : 500 502 504 505 506 505 504 502 500
+ts_0                     : initial timestamp from the first frame of the binary file
+ts_hit_offset            : hit start clock-tick, varies from 1 to 63  
+hit finder threshold     : 499   (recommended)
+hit time-over-threshold  : 8 * 32 = 256 (clock-ticks, counted from 0)
+hit peak_time            : ts_0  + (time_offset + 4) * 32  e.g.  79554162068719943 + (1 + 4) * 32
+hit peak_adc             : 506
+hit sum_adc              : 4528
+
 
 ## Notes
 - The tools and scripts developed have been used for TPG related activities. They have not been generalized to cover all use-cases. If there is a need or feature request, ask mainteners of the repository.  

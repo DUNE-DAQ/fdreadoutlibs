@@ -185,7 +185,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
         _mm256_storeu_si256(output_loc++, hit_charge);
 
-        _mm256_storeu_si256(output_loc++, hit_tover-1); // NOLINT(runtime/increment_decrement)
+        _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
