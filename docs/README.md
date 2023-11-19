@@ -68,8 +68,20 @@ pip install --prefix=$PREFIX_PATH matplotlib
 
 ## Pattern Generation App 
 
-There is a separated application in the apps directory tailored for WIBEth pattern generation. 
+There is a separate application in the `apps` directory tailored to WIBEth pattern generation. 
 It shares common features with `wibeth_tpg_algorithms_emulator`. 
+
+Before running the pattern generation app, please make sure you have downloaded an existing WIBEth binary file from the asset repository, e.g.,
+
+```sh
+> assets-list  --subsystem readout
+dd156b4895f1b06a06b6ff38e37bd798 readout         WIBEth          valid           /cvmfs/dunedaq.opensciencegrid.org/assets/files/d/d/1/wibeth_output_all_zeros.bin
+> cp /cvmfs/dunedaq.opensciencegrid.org/assets/files/d/d/1/wibeth_output_all_zeros.bin . 
+```
+The `wibeth_output_all_zeros.bin` file contains 32 WIBEth frames with all ADC values set to 0. Each frame corresponds to 64 channels and 64 clock-ticks. It is convenient to consider each word in the frame as 64 bits long. The frame header, among other information, contains the 64b timestamp value in the 2nd header word. The difference between the timestamps of every two consecutive WIBEth frames is 2048 (i.e., 64 clock-ticks per frame * 32 
+units per clock-tick = 2048).
+
+Then we can proceed to the pattern generation step. 
 
 ```wibeth_tpg_pattern_generator -h
 ```
@@ -77,24 +89,31 @@ It shares common features with `wibeth_tpg_algorithms_emulator`.
 Examples:
 
 1. Generate binary file containing the selected pattern
-```wibeth_tpg_pattern_generator -f patt_input.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden
+```sh
+wibeth_tpg_pattern_generator -f wibeth_output_all_zeros.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden
 ```
 
 2. In addition to 1., store the hits (currently in a text file) contained in generated binary file
-```wibeth_tpg_pattern_generator -f patt_input.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden --save-trigprim
+```sh
+wibeth_tpg_pattern_generator -f patt_input.bin -n 2 -i 0 -t 499 -o 1 -p patt_golden --save-trigprim
 ```
 
-## Script to compare AVX and NAIVE implementation
+## TPG Algorithm Validation 
 
-```python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py -h
+There is a Python script in the `scripts` directory to compare hits found by the AVX and NAIVE implementations of the TPG algorithm. 
+
+```sh
+python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py -h
 ```
 Example:
 
-```python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py . -n test_01
+```sh
+python sourcecode/fdreadoutlibs/scripts/compare_avx_vs_naive.py . -n test_01
 ```
  
 ## Test Patterns
 This section describes the available patterns. Currently the following patterns are implemented.
+
 1. Golden - most complicated pattern so far.
 2. Pulse - Single pulse on a single channel and single time tick.
 3. Edge square - a square pulse on the edge between two WIBEth frames.
@@ -103,12 +122,11 @@ This section describes the available patterns. Currently the following patterns 
 
 ### Here is a description of the so-called "golden" pattern. 
  
-In every frame, one hit is generated and placed in the first channel.
-In every binary file, the hit start time is offset by one clock-tick. The offset is indicated by the number in the file na
-me, e.g. patt_golden_35_wibeth_output.bin   
+In every frame, one hit is generated and placed in the selected channel.
+In every binary file, the hit start time can be offset by the specified number of clock-ticks. The time tick offset value is attached to the name of the output binary file, e.g. `patt_golden_35_wibeth_output.bin`.    
 
-The hit ADC values and the hit parameters are[1] :
-
+The hit ADC values and the hit parameters are (before pedestal substraction):
+```sh
 ADC values               : 500 502 504 505 506 505 504 502 500
 ts_0                     : initial timestamp from the first frame of the binary file
 ts_hit_offset            : hit start clock-tick, varies from 1 to 63  
@@ -117,7 +135,7 @@ hit time-over-threshold  : 8 * 32 = 256 (clock-ticks, counted from 0)
 hit peak_time            : ts_0  + (time_offset + 4) * 32  e.g.  79554162068719943 + (1 + 4) * 32
 hit peak_adc             : 506
 hit sum_adc              : 4528
-
+```
 
 ## Notes
 - The tools and scripts developed have been used for TPG related activities. They have not been generalized to cover all use-cases. If there is a need or feature request, ask mainteners of the repository.  
