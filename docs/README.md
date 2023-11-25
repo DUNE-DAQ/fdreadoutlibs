@@ -83,7 +83,8 @@ units per clock-tick = 2048).
 
 Then we can proceed to the pattern generation step. 
 
-```wibeth_tpg_pattern_generator -h
+```sh 
+wibeth_tpg_pattern_generator -h
 ```
 
 Examples:

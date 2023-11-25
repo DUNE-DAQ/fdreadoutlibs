@@ -196,18 +196,19 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp, std::stri
     size_t i = 0;
     //while (*output_location != swtpg_wibeth::MAGIC) {
     for (size_t n=0; n<fh.m_tpg_processing_info->nhits; n++) {
-      chan            = *output_location++;     // TYPES!!!  int32_t  would be better match to triggeralgs::TriggerPrimitive
+      chan            = *output_location++;  // TYPES!!!  int32_t  would be better match to triggeralgs::TriggerPrimitive
       hit_end         = *output_location++;  // TYPES!!!  int16_t  better than  uint16_t
-      hit_charge      = *output_location++;     // TYPES!!!  uint32_t  would be best
-      hit_tover       = *output_location++;     // TYPES!!!  uint32_t  would be best
+      hit_charge      = *output_location++;  // TYPES!!!  uint32_t  would be best
+      hit_tover       = *output_location++;  // TYPES!!!  uint32_t  would be best
       hit_peak_adc    = *output_location++;
-      hit_peak_time   = *output_location++;     // TYPES!!!  uint32_t  would be best
+      hit_peak_time   = *output_location++;  // TYPES!!!  uint32_t  would be best
 
       i += 1;
       chan = nreg*(chan/nreg)+indices[chan%nreg];
      
       //std::cout << "DBG chan " << n << ": " << chan << std::endl;
       //std::cout << "DBG hit_end " << n << ": " << hit_end << std::endl;
+      //std::cout << "DBG hit_tover " << n << ": " << hit_tover << std::endl;
 
       uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
       uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
