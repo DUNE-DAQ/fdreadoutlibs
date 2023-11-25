@@ -91,6 +91,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // Hit finding
       // --------------------------------------------------------------
       bool is_over = sample > info.threshold;
+      //printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, sample, info.threshold); // NOLINT
       if (is_over) {
         // Simulate saturated add
         uint32_t tmp_charge = hit_charge;
@@ -105,9 +106,9 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         prev_was_over = is_over;
       }
       if (prev_was_over && !is_over) {
-        // if(hit_tover==1){
-        //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
-        // }
+         //if(hit_tover==1){
+         //    printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
+         //}
 
         // We reached the end of the hit: write it out
 	(*output_loc++) = (uint16_t)ichan; // NOLINT

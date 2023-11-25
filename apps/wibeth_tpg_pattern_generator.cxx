@@ -883,6 +883,7 @@ main(int argc, char** argv)
         uint64_t ts_start = it[0] * 32 + timestamp;
         uint64_t ts_peak = it[2] * 32 + timestamp;
         output_file_pedsub_hits << it[3] << "," << ts_start << "," << ts_tov << "," << ts_peak << "," << it[4] << "," << it[5] << "\n";
+	++total_hits;
       }
     }
     output_file_pedsub_hits.close();
