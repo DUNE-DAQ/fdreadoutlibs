@@ -61,8 +61,6 @@ public:
   void initialize(int threshold_value);
  
   uint16_t* get_hits_dest();
-  uint32_t* get_hits_dest32u();
-  int16_t* get_hits_dest16i();
 private: 
   int m_register_selector;    
   uint16_t* m_hits_dest;

@@ -122,17 +122,6 @@ WIBEthFrameHandler::get_hits_dest()
 {
   return m_hits_dest;
 }
-uint32_t*
-WIBEthFrameHandler::get_hits_dest32u()
-{
-  return m_hits_dest32u;
-}
-int16_t*
-WIBEthFrameHandler::get_hits_dest16i()
-{
-  return m_hits_dest16i;
-}
-
 
 WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)

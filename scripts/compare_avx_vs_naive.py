@@ -84,6 +84,7 @@ def compare_results(dp, test_dir, time_tick_offset):
     for command in commands:
         try:
             subprocess.run(command, check=True, timeout=60)
+            print(f"Success!")
         except FileNotFoundError as exc:
             print(
                 f"Command {command} failed because the process "
@@ -122,7 +123,7 @@ def cli(file_path: str, interactive: bool,
     script = Path(__file__).stem
 
     dp = Path(file_path)
-    print('File path %s' % (dp))
+    #print('File path %s' % (dp))
 
     create_test_directory(dp, test_dir)
     run_job("avx", str(dp), test_dir, num_frames_to_read, time_tick_offset, select_pattern, tpg_threshold)
