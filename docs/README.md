@@ -81,6 +81,13 @@ dd156b4895f1b06a06b6ff38e37bd798 readout         WIBEth          valid          
 The `wibeth_output_all_zeros.bin` file contains 32 WIBEth frames with all ADC values set to 0. Each frame corresponds to 64 channels and 64 clock-ticks. It is convenient to consider each word in the frame as 64 bits long. The frame header, among other information, contains the 64b timestamp value in the 2nd header word. The difference between the timestamps of every two consecutive WIBEth frames is 2048 (i.e., 64 clock-ticks per frame * 32 
 units per clock-tick = 2048).
 
+Currently the TPs stored in text files contain the following hit parameters, e.g. 
+```sh
+channel,time_start,time_over_threshold,time_peak,adc_integral,adc_peak,type
+0,79554162068719975,256,79554162068720103,4528,506
+0,79554162068722023,224,79554162068722151,4021,505
+```
+
 Then we can proceed to the pattern generation step. 
 
 ```sh 
