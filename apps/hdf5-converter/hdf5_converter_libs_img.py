@@ -314,7 +314,7 @@ def save_img(all_TPs, channel_map,save_path, outname='test', min_tps_to_create_i
         plt.xlabel("Channel")
         plt.ylabel("Time (ticks)")
         # set y axis ticks
-        plt.yticks(ticks=np.arange(0, img_v.shape[0], img_v.shape[0]/10), labels=yticks_labels)
+        plt.yticks(ticks=np.arange(0, img_u.shape[0], img_u.shape[0]/10), labels=yticks_labels)
         # set x axis ticks
         plt.xticks(ticks=np.arange(0, img_u.shape[1], img_u.shape[1]/2), labels=xticks_labels_u)
 
@@ -377,7 +377,7 @@ def save_img(all_TPs, channel_map,save_path, outname='test', min_tps_to_create_i
         plt.xlabel("Channel")
         plt.ylabel("Time (ticks)")
         # set y axis ticks
-        plt.yticks(ticks=np.arange(0, img_v.shape[0], img_v.shape[0]/10), labels=yticks_labels)
+        plt.yticks(ticks=np.arange(0, img_x.shape[0], img_x.shape[0]/10), labels=yticks_labels)
         # set x axis ticks
         plt.xticks(ticks=np.arange(0, img_x.shape[1], img_x.shape[1]/2), labels=xticks_labels_x)
 
