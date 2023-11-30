@@ -501,11 +501,8 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
         uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
             timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
-        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-   
-        
-	      uint64_t tp_t_peak =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_peak_time[i])); // NOLINT(build/unsigned)
+        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)        
+	uint64_t tp_t_peak = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];          // NOLINT(build/unsigned)
 
         //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
         // This channel had a hit ending here, so we can create and output the hit here

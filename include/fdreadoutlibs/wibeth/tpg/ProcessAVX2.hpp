@@ -138,8 +138,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // Calculation of the hit peak time and ADC
       __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
-      hit_peak_time = _mm256_blendv_epi8(hit_tover, hit_peak_time, is_sample_over_adc_peak);
-      hit_peak_adc = _mm256_blendv_epi8(s, hit_peak_adc, is_sample_over_adc_peak);
+      hit_peak_time = _mm256_blendv_epi8(hit_peak_time, hit_tover, is_sample_over_adc_peak);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak);
       
       
 
