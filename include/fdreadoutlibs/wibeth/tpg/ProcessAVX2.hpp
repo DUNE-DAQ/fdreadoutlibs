@@ -24,7 +24,7 @@ template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  //const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
+  const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
@@ -120,7 +120,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       hit_charge = _mm256_add_epi16(hit_charge, to_add_charge);
 
       // Avoid overflow of the hit charge, if needed in practice 
-      //hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
+      hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
 
       if(ireg==0){
       //     printf("itime=%ld\n", itime);
