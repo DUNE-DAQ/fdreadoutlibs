@@ -216,9 +216,9 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
   } // end loop over ireg (the swtpg_wibeth::SAMPLES_PER_REGISTER, e.g. 8, registers in this frame)
   // Arguably not needed, we can avoid using MAGIC
-  //for (int i = 0; i < 6; ++i) {
-  //  _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
-  //}
+  for (int i = 0; i < 6; ++i) {
+    _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
+  }
 
 
 
