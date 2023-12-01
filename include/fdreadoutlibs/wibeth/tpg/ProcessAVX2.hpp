@@ -57,11 +57,11 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     // The time-over-threshold (so far) of the current hit
     __m256i hit_tover = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg); // NOLINT
 
-    // The time of the peak of the current hit
-    __m256i hit_peak_time = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg); // NOLINT
-
     // The peak adc value
     __m256i hit_peak_adc = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg); // NOLINT
+
+    // The time of the peak of the current hit
+    __m256i hit_peak_time = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg); // NOLINT
 
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
@@ -86,7 +86,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // Don't let the sample exceed adcMax, which is the value
       // at which its filtered version might overflow
-      //s = _mm256_min_epi16(s, adcMax);
+      //s = _mm256_min_epi16(s, overflowMax);
 
       // --------------------------------------------------------------
       // Hit finding
@@ -195,7 +195,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
         hit_tover = _mm256_blendv_epi8(hit_tover, zero, left);
-        hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
         hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
         hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
 
