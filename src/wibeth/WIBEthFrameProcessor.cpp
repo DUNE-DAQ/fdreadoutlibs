@@ -489,10 +489,10 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
       hit_tover[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
-      hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+      hit_peak_adc[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
-      hit_peak_adc[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+      hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }  
 
     // Now that we have all the register values in local
