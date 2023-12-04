@@ -29,9 +29,15 @@ def create_test_directory(dp,test_dir):
     dirname = dp / test_dir
     avx = dp / test_dir / "avx"
     naive = dp / test_dir / "naive"
+    avx_vs_naive = dp / test_dir / "avx_vs_naive"
+    ref_vs_avx = dp / test_dir / "ref_vs_avx"
+    ref_vs_naive = dp / test_dir / "ref_vs_naive"
     make_directory(dirname)
     make_directory(avx)
     make_directory(naive)
+    make_directory(avx_vs_naive)
+    make_directory(ref_vs_avx)
+    make_directory(ref_vs_naive)
 
 
 def create_new_test(test_dir):
@@ -72,15 +78,8 @@ def run_job(impl, dp, test_dir, num_frames_to_read, time_tick_offset, select_pat
         except subprocess.TimeoutExpired as exc:
             print(f"Command {command} timed out.\n {exc}")
 
-def compare_results(dp, test_dir, time_tick_offset):
-    test_dir = dp + "/" + test_dir
-    diff1 = test_dir + "/avx/"
-    diff2 = test_dir + "/naive/"
- 
-    commands = [
-        #["bash", "-c", "for i in {1..63}; do diff "+''.join(list(glob(os.path.join(diff1,"TP_dump_*__1.txt"))))+" "+''.join(list(glob(os.path.join(diff2,"TP_dump_*__1.txt"))))+"; done"],
-        ["bash", "-c", "for i in {1.."+time_tick_offset+"}; do diff "+''.join(list(glob(os.path.join(diff1,"TP_dump_*__1.txt"))))+" "+''.join(list(glob(os.path.join(diff2,"TP_dump_*__1.txt"))))+"; done"],
-    ]
+
+def run_commands(commands):
     for command in commands:
         try:
             subprocess.run(command, check=True, timeout=60)
@@ -98,6 +97,31 @@ def compare_results(dp, test_dir, time_tick_offset):
         except subprocess.TimeoutExpired as exc:
             print(f"Command {command} timed out.\n {exc}")
 
+
+
+def compare_results(dp, test_dir, time_tick_offset):
+    test_dir = dp + "/" + test_dir
+    diff1 = test_dir + "/avx/"
+    diff2 = test_dir + "/naive/"
+    res   = test_dir + "/avx_vs_naive/"
+ 
+    commands = [
+        #["bash", "-c", "for i in {1..63}; do diff "+''.join(list(glob(os.path.join(diff1,"TP_dump_*__1.txt"))))+" "+''.join(list(glob(os.path.join(diff2,"TP_dump_*__1.txt"))))+"; done"],
+        #["bash", "-c", "for i in {1.."+time_tick_offset+"}; do fname=TP_dump_*__${i}.txt; diff "+''.join(list(glob(os.path.join(diff1,"TP_dump_*__1.txt"))))+" "+''.join(list(glob(os.path.join(diff2,"TP_dump_*__1.txt"))))+" > diff_${i}; done;"],
+        ["bash", "-c", "for i in {1.."+time_tick_offset+"}; do diff "+diff1+'TP_dump_*__${i}.txt'+" "+diff2+'TP_dump_*__${i}.txt'+" > "+res+"diff_${i}; done;"],
+    ]
+    run_commands(commands)
+
+def compare_to_reference(dp, test_dir, impl, select_pattern, time_tick_offset):
+    test_dir = dp + "/" + test_dir
+    diff1 = dp + "/"           # reference
+    diff2 = test_dir + "/"+impl+"/"  # algorithms implementation
+    res   = test_dir + "/ref_vs_"+impl+"/"
+
+    commands = [
+        ["bash", "-c", "for i in {1.."+time_tick_offset+"}; do diff "+diff1+select_pattern+'_${i}_wibeth_output_pedsub_hits.txt'+" "+diff2+'TP_dump_*__${i}.txt'+" > "+res+"diff_${i}; done;"],
+    ]
+    run_commands(commands) 
 
 
 #------------------------------------------------------------------------------
@@ -126,9 +150,16 @@ def cli(file_path: str, interactive: bool,
     #print('File path %s' % (dp))
 
     create_test_directory(dp, test_dir)
+    print("Comparing AVX and NAIVE...")
     run_job("avx", str(dp), test_dir, num_frames_to_read, time_tick_offset, select_pattern, tpg_threshold)
     run_job("naive", str(dp), test_dir, num_frames_to_read, time_tick_offset, select_pattern, tpg_threshold)
     compare_results(str(dp), test_dir, time_tick_offset)
+
+    print("Comparing AVX and reference pattern...")
+    compare_to_reference(str(dp), test_dir, "avx", select_pattern, time_tick_offset)
+
+    print("Comparing NAIVE and reference pattern...")
+    compare_to_reference(str(dp), test_dir, "naive", select_pattern, time_tick_offset)
 
     if interactive:
         import IPython
