@@ -96,7 +96,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // FIXED THRESHOLD
       __m256i threshold = _mm256_set1_epi16(info.threshold);
       __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
-      prev_was_over = _mm256_blendv_epi8(prev_was_over, is_over, is_over);
 
       // Mask for channels that left "over threshold" state this step
       // Comparison with previous TP
@@ -198,8 +197,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
         hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
 
-	prev_was_over = is_over;
       } // end if(!no_hits_to_store)
+      prev_was_over = is_over;
 
     } // end loop over itime (times for this register)
 
@@ -218,8 +217,6 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
   for (int i = 0; i < 6; ++i) {
     _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
-
-
 
   info.nhits = nhits;
 

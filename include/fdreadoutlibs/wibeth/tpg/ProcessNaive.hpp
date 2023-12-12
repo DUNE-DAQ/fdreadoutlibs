@@ -103,7 +103,6 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         }
         hit_charge = tmp_charge;
         hit_tover++;
-        prev_was_over = is_over;
       }
       if (prev_was_over && !is_over) {
          //if(hit_tover==1){
@@ -124,10 +123,10 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
         hit_peak_time = 0;
 
         ++nhits;
-        prev_was_over = is_over;
 
       } // end if left hit
-
+      prev_was_over = is_over;
+    
     } // end loop over samples
   }   // end loop over channels
 
@@ -136,9 +135,9 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
   // Write a magic "end-of-hits" value into the list of hits
   // Arguably not needed, we can avoid using MAGIC 
-  //for (int i = 0; i < 6; ++i) {
-  //  (*output_loc++) = MAGIC; // NOLINT
-  //}
+  for (int i = 0; i < 6; ++i) {
+    (*output_loc++) = MAGIC; // NOLINT
+  }
 }
 
 } // namespace swtpg_wibeth
