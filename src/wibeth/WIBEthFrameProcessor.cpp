@@ -472,7 +472,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
   uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
-  while (*output_location != swtpg_wibeth::MAGIC) {
+  while (*primfind_it != swtpg_wibeth::MAGIC) {
     // First, get all of the register values (including those with no hit) into local variables
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)

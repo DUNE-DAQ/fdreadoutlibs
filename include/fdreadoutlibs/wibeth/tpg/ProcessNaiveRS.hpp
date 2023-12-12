@@ -32,8 +32,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
   const size_t  scale = 2; 
 
   uint16_t* output_loc = info.output;           // NOLINT
-  //const uint16_t* input16 = info.input->data(); // NOLINT
-  const uint32_t* input16 = info.input->data(); // NOLINT
+  const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
   for (size_t ichan = 0; ichan < NREGISTERS * SAMPLES_PER_REGISTER; ++ichan) {
@@ -49,10 +48,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
     // Get all the state variables by reference so they "automatically" get saved for the next go-round
     ChanState<NREGISTERS>& state = info.chanState;
-    //int16_t& median     = state.pedestals[ichan];
-    //int16_t& accum      = state.accum[ichan];
-    int32_t& median     = state.pedestals[ichan];
-    int32_t& accum      = state.accum[ichan];
+    int16_t& median     = state.pedestals[ichan];
+    int16_t& accum      = state.accum[ichan];
     
     int16_t& RS         = state.RS[ichan]; //value of the RS for the previous sample
     int16_t& medianRS   = state.pedestalsRS[ichan]; //median for the RS waveform needed for IQR & separate pedsub
@@ -64,10 +61,9 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
-    //uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    uint32_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    uint32_t& hit_charge = state.hit_charge[ichan];
-    uint32_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
+    uint16_t& hit_charge = state.hit_charge[ichan];
+    uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
