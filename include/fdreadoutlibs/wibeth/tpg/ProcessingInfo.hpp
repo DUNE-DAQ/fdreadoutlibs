@@ -35,7 +35,6 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
-      hit_peak_offset[i] = 0;
       for (size_t j = 0; j < NTAPS; ++j) {
         prev_samp[i * NTAPS + j] = 0;
       }
@@ -70,7 +69,6 @@ struct ChanState
 
   alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
   alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
-  alignas(32) uint16_t __restrict__ hit_peak_offset[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak offset
 };
 
 template<size_t NREGISTERS>
@@ -81,8 +79,6 @@ struct ProcessingInfo
                  uint8_t first_register_,           // NOLINT
                  uint8_t last_register_,            // NOLINT
                  uint16_t* __restrict__ output_,    // NOLINT
-                 uint32_t* __restrict__ output32u_,    // NOLINT
-                 int16_t* __restrict__ output16i_,    // NOLINT
                  const int16_t* __restrict__ taps_, // NOLINT
                  int16_t ntaps_,
                  const uint8_t tap_exponent_, // NOLINT
@@ -94,8 +90,6 @@ struct ProcessingInfo
     , first_register(first_register_)
     , last_register(last_register_)
     , output(output_)
-    , output32u(output32u_)
-    , output16i(output16i_)
     , taps(taps_)
     , ntaps(ntaps_)
     , tap_exponent(tap_exponent_)
@@ -155,8 +149,6 @@ struct ProcessingInfo
   uint8_t first_register;        // NOLINT
   uint8_t last_register;         // NOLINT
   uint16_t* __restrict__ output; // NOLINT
-  uint32_t* __restrict__ output32u; // NOLINT
-  int16_t* __restrict__ output16i; // NOLINT
   const int16_t* __restrict__ taps;
   int16_t ntaps;
   uint8_t tap_exponent; // NOLINT

@@ -55,7 +55,7 @@ namespace fdreadoutlibs {
 
 
 WIBEthFrameHandler::WIBEthFrameHandler()
-  : m_hits_dest(nullptr), m_hits_dest32u(nullptr), m_hits_dest16i(nullptr)
+  : m_hits_dest(nullptr)
   , m_tpg_taps_p(nullptr)
 {}
 
@@ -65,8 +65,6 @@ WIBEthFrameHandler::~WIBEthFrameHandler()
     delete[] m_tpg_taps_p;
   }
   if (m_hits_dest) delete[] m_hits_dest;
-  if (m_hits_dest32u) delete[] m_hits_dest32u;
-  if (m_hits_dest16i) delete[] m_hits_dest16i;
 }
 
 void
@@ -76,8 +74,6 @@ WIBEthFrameHandler::reset()
       	delete[] m_tpg_taps_p;
   m_tpg_taps_p = nullptr;
   if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
-  if (m_hits_dest32u) { delete[] m_hits_dest32u; } m_hits_dest32u = nullptr;
-  if (m_hits_dest16i) { delete[] m_hits_dest16i; } m_hits_dest16i = nullptr;
 
   first_hit = true;
 }
@@ -98,16 +94,12 @@ WIBEthFrameHandler::initialize(int threshold_value)
   }
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
-  if(m_hits_dest32u == nullptr) {m_hits_dest32u = new uint32_t[100000];}
-  if(m_hits_dest16i == nullptr) {m_hits_dest16i = new int16_t[100000];}
 
   m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
                                                                                                             swtpg_wibeth::FRAMES_PER_MSG,
                                                                                                             0,
                                                                                                             swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
                                                                                                             m_hits_dest,
-                                                                                                            m_hits_dest32u,
-                                                                                                            m_hits_dest16i,
                                                                                                             m_tpg_taps_p,
                                                                                                             (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
                                                                                                             m_tpg_tap_exponent,
@@ -521,6 +513,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = tp_t_peak;
+	  // Subtracting 1 tick to match precisely the ADC waveform
 	  tp.tp.time_over_threshold = uint64_t((hit_tover[i] - 1) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
