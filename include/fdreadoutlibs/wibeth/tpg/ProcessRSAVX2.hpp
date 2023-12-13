@@ -36,7 +36,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
 
-  const __m256i iota = _mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+  const __m256i iota = _mm256_set_epi16(14, 13, 12, 11, 10, 9, 8, 15, 7, 6, 5, 4, 3, 2, 1, 0);
 
   int nhits = 0;
 
