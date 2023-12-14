@@ -58,8 +58,9 @@ struct swtpg_output{
   uint64_t timestamp;
 };
 
-int WIBEth_FRAME_SIZE = 7200;
-int TIME_TEST = 120;
+int WIBEth_FRAME_SIZE = dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter::fixed_payload_size;
+
+int duration_test = 120; // default value
 unsigned int total_hits = 0;
 bool first_hit = true;
 
@@ -101,8 +102,12 @@ void save_hit_data( triggeralgs::TriggerPrimitive trigprim, std::string source_n
   out_file.open(file_name.c_str(), std::ofstream::app);
 
   //offline channel, start time, time over threshold [ns], peak_time, ADC sum, amplitude    
-  out_file << trigprim.channel << "," << trigprim.time_start << "," << trigprim.time_over_threshold << "," 
-	   << trigprim.time_peak << "," << trigprim.adc_integral << ","  << trigprim.adc_peak << "\n";  
+  out_file << trigprim.time_start 
+           << " " << trigprim.time_over_threshold 
+           << " " << trigprim.time_peak 
+           << " " << trigprim.channel 
+           << " " << trigprim.adc_integral 
+           << " "  << trigprim.adc_peak << "\n";  
 
   out_file.close();
 }
@@ -133,13 +138,13 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
   uint64_t t_current= t0 ; 
   
   const uint16_t* input16 = register_array.data();
-  for (auto ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
+  for (size_t ichan = 0; ichan < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++ichan) {
     const size_t register_index = ichan / swtpg_wibeth::SAMPLES_PER_REGISTER;
     if (register_index >= swtpg_wibeth::NUM_REGISTERS_PER_FRAME)
        continue;
 
     // Parse only selected channel number. To select all channels choose -1
-    if (ichan == channel_number || channel_number == -1) { 
+    if (static_cast<int>(ichan) == channel_number || channel_number == -1) { 
    
       const size_t register_offset = ichan % swtpg_wibeth::SAMPLES_PER_REGISTER;
       const size_t register_t0_start = register_index * swtpg_wibeth::SAMPLES_PER_REGISTER * swtpg_wibeth::FRAMES_PER_MSG;
@@ -180,14 +185,7 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
       hit_end    = *output_location++;
       hit_charge  = *output_location++;
       hit_tover     = *output_location++;
-
-
-      //if (hit_charge && chan != swtpg_wibeth::MAGIC) {
-      //  std::cout << "Channel number: " << chan << std::endl;
-      //  std::cout << "Hit charge: " << hit_charge << std::endl;
-      //}
-
-      
+    
       i += 1;
       uint64_t tp_t_begin =                                                        
         timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
@@ -266,7 +264,7 @@ void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
           trigprim.channel = chan[i];
           trigprim.adc_integral = hit_charge[i];
           trigprim.adc_peak = hit_charge[i] / 20;
-          trigprim.detid = 666;          
+          trigprim.detid = 666;           
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
           trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
           trigprim.version = 1;
@@ -337,21 +335,23 @@ main(int argc, char** argv)
 
     // Set default input frame file
     std::string frame_file_path = "./wibeth-frames.bin";
-    app.add_option("-f,--frame_file_path", frame_file_path, "Path to the input frame file");
+    app.add_option("-f,--frame-file-path", frame_file_path, "Path to the input frame file");
 
     app.add_option("-a,--algorithm", select_algorithm, "TPG Algorithm (SimpleThreshold / AbsRS)");
   
     app.add_option("-i,--implementation", select_implementation, "TPG implementation (AVX / NAIVE)");
+    
+    app.add_option("-d,--duration-test", duration_test, "Duration (in seconds) to run the test");
 
     int num_frames_to_read = -1;
-    app.add_option("-n,--num_frames_to_read", num_frames_to_read, "Number of frames to read. Default: select all frames.");
+    app.add_option("-n,--num-frames-to-read", num_frames_to_read, "Number of frames to read. Default: select all frames.");
 
-    int swtpg_threshold = 500;
-    app.add_option("-t,--swtpg_threshold", swtpg_threshold, "Value of the TPG threshold");
+    int tpg_threshold = 500;
+    app.add_option("-t,--tpg-threshold", tpg_threshold, "Value of the TPG threshold");
 
-    app.add_option("--save_adc_data", save_adc_data, "Save ADC data (true/false)");
+    app.add_flag("--save-adc-data", save_adc_data, "Save ADC data");
 
-    app.add_option("--save_trigprim", save_trigprim, "Save trigger primitive data (true/false)");
+    app.add_flag("--save-trigprim", save_trigprim, "Save trigger primitive data");
 
 
     CLI11_PARSE(app, argc, argv);
@@ -414,7 +414,7 @@ main(int argc, char** argv)
     auto limiter = dunedaq::readoutlibs::RateLimiter(31);
     limiter.init();
 
-    fh.initialize(swtpg_threshold);
+    fh.initialize(tpg_threshold);
 
     // =================================================================
     //                  Process the DUNE WIBEth frames
@@ -449,7 +449,7 @@ main(int argc, char** argv)
 	frame_repeat_index = 0;        
 
         // stop the testing after a time a condition
-        if (elapsed_seconds > TIME_TEST) {
+        if (elapsed_seconds > duration_test) {
           wibeth_frame_index = num_frames_to_read;
         }
       }

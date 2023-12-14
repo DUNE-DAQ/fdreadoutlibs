@@ -1,5 +1,7 @@
 /**
- * @file WIBEthBinaryFrameReader.cxx: binary frame reader
+ * @file wibeth_binary_frame_modifier: quick and dirty solution to modify the adc values in
+ * an input binary file at specific channel numbers 
+ * Usage: ./wibeth_binary_frame_modifier INPUT_FRAME_FILE 
  *
  * This is part of the DUNE DAQ Application Framework, copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -40,7 +42,7 @@ using namespace dunedaq::daqdataformats;
 void
 print_usage()
 {
-  TLOG() << "Usage: WIBEthBinaryFrameReader <input_file_name> <input_channel>";
+  TLOG() << "Usage: wibeth_binary_frame_modifier <input_file_name> <input_channel>";
 }
 
 
@@ -124,30 +126,38 @@ int main(int argc, char** argv)
 
   const std::string ifile_name = std::string(argv[1]);
 
+  const size_t input_ch = atoi(argv[2]);
+
   // Read file
   FrameFile input_file = FrameFile(ifile_name.c_str()); 
 
   std::cout << "Size of the input file " << input_file.length() << std::endl;
   std::cout << "Number of frames " << input_file.num_frames() << std::endl;
    
+  // Write output file 
+  std::fstream output_file;
+  output_file.open("wibeth_output.bin", std::ios::app | std::ios::binary);
+
 
   dunedaq::fddetdataformats::WIBEthFrame* output_frame; 
-  //for (size_t i=0; i<input_file.num_frames(); i++) {
-  for (size_t i=0; i< 20000; i++) {
+  for (size_t i=0; i<input_file.num_frames(); i++) {
     std::cout << "========== FRAME_NUM " << i <<  std::endl;
     output_frame = input_file.frame(i);
     for (int itime=0; itime<64; ++itime) {
       for (int ch=0; ch<64; ++ch) {
-        uint16_t adc_val = output_frame->get_adc(ch, itime);
-        std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << ch << " \t\tTimeSample: " << itime <<  std::endl;
-	//break;
-	
+        output_frame->set_adc(ch, itime, 0);
       }
-   }
+      if (itime == 0) {
+        std::cout << "Nothing to do for first frame" << std::endl;
+      } else {	
+        output_frame->set_adc(input_ch, itime, 666);      
+      }
+      uint16_t adc_val = output_frame->get_adc(input_ch, itime);
+      std::cout << "Output ADC value: " << adc_val << "\t\t\tFrame: " << i << " \t\tChannel: " << input_ch << " \t\tTimeSample: " << itime <<  std::endl;
+    }
+  output_file.write(reinterpret_cast<char*>(output_frame), sizeof(dunedaq::fddetdataformats::WIBEthFrame) );  
   }
 
-  
-
-  
 }
+
 
