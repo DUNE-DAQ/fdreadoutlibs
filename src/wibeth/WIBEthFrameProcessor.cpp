@@ -137,6 +137,7 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   // Reset software TPG resources
   if (m_tpg_enabled) {
     m_tps_dropped = 0;
+    m_tps_lost = 0;
 
     m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
   } // end if(m_tpg_enabled)
@@ -247,6 +248,7 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
     int new_hits = m_tpg_hits_count.exchange(0);
     int new_tps = m_new_tps.exchange(0);
     int new_dropped_tps = m_tps_dropped.exchange(0);
+    int new_lost_tps = m_tps_lost.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
     //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
@@ -255,6 +257,7 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 
     info.num_tps_sent = new_tps;
     info.num_tps_dropped = new_dropped_tps;
+    info.num_tps_lost = new_lost_tps;
     // Find the channels with the top  TP rates
     // Create a vector of pairs to store the map elements
     std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
@@ -522,16 +525,18 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
           tp.tp.version = 1;
           if(tp.tp.time_over_threshold > m_tp_max_width) {
-		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
-		  m_tps_dropped++;
+            ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
+            m_tps_dropped++;
 	  }
 	  //Send the TP to the TP handler module
 	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
-		 ers::warning(TPDropped(ERS_HERE, tp.tp.time_start, tp.tp.channel));
-		 m_tps_dropped++;
-	  }	 
-          m_new_tps++;
-          ++nhits;
+            ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
+            m_tps_lost++;
+	  }
+          else {
+            m_new_tps++;
+            ++nhits;
+          }
 
           // Update the channel/rate map. Increment the value associated with the TP channel
           m_tp_channel_rate_map[offline_channel]++;
