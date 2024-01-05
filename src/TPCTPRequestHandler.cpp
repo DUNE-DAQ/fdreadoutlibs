@@ -1,5 +1,9 @@
 #include "fdreadoutlibs/TPCTPRequestHandler.hpp"
-#include "appfwk/DAQModuleHelper.hpp"
+#include "appdal/ReadoutModuleConf.hpp"
+#include "appdal/RequestHandler.hpp"
+#include "appdal/TPRequestHandler.hpp"
+
+//#include "appfwk/DAQModuleHelper.hpp"
 #include "rcif/cmd/Nljs.hpp"
 
 namespace dunedaq {
@@ -25,7 +29,7 @@ TPCTPRequestHandler::conf(const appdal::ReadoutModule* conf) {
    }
    else {
       m_tp_set_sender_sleep_us = 1000000/tph_conf->get_max_transmission_rate_hz();
-      m_ts_set_sender_offset_ticks = ph_conf->get__min_latency_ticks();
+      m_ts_set_sender_offset_ticks = tph_conf->get_min_latency_ticks();
    }
    inherited2::conf(conf);
 }
@@ -128,13 +132,14 @@ TPCTPRequestHandler::send_tp_sets() {
             for( auto f : frag_pieces) {
                trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
 	       
-               tpset.if(first_tp) {
+               if(first_tp) {
                   tpset.start_time = tp.time_start;
                   first_tp = false;
-               }end_time = tp.time_start;
+               }
+	       tpset.end_time = tp.time_start;
                tpset.objects.emplace_back(std::move(tp)); 
             }
-	      } 
+	 } 
          if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
             ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
             m_new_tps_dropped += num_tps;

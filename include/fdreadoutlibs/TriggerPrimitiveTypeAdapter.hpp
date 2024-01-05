@@ -17,7 +17,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 namespace types {
 
-const constexpr std::size_t kTriggerPrimitive = sizeof(trgdataformats::TriggerPrimitive);
+const constexpr std::size_t kTriggerPrimitiveSize = sizeof(trgdataformats::TriggerPrimitive);
 struct TriggerPrimitiveTypeAdapter
 {
   using FrameType = TriggerPrimitiveTypeAdapter;
@@ -57,18 +57,18 @@ struct TriggerPrimitiveTypeAdapter
 
   FrameType* end() { return (this + 1); } // NOLINT
 
-  size_t get_payload_size() { return kTriggerPrimitive; }
+  size_t get_payload_size() { return kTriggerPrimitiveSize; }
 
   size_t get_num_frames() { return 1; }
 
-  size_t get_frame_size() { return kTriggerPrimitive; }
+  size_t get_frame_size() { return kTriggerPrimitiveSize; }
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kTrigger;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTriggerPrimitive;
   static const constexpr uint64_t expected_tick_difference = 1; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct TriggerPrimitiveTypeAdapter) == sizeof(trgdataformats::TriggerPrimitive),
+static_assert(sizeof(trgdataformats::TriggerPrimitive) == kTriggerPrimitiveSize,
               "Check your assumptions on TriggerPrimitiveTypeAdapter");
 
 } // namespace types

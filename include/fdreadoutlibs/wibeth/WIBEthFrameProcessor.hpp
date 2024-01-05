@@ -20,6 +20,8 @@
 //#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
 //#include "trigger/TPSet.hpp"
 
+#include "appdal/ReadoutModule.hpp"
+#include "coredal/Connection.hpp"
 #include "daqdataformats/Types.hpp"
 
 #include "tpg/ProcessingInfo.hpp"
@@ -146,8 +148,8 @@ private:
   bool m_tpg_enabled;
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
-  std::vector<int> m_channel_mask_vec;
-  std::set<uint> m_channel_mask_set;
+  std::vector<unsigned int> m_channel_mask_vec;
+  std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;

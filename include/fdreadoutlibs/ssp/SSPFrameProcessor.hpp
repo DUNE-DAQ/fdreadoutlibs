@@ -8,7 +8,7 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_SSP_SSPFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_SSP_SSPFRAMEPROCESSOR_HPP_
 
-#include "appfwk/DAQModuleHelper.hpp"
+//#include "appfwk/DAQModuleHelper.hpp"
 #include "logging/Logging.hpp"
 
 #include "readoutlibs/FrameErrorRegistry.hpp"
@@ -66,7 +66,7 @@ public:
     readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(
       std::bind(&SSPFrameProcessor::timestamp_check, this, std::placeholders::_1));
 
-    inherited::conf(cfg);
+    inherited::conf(conf);
   }
 
   void get_info(opmonlib::InfoCollector& /*ci*/, int /*level*/) {}

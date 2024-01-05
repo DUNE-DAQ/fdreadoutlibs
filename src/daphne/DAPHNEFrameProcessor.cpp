@@ -35,6 +35,8 @@ DAPHNEFrameProcessor::conf(const appdal::ReadoutModule* conf)
 void 
 DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 {
+  // Let Source Emulator deal with this
+  /*	
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
     // RS warning : not fixed rate!
@@ -44,7 +46,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
     } else {
       fp->fake_timestamps(m_previous_ts + 192, 16);
     }
-  }
+  }*/
 
   // Acquire timestamp
   m_current_ts = fp->get_first_timestamp();

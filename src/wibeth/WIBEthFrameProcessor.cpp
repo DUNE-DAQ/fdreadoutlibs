@@ -8,7 +8,7 @@
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
 #include "appdal/TPDataProcessor.hpp"
 
-#include "appfwk/DAQModuleHelper.hpp"
+//#include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
@@ -176,10 +176,9 @@ void
 WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
   //auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-  for (auto output : conf-get_outputs()) {
+  for (auto output : conf->get_outputs()) {
     try {
-      auto queue_index = appfwk::connection_index(args, {});
-      if (output->get_data_type == "TriggerPrimitive") {
+      if (output->get_data_type() == "TriggerPrimitive") {
          m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
@@ -225,7 +224,7 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
       // Setup pre-processing pipeline
       inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
       inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
-      if (proc_conf->get_enable_tpg()) {
+      if (proc_conf->get_tpg_enabled()) {
         m_tpg_enabled = true;
         m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
 
