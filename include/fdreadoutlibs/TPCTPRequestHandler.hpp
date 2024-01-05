@@ -60,8 +60,7 @@ public:
     TLOG_DEBUG(TLVL_WORK_STEPS) << "TPCTPRequestHandler created...";
   }
  
-  void init(const nlohmann::json& args) override;
-  void conf(const nlohmann::json& args) override;
+  void conf(const appdal::ReadoutModule* conf) override;
   void start(const nlohmann::json& args) override;
   void stop(const nlohmann::json& args) override;
   void get_info(opmonlib::InfoCollector& ci, int level) override;

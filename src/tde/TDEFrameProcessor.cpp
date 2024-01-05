@@ -16,15 +16,15 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-TDEFrameProcessor::conf(const nlohmann::json& args)
+TDEFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
   inherited::add_preprocess_task(
       std::bind(&TDEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&TDEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  inherited::conf(args);
+  inherited::conf(conf);
 
   auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-  m_clock_frequency = config.clock_speed_hz;
+  m_clock_frequency = 50000000; //FIXME
 }
 
 /**

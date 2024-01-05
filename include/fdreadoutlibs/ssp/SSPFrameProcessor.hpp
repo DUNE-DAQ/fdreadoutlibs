@@ -60,9 +60,7 @@ public:
 
   void stop(const nlohmann::json& args) override { inherited::stop(args); }
 
-  void init(const nlohmann::json& args) override { inherited::init(args); }
-
-  void conf(const nlohmann::json& cfg) override
+  void conf(const appdal::ReadoutModule* conf) override
   {
     // Setup pre-processing pipeline
     readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(

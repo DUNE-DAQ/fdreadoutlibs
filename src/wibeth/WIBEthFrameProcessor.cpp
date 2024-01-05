@@ -6,6 +6,7 @@
  * received with this code.
  */
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
+#include "appdal/TPDataProcessor.hpp"
 
 #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
@@ -15,7 +16,7 @@
 #include "readoutlibs/ReadoutIssues.hpp"
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "readoutlibs/models/IterableQueueModel.hpp"
-#include "readoutlibs/readoutconfig/Nljs.hpp"
+//#include "readoutlibs/readoutconfig/Nljs.hpp"
 #include "readoutlibs/readoutinfo/InfoNljs.hpp"
 #include "readoutlibs/utils/ReusableThread.hpp"
 
@@ -172,62 +173,67 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 }
 
 void
-WIBEthFrameProcessor::init(const nlohmann::json& args)
+WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
-//  inherited::init(args);
-
-  try {
-    auto queue_index = appfwk::connection_index(args, {});
-    if (queue_index.find("tp_out") != queue_index.end()) {
-      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
+  //auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+  for (auto output : conf-get_outputs()) {
+    try {
+      auto queue_index = appfwk::connection_index(args, {});
+      if (output->get_data_type == "TriggerPrimitive") {
+         m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(output->UID());
+      }
+    } catch (const ers::Issue& excpt) {
+      ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
     }
-  } catch (const ers::Issue& excpt) {
-    ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
   }
 
-}
-
-void
-WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
-{
-  auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-
-  m_sourceid.id = config.source_id;
+  m_sourceid.id = conf->get_source_id();
   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
+  m_det_id = conf->get_detector_id();
 
-  m_tpg_algorithm = config.tpg_algorithm;  
-  TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
-  if (m_tpg_algorithm == "SimpleThreshold") {
-    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-  } else if (m_tpg_algorithm == "AbsRS" ) {
-    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-  } else {
-    throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
-  }
-
-  m_tp_max_width = config.tp_timeout;
-
-  m_channel_mask_vec = config.tpg_channel_mask;
-  // Converting the input vector of channels masks into an std::set
-  // AAA: The set provides faster look up than a std::vector
-  m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
-
-  m_tpg_threshold_selected = config.tpg_threshold;
-
-  m_crate_no = config.crate_id;
-  m_slot_no = config.slot_id;
-  m_stream_id = config.link_id;
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  if (config.enable_tpg) {
-    m_tpg_enabled = true;
-    m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
+ 
+  // Check it post-processing is active
+  auto dp = conf->get_module_configuration()->get_data_processor();
+  if (dp != nullptr) {
+    auto proc_conf = dp->cast<appdal::TPDataProcessor>();
+    if(proc_conf != nullptr) {  
+      m_tpg_algorithm = proc_conf->get_algorithm();  
+      TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
+      if (m_tpg_algorithm == "SimpleThreshold") {
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+      } else if (m_tpg_algorithm == "AbsRS" ) {
+        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+      } else {
+        throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
+      }
 
-    inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
+      m_tp_max_width = proc_conf->get_max_ticks_tot();
+
+      m_channel_mask_vec = proc_conf->get_channel_mask();
+      // Converting the input vector of channels masks into an std::set
+      // AAA: The set provides faster look up than a std::vector
+      m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
+
+      m_tpg_threshold_selected = proc_conf->get_threshold();
+
+      //m_crate_no = config.crate_id;
+      //m_slot_no = config.slot_id;
+      //m_stream_id = config.link_id;
+      // Setup pre-processing pipeline
+      inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
+      inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
+      if (proc_conf->get_enable_tpg()) {
+        m_tpg_enabled = true;
+        m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+
+        inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
+      }
+    }
   }
-
-  inherited::conf(cfg);
+  inherited::conf(conf);
 }
 
 void
@@ -295,7 +301,7 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 void
 WIBEthFrameProcessor::sequence_check(frameptr fp)
 {
-
+/* FIXME: Make source emulator deal with this!
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
     // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
@@ -309,7 +315,7 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
       wf++;
     }
   }
-
+*/
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
@@ -360,6 +366,7 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   uint16_t wibeth_tick_difference = types::DUNEWIBEthTypeAdapter::expected_tick_difference;
   uint16_t wibeth_frame_tick_difference = wibeth_tick_difference * fp->get_num_frames();
 
+/* FIXME: let source emulator deal with this!
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
     uint64_t ts_next = m_previous_ts + wibeth_frame_tick_difference; // NOLINT(build/unsigned)
@@ -374,6 +381,7 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
       wf++;
     }
   }
+*/
 
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
@@ -517,10 +525,10 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
           tp.tp.adc_peak = hit_charge[i] / 20;
-          tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
+          tp.tp.detid =  m_det_id; // TODO: May just be hardcoded to TDAQ?
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
-          tp.tp.version = 1;
+          tp.tp.version = 1; // FIXME!!!!
           if(tp.tp.time_over_threshold > m_tp_max_width) {
 		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
 		  m_tps_dropped++;

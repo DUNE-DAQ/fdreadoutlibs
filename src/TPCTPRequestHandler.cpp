@@ -6,23 +6,28 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void
-TPCTPRequestHandler::init(const nlohmann::json& args) {
-	inherited2::init(args);
-   try {
-       auto qi = dunedaq::appfwk::connection_index(args, {"tpset_out"});
-       m_tpset_sink = iomanager::IOManager::get()->get_sender<dunedaq::trigger::TPSet>(qi["tpset_out"]);
-   } catch (const ers::Issue& excpt) {
-       throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
-   }
+TPCTPRequestHandler::conf(const appdal::ReadoutModule* conf) {
 
-}	
-void
-TPCTPRequestHandler::conf(const nlohmann::json& args) {
-   auto conf = args["readoutmodelconf"].get<readoutlibs::readoutconfig::ReadoutModelConf>();
-   m_tp_set_sender_thread.set_name("tpset", conf.source_id);
-   inherited2::conf(args);
-   m_tp_set_sender_sleep_us = 1000000/conf.tpset_transmission_rate_hz;
-   m_ts_set_sender_offset_ticks = conf.tpset_min_latency_ticks;
+   for (auto output : conf->get_outputs()) {
+      if (output->get_data_type() == "TPSet") {
+         try {
+            m_tpset_sink = iomanager::IOManager::get()->get_sender<dunedaq::trigger::TPSet>(output->UID());
+         } catch (const ers::Issue& excpt) {
+            throw readoutlibs::ResourceQueueError(ERS_HERE, "tp queue", "DefaultRequestHandlerModel", excpt);
+         }
+      }
+   }
+   m_tp_set_sender_thread.set_name("tpset", conf->get_source_id());
+  
+   auto tph_conf = conf->get_module_configuration()->get_request_handler()->cast<appdal::TPRequestHandler>();
+   if (tph_conf == nullptr) {
+      throw readoutlibs::GenericConfigurationError(ERS_HERE, "The request handler for the TPHandlerModule is not of the right class.");
+   }
+   else {
+      m_tp_set_sender_sleep_us = 1000000/tph_conf->get_max_transmission_rate_hz();
+      m_ts_set_sender_offset_ticks = ph_conf->get__min_latency_ticks();
+   }
+   inherited2::conf(conf);
 }
 
 
@@ -87,9 +92,9 @@ TPCTPRequestHandler::send_tp_sets() {
       std::unique_lock<std::mutex> lock(m_cv_mutex);
       m_cv.wait(lock, [&] { return !m_cleanup_requested; });
       m_requests_running++;
-    }
-    m_cv.notify_all();
-    if(m_latency_buffer->occupancy() != 0) {
+   }
+   m_cv.notify_all();
+   if(m_latency_buffer->occupancy() != 0) {
        // Prepare response
        RequestResult rres(ResultCode::kUnknown, dr);
        std::vector<std::pair<void*, size_t>> frag_pieces;
@@ -103,22 +108,12 @@ TPCTPRequestHandler::send_tp_sets() {
        
        if (first_cycle) {
     	  start_win_ts = oldest_ts;
-	  first_cycle = false;
+	     first_cycle = false;
        }
        if (newest_ts - start_win_ts > m_ts_set_sender_offset_ticks) {
          end_win_ts = newest_ts - m_ts_set_sender_offset_ticks;
          frag_pieces = get_fragment_pieces(start_win_ts, end_win_ts, rres);
          auto num_tps = frag_pieces.size();
-         /*
-	 if (num_tps == 0) {
-	       std::stringstream s;
-               s << "No TPs in time interval " << start_win_ts << " " << end_win_ts;
-	       ers::info(TPHandlerMsg(ERS_HERE, s.str()));
-         }
-	 
-         else {
-	 */
-	 
          trigger::TPSet tpset;
          tpset.run_number = m_run_number;
          tpset.type = num_tps>0 ? trigger::TPSet::Type::kPayload : trigger::TPSet::Type::kHeartbeat;
@@ -132,27 +127,26 @@ TPCTPRequestHandler::send_tp_sets() {
             bool first_tp = true;
             for( auto f : frag_pieces) {
                trgdataformats::TriggerPrimitive tp = *(static_cast<trgdataformats::TriggerPrimitive*>(f.first));
-	       if(first_tp) {
-		       tpset.start_time = tp.time_start;
-		       first_tp = false;
-	       }
-	       tpset.end_time = tp.time_start;
-	       tpset.objects.emplace_back(std::move(tp)); 
+	       
+               tpset.if(first_tp) {
+                  tpset.start_time = tp.time_start;
+                  first_tp = false;
+               }end_time = tp.time_start;
+               tpset.objects.emplace_back(std::move(tp)); 
             }
-	 } 
+	      } 
          if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
-	    ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
-	    m_new_tps_dropped += num_tps;
+            ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
+            m_new_tps_dropped += num_tps;
          }
          m_new_tps += num_tps;
          m_new_tpsets++;
 
-	 if (num_tps == 0) {
-		 m_new_heartbeats++;
-	 }
+         if (num_tps == 0) {
+            m_new_heartbeats++;
+         }
          //remember what we sent for the next loop
          start_win_ts = end_win_ts;
-	 
        }
     }
     {

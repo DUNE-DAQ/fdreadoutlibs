@@ -90,9 +90,7 @@ public:
 
   void stop(const nlohmann::json& args) override;
 
-  void init(const nlohmann::json& args) override;
-
-  void conf(const nlohmann::json& cfg) override;
+  void conf(const appdal::ReadoutModule* conf) override;
 
   void get_info(opmonlib::InfoCollector& ci, int level) override;
 
