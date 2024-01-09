@@ -43,17 +43,17 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 namespace fdreadoutlibs {
 
 //template<>	
-class TPCTPRequestHandler : public dunedaq::readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>
+class TPCTPRequestHandler : public dunedaq::readoutlibs::DefaultSkipListRequestHandler<types::ExtendedTriggerPrimitiveTypeAdapter>
 {
 public:
-  using inherited2 = readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>;
+  using inherited2 = readoutlibs::DefaultSkipListRequestHandler<types::ExtendedTriggerPrimitiveTypeAdapter>;
   using timestamp_t = std::uint64_t;
 
   // Constructor that binds LB and error registry
 
-  TPCTPRequestHandler(std::unique_ptr<readoutlibs::SkipListLatencyBufferModel<types::TriggerPrimitiveTypeAdapter>>& latency_buffer,
+  TPCTPRequestHandler(std::unique_ptr<readoutlibs::SkipListLatencyBufferModel<types::ExtendedTriggerPrimitiveTypeAdapter>>& latency_buffer,
                                 std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
-    : readoutlibs::DefaultSkipListRequestHandler<types::TriggerPrimitiveTypeAdapter>(
+    : readoutlibs::DefaultSkipListRequestHandler<types::ExtendedTriggerPrimitiveTypeAdapter>(
         latency_buffer,
         error_registry), m_tp_set_sender_thread(0)
   {

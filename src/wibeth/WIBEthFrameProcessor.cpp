@@ -47,7 +47,7 @@ using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
-DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::ExtendedTriggerPrimitiveTypeAdapter, "ExtendedTriggerPrimitive")
 
 
 namespace dunedaq {
@@ -179,7 +179,7 @@ WIBEthFrameProcessor::init(const nlohmann::json& args)
   try {
     auto queue_index = appfwk::connection_index(args, {});
     if (queue_index.find("tp_out") != queue_index.end()) {
-      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
+      m_tp_sink = get_iom_sender<types::ExtendedTriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
     }
   } catch (const ers::Issue& excpt) {
     ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -510,7 +510,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
 
-	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+	  fdreadoutlibs::types::ExtendedTriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
           tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
@@ -521,6 +521,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
           tp.tp.version = 1;
+          tp.tp.tpg_threshold = 29;
           if(tp.tp.time_over_threshold > m_tp_max_width) {
 		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
 		  m_tps_dropped++;
