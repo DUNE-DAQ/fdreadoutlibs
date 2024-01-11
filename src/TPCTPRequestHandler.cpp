@@ -139,7 +139,7 @@ TPCTPRequestHandler::send_tp_sets() {
 	       tpset.end_time = tp.time_start;
                tpset.objects.emplace_back(std::move(tp)); 
             }
-	 } 
+	      } 
          if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
             ers::warning(DroppedTPSet(ERS_HERE, start_win_ts, end_win_ts));
             m_new_tps_dropped += num_tps;
