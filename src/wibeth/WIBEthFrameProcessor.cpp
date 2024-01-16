@@ -513,8 +513,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = tp_t_peak;
-	  // Subtracting 1 tick to match precisely the ADC waveform
-	  tp.tp.time_over_threshold = uint64_t((hit_tover[i] - 1) * clocksPerTPCTick);
+	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
           tp.tp.adc_peak = hit_peak_adc[i];
