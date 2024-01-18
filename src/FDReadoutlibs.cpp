@@ -7,5 +7,4 @@
 //#include "fdreadoutlibs/wib2/WIB2FrameProcessor.hpp"
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp"
 #include "fdreadoutlibs/tde/TDEFrameProcessor.hpp"
-#include "fdreadoutlibs/TPCTPRequestHandler.hpp"
-#include "fdreadoutlibs/TPCTPReadoutModel.hpp"
+#include "fdreadoutlibs/TPCTPProcessor.hpp"
