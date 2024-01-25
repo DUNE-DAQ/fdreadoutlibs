@@ -61,9 +61,9 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
-    int16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    int16_t& hit_charge = state.hit_charge[ichan];
-    int16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
+    uint16_t& hit_charge = state.hit_charge[ichan];
+    uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
@@ -84,7 +84,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       ss << "ADC value: " << sample;
 
-      frugal_accum_update(median, sample, accum, 10);
+      //frugal_accum_update(median, sample, accum, 10);
+      frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
       sample -= median;
 
       ss << "\tsample: " << sample;

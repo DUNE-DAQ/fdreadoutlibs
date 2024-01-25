@@ -64,8 +64,7 @@ WIBEthFrameHandler::~WIBEthFrameHandler()
   if (m_tpg_taps_p) {
     delete[] m_tpg_taps_p;
   }
-  if (m_hits_dest)
-	  delete[] m_hits_dest;
+  if (m_hits_dest) delete[] m_hits_dest;
 }
 
 void
@@ -74,9 +73,8 @@ WIBEthFrameHandler::reset()
   if (m_tpg_taps_p)
       	delete[] m_tpg_taps_p;
   m_tpg_taps_p = nullptr;
-  if (m_hits_dest)
-        delete[] m_hits_dest;
-  m_hits_dest = nullptr;
+  if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
+
   first_hit = true;
 }
 
@@ -95,9 +93,7 @@ WIBEthFrameHandler::initialize(int threshold_value)
     m_tpg_taps_p[i] = m_tpg_taps[i];
   }
 
-  if(m_hits_dest == nullptr) {
-	m_hits_dest = new uint16_t[100000];
-  }
+  if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
 
   m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
                                                                                                             swtpg_wibeth::FRAMES_PER_MSG,
@@ -118,7 +114,6 @@ WIBEthFrameHandler::get_hits_dest()
 {
   return m_hits_dest;
 }
-
 
 WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
@@ -466,7 +461,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; // NOLINT(build/unsigned)
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
   while (*primfind_it != swtpg_wibeth::MAGIC) {
@@ -485,6 +480,12 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
       // hit_tover[i] = static_cast<uint16_t>(*primfind_it++); // NOLINT(runtime/increment_decrement)
       hit_tover[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_adc[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }  
 
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
@@ -493,10 +494,9 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
 
-        uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
-        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-        //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
+        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
+
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];
         if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
@@ -512,11 +512,11 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
 	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
-          tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
-          tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
+          tp.tp.time_peak = tp_t_peak;
+	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
-          tp.tp.adc_peak = hit_charge[i] / 20;
+          tp.tp.adc_peak = hit_peak_adc[i];
           tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;

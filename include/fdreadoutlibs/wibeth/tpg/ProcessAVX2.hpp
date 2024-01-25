@@ -20,22 +20,20 @@
 
 namespace swtpg_wibeth {
 
-
 template<size_t NREGISTERS>
 inline void
 process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 {
-  //const __m256i adcMax = _mm256_set1_epi16(info.adcMax);
+  const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
 
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
 
-  const __m256i iota = _mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+  const __m256i iota = _mm256_set_epi16(14, 13, 12, 11, 10, 9, 8, 15, 7, 6, 5, 4, 3, 2, 1, 0);
 
   int nhits = 0;
-
+ 
   for (uint16_t ireg = info.first_register; ireg < info.last_register; ++ireg) { // NOLINT(build/unsigned)
-
 
     // ------------------------------------
     // Variables for pedestal subtraction
@@ -58,6 +56,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     __m256i hit_charge = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_charge) + ireg); // NOLINT
     // The time-over-threshold (so far) of the current hit
     __m256i hit_tover = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg); // NOLINT
+
+    // The peak adc value
+    __m256i hit_peak_adc = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg); // NOLINT
+
+    // The time of the peak of the current hit
+    __m256i hit_peak_time = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg); // NOLINT
 
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
@@ -82,7 +86,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // Don't let the sample exceed adcMax, which is the value
       // at which its filtered version might overflow
-      //s = _mm256_min_epi16(s, adcMax);
+      //s = _mm256_min_epi16(s, overflowMax);
 
       // --------------------------------------------------------------
       // Hit finding
@@ -92,13 +96,14 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // FIXED THRESHOLD
       __m256i threshold = _mm256_set1_epi16(info.threshold);
       __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
-      
+
       // Mask for channels that left "over threshold" state this step
       // Comparison with previous TP
       __m256i left = _mm256_andnot_si256(is_over, prev_was_over);
 
       //-----------------------------------------
       // Update hit start times for the channels where a hit started
+      //const __m256i timenow = _mm256_set1_epi16(itime);
       const __m256i timenow = _mm256_set1_epi16(itime);
       //-----------------------------------------
       // Accumulate charge and time-over-threshold in the is_over channels
@@ -108,9 +113,15 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // so treating everything as epi8 works the same
       __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
       // Divide by the multiplier before adding (implemented as a shift-right)
-      hit_charge = _mm256_adds_epi16(hit_charge, _mm256_srai_epi16(to_add_charge, info.tap_exponent));
+      //The saturated value of 0x7FFF(max) or 0x8000(min), respectively, is written to the destination vector.
+      //hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
+      //You must control the range of values operated upon to prevent undetected overflow conditions.
+      hit_charge = _mm256_add_epi16(hit_charge, to_add_charge);
 
-      //if(ireg==0){
+      // Avoid overflow of the hit charge, if needed in practice 
+      hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
+
+      if(ireg==0){
       //     printf("itime=%ld\n", itime);
       //     printf("ADC value:             "); print256_as16_dec(s);             printf("\n\n");
       //     printf("median:        "); print256_as16_dec(median);        printf("\n");
@@ -121,11 +132,20 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");
       //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
-      //}
+      }
 
+      // 1. Calculation of the hit peak time and ADC
+      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak); 
+      hit_peak_time = _mm256_blendv_epi8(hit_peak_time, hit_tover, is_sample_over_adc_peak);
+
+      // 2. Update of the hit time over threshold  
       __m256i to_add_tover = _mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
       hit_tover = _mm256_adds_epi16(hit_tover, to_add_tover);
 
+      // 3. Stop tover from overflowing if needed in practice 
+      //hit_tover = _mm256_min_epi16(hit_tover, overflowMax);
+    
       // Only store the values if there are >0 hits ending on
       // this sample. We have to save the entire 16-channel
       // register, which is inefficient, but whatever
@@ -160,21 +180,24 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
-        _mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
-                            _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
+        //_mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
+        //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
+        _mm256_storeu_si256(output_loc++, hit_charge);
 
         _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
+        _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
-        //printf("charge:"); print256_as16_dec(hit_charge);          printf("\n");
-
+	_mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)
 
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
         hit_tover = _mm256_blendv_epi8(hit_tover, zero, left);
-      } // end if(!no_hits_to_store)
+        hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
+        hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);
 
+      } // end if(!no_hits_to_store)
       prev_was_over = is_over;
 
     } // end loop over itime (times for this register)
@@ -186,11 +209,12 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over) + ireg, prev_was_over); // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_charge) + ireg, hit_charge);       // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg, hit_tover);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg, hit_peak_adc);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg, hit_peak_time);         // NOLINT
 
-  } // end loop over ireg (the 8 registers in this frame)
-
-  // Store the output
-  for (int i = 0; i < 4; ++i) {
+  } // end loop over ireg (the swtpg_wibeth::SAMPLES_PER_REGISTER, e.g. 8, registers in this frame)
+  // Arguably not needed, we can avoid using MAGIC
+  for (int i = 0; i < 6; ++i) {
     _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 
@@ -201,4 +225,3 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 } // namespace swtpg_wibeth
 
 #endif // READOUT_SRC_WIBEth_TPG_PROCESSAVX2_HPP_
-

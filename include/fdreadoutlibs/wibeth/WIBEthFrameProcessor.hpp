@@ -63,7 +63,7 @@ public:
   uint16_t* get_hits_dest();
 private: 
   int m_register_selector;    
-  uint16_t* m_hits_dest ;
+  uint16_t* m_hits_dest;
   uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
   const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
   const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
