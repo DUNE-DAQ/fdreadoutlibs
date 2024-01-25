@@ -461,13 +461,16 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
+  uint16_t chan[16], left[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
   while (*primfind_it != swtpg_wibeth::MAGIC) {
     // First, get all of the register values (including those with no hit) into local variables
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+    for (int i = 0; i < 16; ++i) {
+      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
       hit_end[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
@@ -492,7 +495,8 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
     for (int i = 0; i < 16; ++i) {
-      if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
+      if (hit_charge[i] && left[i] == std::numeric_limits<std::uint16_t>::max()
+          && chan[i] != swtpg_wibeth::MAGIC) {
 
         uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];

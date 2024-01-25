@@ -161,6 +161,10 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       const int no_hits_to_store = _mm256_testc_si256(_mm256_setzero_si256(), left);
 
       if (!no_hits_to_store) {
+        //printf("------");  printf("\n");
+        //printf("channels:    "); print256_as16_dec(channels);    printf("\n");
+        //printf("hit_charge:  "); print256_as16_dec(hit_charge);    printf("\n");
+        //printf("left:        "); print256_as16_dec(left);          printf("\n");
 
         ++nhits;
         // We have to save the whole register, including the
@@ -177,6 +181,10 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
         // we can calculate the absolute 64-bit start time in
         // the caller. This saves faffing with hits that span
         // a message boundary, hopefully
+	
+        _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
+        // Store the flags per channel that indicated the waveform went below threshold
+	// in order to recover the exact channel(s) that have complete hits. 
 
         _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
@@ -214,7 +222,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
   } // end loop over ireg (the swtpg_wibeth::SAMPLES_PER_REGISTER, e.g. 8, registers in this frame)
   // Arguably not needed, we can avoid using MAGIC
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 7; ++i) {
     _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 
