@@ -461,7 +461,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
-  uint16_t chan[16], left[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], left[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
   while (*primfind_it != swtpg_wibeth::MAGIC) {
@@ -469,10 +469,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
-    for (int i = 0; i < 16; ++i) {
-      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
-    for (int i = 0; i < 16; ++i) {
+   for (int i = 0; i < 16; ++i) {
       hit_end[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
@@ -489,13 +486,18 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }  
-
+    for (int i = 0; i < 16; ++i) {
+      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+ 
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
     for (int i = 0; i < 16; ++i) {
-      if (hit_charge[i] && left[i] == std::numeric_limits<std::uint16_t>::max()
+      // AAA: condition on the left hits makes sure to count hits
+      // correctly when they are spread across multiple channels 	    
+      if (hit_charge[i] && left[i] == swtpg_wibeth::MAGIC
           && chan[i] != swtpg_wibeth::MAGIC) {
 
         uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
