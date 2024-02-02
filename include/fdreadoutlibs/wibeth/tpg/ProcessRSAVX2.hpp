@@ -81,6 +81,12 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     __m256i hit_tover = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg); // NOLINT
     ;
 
+    // The peak adc value
+    __m256i hit_peak_adc = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg); // NOLINT
+
+    // The time of the peak of the current hit
+    __m256i hit_peak_time = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg); // NOLINT    
+
     // The channel numbers in each of the slots in the register
     __m256i channel_base = _mm256_set1_epi16(ireg * SAMPLES_PER_REGISTER);
     __m256i channels = _mm256_add_epi16(channel_base, iota);
@@ -229,8 +235,17 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
       //}
 
+      // 1. Calculation of the hit peak time and ADC
+      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak); 
+      hit_peak_time = _mm256_blendv_epi8(hit_peak_time, hit_tover, is_sample_over_adc_peak);
+
+      // 2. Update of the hit time over threshold  
       __m256i to_add_tover = _mm256_blendv_epi8(_mm256_set1_epi16(0), _mm256_set1_epi16(1), is_over);
       hit_tover = _mm256_adds_epi16(hit_tover, to_add_tover);
+
+      // 3. Stop tover from overflowing if needed in practice 
+      //hit_tover = _mm256_min_epi16(hit_tover, overflowMax);      
 
       // Only store the values if there are >0 hits ending on
       // this sample. We have to save the entire 16-channel
@@ -267,10 +282,6 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
         //printf("to_add_tover:    "); print256_as16_dec(to_add_tover);    printf("\n");      
         //printf("hit_tover:    "); print256_as16_dec(hit_tover);    printf("\n");      
 
-        // AAA: to be removed, just for debugging
-        //hit_charge = _mm256_set1_epi16(666);
-
-
         // Store the end time of the hit, not the start
         // time. Since we also have the time-over-threshold,
         // we can calculate the absolute 64-bit start time in
@@ -283,10 +294,22 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
                             _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
         _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
+        _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
+
+	  _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)	
+
+        // Make sure to count only the channels that are above threshold
+        // Store the flags per channel that indicated the waveform went below threshold
+        // in order to recover the exact channel(s) that have complete hits. 	
+	  _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
+
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
         hit_tover = _mm256_blendv_epi8(hit_tover, zero, left);
+        hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, zero, left);
+        hit_peak_time = _mm256_blendv_epi8(hit_peak_time, zero, left);	
+
       } // end if(!no_hits_to_store)
       //printf("nhits:          "); std::cout << (nhits) << std::endl;
 
@@ -314,12 +337,14 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over) + ireg, prev_was_over); // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_charge) + ireg, hit_charge);       // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_tover) + ireg, hit_tover);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_adc) + ireg, hit_peak_adc);         // NOLINT
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.hit_peak_time) + ireg, hit_peak_time);         // NOLINT    
 
   } // end loop over ireg (the 8 registers in this frame)
 
 
   // Store the output
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 7; ++i) {
     _mm256_storeu_si256(output_loc++, _mm256_set1_epi16(swtpg_wibeth::MAGIC)); // NOLINT(runtime/increment_decrement)
   }
 
