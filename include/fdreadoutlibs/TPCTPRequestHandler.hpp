@@ -69,7 +69,7 @@ public:
 
   timestamp_t get_cutoff_timestamp() override {return m_cutoff_timestamp.load();}
   bool supports_cutoff_timestamp() override {return true;}
-  void increment_missed_tp_count() override {++m_new_tps_missed;}
+  void increment_tardy_tp_count() override {++m_new_tps_suppressed_tardy;}
 
 protected:
   
@@ -84,9 +84,9 @@ private:
 
   std::atomic<uint64_t> m_new_tps{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tpsets{ 0 };  // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_new_tps_lost{ 0 };
-  std::atomic<uint64_t> m_new_tpsets_lost{ 0 };
-  std::atomic<uint64_t> m_new_tps_missed{ 0 };
+  std::atomic<uint64_t> m_new_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_new_tpsets_send_failed{ 0 };
+  std::atomic<uint64_t> m_new_tps_suppressed_tardy{ 0 };
   std::atomic<uint64_t> m_new_heartbeats{ 0 };
 
   std::atomic<timestamp_t> m_cutoff_timestamp{ 0 }; // NOLINT(build/unsigned)

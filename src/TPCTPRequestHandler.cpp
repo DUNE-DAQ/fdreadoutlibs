@@ -30,9 +30,9 @@ void
 TPCTPRequestHandler::start(const nlohmann::json& args) {
    m_new_tps = 0;
    m_new_tpsets = 0;
-   m_new_tps_lost = 0;
-   m_new_tpsets_lost = 0;
-   m_new_tps_missed = 0;
+   m_new_tps_send_failed = 0;
+   m_new_tpsets_send_failed = 0;
+   m_new_tps_suppressed_tardy = 0;
    inherited2::start(args);
 
    rcif::cmd::StartParams start_params = args.get<rcif::cmd::StartParams>();
@@ -60,9 +60,9 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
   auto now = std::chrono::high_resolution_clock::now();
   int new_tps = m_new_tps.exchange(0);
   int new_tpsets = m_new_tpsets.exchange(0);
-  int new_tps_lost = m_new_tps_lost.exchange(0);
-  int new_tpsets_lost = m_new_tpsets_lost.exchange(0);
-  int new_tps_missed = m_new_tps_missed.exchange(0);
+  int new_tps_send_failed = m_new_tps_send_failed.exchange(0);
+  int new_tpsets_send_failed = m_new_tpsets_send_failed.exchange(0);
+  int new_tps_suppressed_tardy = m_new_tps_suppressed_tardy.exchange(0);
   int new_heartbeats = m_new_heartbeats.exchange(0);
   //double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
   //TLOG() << "TPSets rate: " << std::to_string(new_tpsets / seconds) << " [Hz], TP rate: " << std::to_string(new_tps / seconds) << ", heartbeats: " << std::to_string(new_heartbeats / seconds) << " [Hz]";
@@ -70,9 +70,9 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
  
   info.num_tps_sent = new_tps;
   info.num_tpsets_sent = new_tpsets;
-  info.num_tps_lost = new_tps_lost;
-  info.num_tpsets_lost = new_tpsets_lost;
-  info.num_tps_missed = new_tps_missed;
+  info.num_tps_send_failed = new_tps_send_failed;
+  info.num_tpsets_send_failed = new_tpsets_send_failed;
+  info.num_tps_suppressed_tardy = new_tps_suppressed_tardy;
   info.num_heartbeats = new_heartbeats;
   m_t0 = now;
   inherited2::get_info(ci, level);
@@ -150,8 +150,8 @@ TPCTPRequestHandler::send_tp_sets() {
          m_cutoff_timestamp.store(tpset.end_time);
          if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
            ers::warning(FailedToSendTPSet(ERS_HERE, start_win_ts, end_win_ts, m_run_number));
-           m_new_tps_lost += num_tps;
-           ++m_new_tpsets_lost;
+           m_new_tps_send_failed += num_tps;
+           ++m_new_tpsets_send_failed;
          }
          else {
            m_new_tps += num_tps;
