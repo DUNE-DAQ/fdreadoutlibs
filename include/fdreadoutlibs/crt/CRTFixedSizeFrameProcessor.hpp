@@ -36,7 +36,7 @@ class CRTFixedSizeFrameProcessor : public readoutlibs::TaskRawDataProcessorModel
 public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::CRTFixedSizeTypeAdapter>;
   using frameptr = types::CRTFixedSizeTypeAdapter*;
-  using daphneframeptr = dunedaq::fddetdataformats::CRTFixedSizeFrame*;
+  using crtframeptr = dunedaq::fddetdataformats::CRTFixedSizeFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   // Constructor

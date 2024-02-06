@@ -58,6 +58,11 @@ namespace dunedaq {
           return reinterpret_cast<const dunedaq::fddetdataformats::CRTFrame*>(&data[0])->get_timestamp(); // NOLINT
         }
 
+	uint64_t get_timestamp() const 
+        { 
+          return reinterpret_cast<const dunedaq::fddetdataformats::CRTFrame*>(&data[0])->get_timestamp(); // NOLINT
+        }
+
         void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
         {
           auto frame = reinterpret_cast<dunedaq::fddetdataformats::CRTFrame*>(&data[0]); // NOLINT
@@ -135,6 +140,7 @@ namespace dunedaq {
 
 	size_t get_frame_size() { return data.size(); }
 
+	static const constexpr size_t fixed_payload_size = 288; 
 	static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
 	static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kCRT;
 

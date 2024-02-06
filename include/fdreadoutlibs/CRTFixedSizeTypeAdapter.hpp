@@ -92,8 +92,8 @@ struct CRTFixedSizeTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 16; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::detdataformats::DAQEthHeader) == 16,
-              "Check your assumptions on DAQEthHeader");
+static_assert(sizeof(struct dunedaq::fddetdataformats::CRTFixedSizeFrame) == kCRTFixedSize,
+              "Check your assumptions on DUNEWIBEthTypeAdapter");
 
 } // namespace types
 } // namespace fdreadoutlibs
