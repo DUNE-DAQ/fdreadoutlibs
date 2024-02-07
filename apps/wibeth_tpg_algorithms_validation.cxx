@@ -390,7 +390,7 @@ main(int argc, char** argv)
 
     // additional options 
     bool enable_repeat_timer = true;
-    app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing while certain time elapsed (true/false)");
+    app.add_option("-r, --enable_repeat_timer", enable_repeat_timer, "Repeat frame processing while certain time elapsed (true/false). Default: true");
     app.add_option("-s ,--out_suffix", out_suffix, "Append string to output hit file name");
     app.set_config("--config", "app.cfg", "Read a configuration file. Default: app.cfg", false);
 
