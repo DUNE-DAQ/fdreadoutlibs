@@ -177,35 +177,40 @@ void save_raw_data(swtpg_wibeth::MessageRegisters register_array,
 void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 
     constexpr int clocksPerTPCTick = 32;
-    uint16_t chan, hit_end, hit_charge, hit_tover; 
+    const constexpr std::size_t nreg = swtpg_wibeth::SAMPLES_PER_REGISTER;
+    uint16_t chan, hit_end, hit_peak_adc, hit_charge, hit_tover, hit_peak_time;
+
+    std::array<int, nreg> indices{0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14};
 
     size_t i = 0;
     while (*output_location != swtpg_wibeth::MAGIC) {
-      chan   = *output_location++;
-      hit_end    = *output_location++;
-      hit_charge  = *output_location++;
-      hit_tover     = *output_location++;
-    
+      chan            = *output_location++;
+      hit_end         = *output_location++;
+      hit_charge      = *output_location++;
+      hit_tover       = *output_location++;
+      hit_peak_adc    = *output_location++;
+      hit_peak_time   = *output_location++;
+
       i += 1;
-      uint64_t tp_t_begin =                                                        
-        timestamp + clocksPerTPCTick * (int64_t(hit_end ) - hit_tover );       
-      uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end );      
+      chan = nreg*(chan/nreg)+indices[chan%nreg];
+
+      uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end - (int64_t)hit_tover);
+      uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time;
 
       triggeralgs::TriggerPrimitive trigprim;
       trigprim.time_start = tp_t_begin;
-      trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
+      trigprim.time_peak = tp_t_peak;
 
-      trigprim.time_over_threshold = hit_tover  * clocksPerTPCTick;
-
+      trigprim.time_over_threshold = uint64_t((hit_tover - 1) * clocksPerTPCTick);
 
       trigprim.channel = chan;
-      trigprim.adc_integral = hit_charge ;
-      trigprim.adc_peak = hit_charge  / 20;
-      trigprim.detid = 666; 
+      trigprim.adc_integral = hit_charge;
+      trigprim.adc_peak = hit_peak_adc;
+      trigprim.detid = 666;
       trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
       trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
       trigprim.version = 1;
-    
+
       if (save_trigprim) {
         save_hit_data(trigprim, "NAIVE");
       }
@@ -217,61 +222,66 @@ void extract_hits_naive(uint16_t* output_location, uint64_t timestamp) {
 void extract_hits_avx(uint16_t* output_location, uint64_t timestamp) {
 
   constexpr int clocksPerTPCTick = 32;
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; 
+  const constexpr std::size_t nreg = swtpg_wibeth::SAMPLES_PER_REGISTER;
+  uint16_t chan[nreg], hit_end[nreg], hit_peak_adc[nreg], hit_charge[nreg], hit_tover[nreg], hit_peak_time[nreg];
 
   while (*output_location != swtpg_wibeth::MAGIC) {
-    for (int i = 0; i < 16; ++i) {
-      chan[i] = *output_location++; 
+    for (std::size_t i = 0; i < nreg; ++i) {
+      chan[i] = *output_location++;
     }
-    for (int i = 0; i < 16; ++i) {
-      hit_end[i] = *output_location++; 
+    for (std::size_t i = 0; i < nreg; ++i) {
+      hit_end[i] = *output_location++;
     }
-    for (int i = 0; i < 16; ++i) {
+    for (std::size_t i = 0; i < nreg; ++i) {
       hit_charge[i] = *output_location++;
     }
-    for (int i = 0; i < 16; ++i) {        
-      hit_tover[i] = *output_location++; 
-    }  
-    
+    for (std::size_t i = 0; i < nreg; ++i) {
+      hit_tover[i] = *output_location++;
+    }
+    for (std::size_t i = 0; i < nreg; ++i) {
+      hit_peak_adc[i] = *output_location++;
+    }
+    for (std::size_t i = 0; i < nreg; ++i) {
+      hit_peak_time[i] = *output_location++;
+    }
+
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < nreg; ++i) {
       if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
         //std::cout << "Channel number: " << chan[i] << std::endl;
         //std::cout << "Hit charge: " << hit_charge[i] << std::endl;
 
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);  // NOLINT(build/unsigned)
+        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];                              // NOLINT(build/unsigned)
 
-          uint64_t tp_t_begin =                                                        // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - hit_tover[i]);       // NOLINT(build/unsigned)
-          uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);      // NOLINT(build/unsigned)
+        // May be needed for TPSet:
+        // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
+        //
 
-          // May be needed for TPSet:
-          // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
-          //
+        // For quick n' dirty debugging: print out time/channel of hits.
+        // Can then make a text file suitable for numpy plotting with, eg:
+        //
+        //
+        //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
 
-          // For quick n' dirty debugging: print out time/channel of hits.
-          // Can then make a text file suitable for numpy plotting with, eg:
-          //
-          //
-          //TLOG_DEBUG(0) << "Hit: " << tp_t_begin << " " << offline_channel;
+        triggeralgs::TriggerPrimitive trigprim;
+        trigprim.time_start = tp_t_begin;
+        trigprim.time_peak = tp_t_peak;
+        trigprim.time_over_threshold = uint64_t((hit_tover[i] - 1) * clocksPerTPCTick);
+        trigprim.channel = chan[i];
+        trigprim.adc_integral = hit_charge[i];
+        trigprim.adc_peak = hit_peak_adc[i];
+        trigprim.detid = 666;
+        trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
+        trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+        trigprim.version = 1;
 
-          triggeralgs::TriggerPrimitive trigprim;
-          trigprim.time_start = tp_t_begin;
-          trigprim.time_peak = (tp_t_begin + tp_t_end) / 2;
-          trigprim.time_over_threshold = hit_tover[i] * clocksPerTPCTick;
-          trigprim.channel = chan[i];
-          trigprim.adc_integral = hit_charge[i];
-          trigprim.adc_peak = hit_charge[i] / 20;
-          trigprim.detid = 666;           
-          trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
-          trigprim.version = 1;
-
-          if (save_trigprim){
-            save_hit_data(trigprim, "AVX");
-          }          
+        if (save_trigprim){
+          save_hit_data(trigprim, "AVX");
+        }          
 
         ++total_hits;
       }

@@ -21,7 +21,7 @@ struct SUPERCHUNK_CHAR_STRUCT
 };
 static_assert(sizeof(struct SUPERCHUNK_CHAR_STRUCT) == 5568, "Check your assumptions on SUPERCHUNK_CHAR_STRUCT");
 
-const constexpr std::uint16_t MAGIC = std::numeric_limits<std::uint16_t>::max(); // NOLINT
+const constexpr std::uint16_t MAGIC    = std::numeric_limits<std::uint16_t>::max(); // NOLINT
 
 const constexpr std::int16_t THRESHOLD = 2000;
 

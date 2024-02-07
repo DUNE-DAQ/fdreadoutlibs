@@ -51,5 +51,4 @@ print256_as16_dec(__m256i var)
     printf("%+6d ", val[i]); // NOLINT(runtime/output_format)
 }
 
-
 } // namespace swtpg_wibeth
