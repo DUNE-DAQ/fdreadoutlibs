@@ -30,7 +30,7 @@ void
 TPCTPRequestHandler::start(const nlohmann::json& args) {
    m_new_tps = 0;
    m_new_tpsets = 0;
-   m_new_tps_send_failed = 0;
+   m_new_tps_in_tpsets_send_failed = 0;
    m_new_tpsets_send_failed = 0;
    m_new_tps_suppressed_tardy = 0;
    inherited2::start(args);
@@ -60,7 +60,7 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
   auto now = std::chrono::high_resolution_clock::now();
   int new_tps = m_new_tps.exchange(0);
   int new_tpsets = m_new_tpsets.exchange(0);
-  int new_tps_send_failed = m_new_tps_send_failed.exchange(0);
+  int new_tps_in_tpsets_send_failed = m_new_tps_in_tpsets_send_failed.exchange(0);
   int new_tpsets_send_failed = m_new_tpsets_send_failed.exchange(0);
   int new_tps_suppressed_tardy = m_new_tps_suppressed_tardy.exchange(0);
   int new_heartbeats = m_new_heartbeats.exchange(0);
@@ -70,7 +70,7 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
  
   info.num_tps_sent = new_tps;
   info.num_tpsets_sent = new_tpsets;
-  info.num_tps_send_failed = new_tps_send_failed;
+  info.num_tps_in_tpsets_send_failed = new_tps_in_tpsets_send_failed;
   info.num_tpsets_send_failed = new_tpsets_send_failed;
   info.num_tps_suppressed_tardy = new_tps_suppressed_tardy;
   info.num_heartbeats = new_heartbeats;
@@ -150,7 +150,7 @@ TPCTPRequestHandler::send_tp_sets() {
          m_cutoff_timestamp.store(tpset.end_time);
          if(!m_tpset_sink->try_send(std::move(tpset), iomanager::Sender::s_no_block)) {
            ers::warning(FailedToSendTPSet(ERS_HERE, start_win_ts, end_win_ts, m_run_number));
-           m_new_tps_send_failed += num_tps;
+           m_new_tps_in_tpsets_send_failed += num_tps;
            ++m_new_tpsets_send_failed;
          }
          else {
