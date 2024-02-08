@@ -111,23 +111,6 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //for (short i = 0; i < 16; ++i)
       //    std::cout << "Input ADC value:\t\t\t\t s[" << i << "] = " << input_adc_values_ptr[i] << std::endl;
 
-
-      // First, find which channels are above/below the median,
-      // since we need these as masks in the call to
-      // frugal_accum_update_avx2
-      __m256i is_gt = _mm256_cmpgt_epi16(s, median);
-      __m256i is_eq = _mm256_cmpeq_epi16(s, median);
-      // Would like a "not", but there isn't one. Emulate it
-      // with xor against a register of all ones
-      __m256i gt_or_eq = _mm256_or_si256(is_gt, is_eq);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverflow"
-      __m256i is_lt = _mm256_xor_si256(gt_or_eq, _mm256_set1_epi16(0xffff));
-#pragma GCC diagnostic pop
-      // Update the 25th percentile in the channels that are below the median
-      swtpg_wibeth::frugal_accum_update_avx2(quantile25, s, accum25, 10, is_lt);
-      // Update the 75th percentile in the channels that are above the median
-      swtpg_wibeth::frugal_accum_update_avx2(quantile75, s, accum75, 10, is_gt);
       // Update the median itself in all channels
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
@@ -201,7 +184,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // FIXED THRESHOLD
       __m256i threshold = _mm256_set1_epi16(info.threshold);
-      __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
+      __m256i is_over = _mm256_cmpgt_epi16(RS, threshold);
 
 
       // Mask for channels that left "over threshold" state this step
