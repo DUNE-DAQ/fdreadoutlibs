@@ -23,6 +23,9 @@ inline void
 process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 {
 
+  const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
+      
+
   // Running sum scaling factor
   const __m256i R_factor = _mm256_set1_epi16(8);
 
@@ -53,14 +56,14 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
     ChanState<NREGISTERS>& state = info.chanState;
     __m256i median = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.pedestals) + ireg);      // NOLINT
-    __m256i quantile25 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.quantile25) + ireg); // NOLINT
-    __m256i quantile75 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.quantile75) + ireg); // NOLINT
+    //__m256i quantile25 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.quantile25) + ireg); // NOLINT
+    //__m256i quantile75 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.quantile75) + ireg); // NOLINT
 
     // The accumulator that we increase/decrease when the current
     // sample is greater/less than the median
     __m256i accum = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum) + ireg);     // NOLINT
-    __m256i accum25 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum25) + ireg); // NOLINT
-    __m256i accum75 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum75) + ireg); // NOLINT
+    //__m256i accum25 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum25) + ireg); // NOLINT
+    //__m256i accum75 = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accum75) + ireg); // NOLINT
 
     // Runnin Sum variables
 
@@ -100,16 +103,13 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 
       // --------------------------------------------------------------
-      // Pedestal finding/coherent noise removal and quantiles calculation
+      // Pedestal finding/coherent noise removal
       // --------------------------------------------------------------
 
 
       // The current sample
       __m256i s = info.input->ymm(index);
       //printf("Input ADC value:\t\t\t\t"); print256_as16_dec(s);         printf("\n");
-      //short *input_adc_values_ptr = (short*)&s;
-      //for (short i = 0; i < 16; ++i)
-      //    std::cout << "Input ADC value:\t\t\t\t s[" << i << "] = " << input_adc_values_ptr[i] << std::endl;
 
       // Update the median itself in all channels
 #pragma GCC diagnostic push
@@ -199,10 +199,12 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Really want an epi16 version of this, but the cmpgt and
       // cmplt functions set their epi16 parts to 0xff or 0x0,
       // so treating everything as epi8 works the same
-      __m256i temp_charge = _mm256_adds_epi16(RS, medianRS);
-      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), temp_charge, is_over);
-      // Divide by the multiplier before adding (implemented as a shift-right)
-      hit_charge = _mm256_adds_epi16(hit_charge, _mm256_srai_epi16(to_add_charge, info.tap_exponent));
+      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
+      hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
+
+      // Avoid overflow of the hit charge, if needed in practice 
+      hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
+
 
       //if(ireg==0){
       //     printf("itime=%ld\n", itime);
@@ -304,12 +306,12 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
     // Store the state, ready for the next time round
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.pedestals) + ireg, median);      // NOLINT
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.quantile25) + ireg, quantile25); // NOLINT
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.quantile75) + ireg, quantile75); // NOLINT
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.quantile25) + ireg, quantile25); // NOLINT
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.quantile75) + ireg, quantile75); // NOLINT
 
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum) + ireg, accum);     // NOLINT
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum25) + ireg, accum25); // NOLINT
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum75) + ireg, accum75); // NOLINT
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum25) + ireg, accum25); // NOLINT
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accum75) + ireg, accum75); // NOLINT
 
 
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.RS) + ireg, RS);     // NOLINT
