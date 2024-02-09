@@ -29,7 +29,8 @@
 #include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
 
 #include <atomic>
@@ -197,6 +198,8 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+  }  else if (m_tpg_algorithm == "StandardRS" ) {
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
@@ -464,7 +467,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16]; // NOLINT(build/unsigned)
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], left[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
   while (*primfind_it != swtpg_wibeth::MAGIC) {
@@ -472,7 +475,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
-    for (int i = 0; i < 16; ++i) {
+   for (int i = 0; i < 16; ++i) {
       hit_end[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
@@ -489,13 +492,19 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }  
-
+    for (int i = 0; i < 16; ++i) {
+      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+ 
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
     for (int i = 0; i < 16; ++i) {
-      if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
+      // AAA: condition on the left hits makes sure to count hits
+      // correctly when they are spread across multiple channels 	    
+      if (hit_charge[i] && left[i] == swtpg_wibeth::MAGIC
+          && chan[i] != swtpg_wibeth::MAGIC) {
 
         uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
