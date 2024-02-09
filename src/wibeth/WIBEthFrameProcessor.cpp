@@ -29,7 +29,8 @@
 #include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
 
 #include <atomic>
@@ -196,6 +197,8 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+  }  else if (m_tpg_algorithm == "StandardRS" ) {
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
