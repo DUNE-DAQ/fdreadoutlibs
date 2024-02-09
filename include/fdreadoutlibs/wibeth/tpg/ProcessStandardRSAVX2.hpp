@@ -1,13 +1,13 @@
 /**
- * @file ProcessRSAVX2.hpp Process frames with AVX2 registers and instructions
- * using the Running Sum algorithm
+ * @file ProcessStandardRSAVX2.hpp Process frames with AVX2 registers and instructions
+ * using the Standard Running Sum algorithm (not absolute)
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
-#define READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
+#ifndef READOUT_SRC_WIBEth_TPG_PROCESS_STANDARDRSAVX2_HPP_
+#define READOUT_SRC_WIBEth_TPG_PROCESS_STANDARDRSAVX2_HPP_
 
 #include "FrameExpand.hpp"
 #include "UtilsAVX2.hpp"
@@ -20,7 +20,7 @@ namespace swtpg_wibeth {
 
 template<size_t NREGISTERS>
 inline void
-process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
+process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 {
 
   const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
@@ -338,5 +338,5 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 } // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIBEth_TPG_PROCESSRSAVX2_HPP_
+#endif // READOUT_SRC_WIBEth_TPG_PROCESS_STANDARDRSAVX2_HPP_
 

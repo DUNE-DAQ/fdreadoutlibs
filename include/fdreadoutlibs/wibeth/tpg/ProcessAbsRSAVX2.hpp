@@ -281,12 +281,12 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
-	  _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)	
+	      _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)	
 
         // Make sure to count only the channels that are above threshold
         // Store the flags per channel that indicated the waveform went below threshold
         // in order to recover the exact channel(s) that have complete hits. 	
-	  _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
+	      _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
 
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
