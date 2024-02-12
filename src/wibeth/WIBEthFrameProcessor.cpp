@@ -210,11 +210,14 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       m_tpg_algorithm = proc_conf->get_algorithm();
       TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
       if (m_tpg_algorithm == "SimpleThreshold") {
+        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kSimpleThreshold;
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
       } else if (m_tpg_algorithm == "AbsRS") {
+        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
         m_assigned_tpg_algorithm_function =
           &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
       } else if (m_tpg_algorithm == "StandardRS") {
+        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
         m_assigned_tpg_algorithm_function =
           &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
       } else {
@@ -543,8 +546,8 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           tp.tp.adc_peak = hit_peak_adc[i];
           tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
-          tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
-          tp.tp.version = 1; // FIXME!!!!
+          tp.tp.algorithm = m_tp_algo;
+          tp.tp.version = 1;
           if(tp.tp.time_over_threshold > m_tp_max_width) {
             ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
             m_tps_suppressed_too_long++;
