@@ -454,7 +454,7 @@ WIB2FrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdatafo
           tp.tp.adc_peak = hit_charge[i] / 20;
           tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
-          tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
+          tp.tp.algorithm = m_tp_algo;
           tp.tp.version = 1;
           if(tp.tp.time_over_threshold > m_tp_max_width) {
 		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));

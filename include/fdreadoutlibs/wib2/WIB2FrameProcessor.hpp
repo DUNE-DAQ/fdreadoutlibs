@@ -133,6 +133,9 @@ private:
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
+  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
+
   size_t m_num_msg = 0;
   size_t m_num_push_fail = 0;
 
