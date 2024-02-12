@@ -146,11 +146,15 @@ protected:
 
 private:
   bool m_tpg_enabled;
+  // Selected TPG algorithm from configuration 
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
+
+  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
