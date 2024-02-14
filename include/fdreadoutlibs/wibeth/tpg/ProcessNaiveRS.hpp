@@ -23,10 +23,6 @@ template<size_t NREGISTERS>
 void
 process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 {
-  // Start with taps as floats that add to 1. Multiply by some
-  // power of two (2**N) and round to int. Before filtering, cap the
-  // value of the input to INT16_MAX/(2**N)
-  const int16_t sigmaMax = (1 << 15) / (info.multiplier * 5);
   const float   R = 0.8; //"deweighting factor" for running sum
   //scaling factor to stop the ADCs from overflowing (may not needs this, depends on magnitude of FIR output) 
   const size_t  scale = 2; 
@@ -55,10 +51,10 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     int16_t& medianRS   = state.pedestalsRS[ichan]; //median for the RS waveform needed for IQR & separate pedsub
     int16_t& accumRS    = state.accumRS[ichan];
     //IQR
-    int16_t& accum25    = state.accum25[ichan];
-    int16_t& accum75    = state.accum75[ichan];
-    int16_t& quantile25 = state.quantile25[ichan];
-    int16_t& quantile75 = state.quantile75[ichan];
+    //int16_t& accum25    = state.accum25[ichan];
+    //int16_t& accum75    = state.accum75[ichan];
+    //int16_t& quantile25 = state.quantile25[ichan];
+    //int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
@@ -110,40 +106,13 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       ss << "  \tSecond part: " << second_part;
       ss << "  \tRS value: " << RS;
 
-
-
-
       // --------------------------------------------------------------
-      // Pedsub & IQR
+      // Second pedsub 
       // --------------------------------------------------------------      
-      ss << "  \t25: " << quantile25;
-      ss << "  \t75: " << quantile75;
-
-      if (RS < medianRS) {
-        frugal_accum_update(quantile25, RS, accum25, 10);      
-      }
-      if (RS > medianRS) {
-        frugal_accum_update(quantile75, RS, accum75, 10);
-      }  
       frugal_accum_update(medianRS, RS, accumRS, 10);
-
+      RS -= medianRS;
       ss << "  \tMedianRS: " << medianRS ;
 
-      /*
-      int16_t sigma = quantile75 - quantile25;
-
-     // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
-      sigma = std::min(sigma, sigmaMax);
-
-
-      ss << "  \tsigma: " << sigma;
-
-
-      RS -= medianRS;
-
-      ss << "  \tRS after pedsub: " << RS ;
-
-      */
       // --------------------------------------------------------------
       // Hit finding
       // --------------------------------------------------------------
@@ -151,7 +120,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       if (is_over) {
         // Simulate saturated add
         int32_t tmp_charge = hit_charge;
-        tmp_charge += sample >> info.tap_exponent;
+	tmp_charge += sample;
         tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
         if (sample > hit_peak_adc) {
           hit_peak_adc = (uint16_t)sample;
@@ -159,7 +128,6 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
         }
         hit_charge = (int16_t)tmp_charge;
         hit_tover++;
-        prev_was_over = true;
       }
       if (prev_was_over && !is_over) {
 
@@ -171,7 +139,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
         // We reached the end of the hit: write it out
         (*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = itime;           // NOLINT
+        (*output_loc++) = (uint16_t)itime;           // NOLINT
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
@@ -182,11 +150,10 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
         hit_peak_adc = 0;
         hit_peak_time = 0;
 
-
         ++nhits;
-        prev_was_over = false;
 
       } // end if left hit
+      prev_was_over = is_over;
 
       //std::cout << ss.str() << std::endl;      
 
