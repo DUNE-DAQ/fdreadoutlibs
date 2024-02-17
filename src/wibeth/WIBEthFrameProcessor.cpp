@@ -25,7 +25,7 @@
 
 
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
@@ -48,7 +48,7 @@ using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
-DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
 
 
 namespace dunedaq {
@@ -179,7 +179,7 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(output->UID());
+         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
       ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -517,7 +517,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
 
-	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+	  trigger::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
           tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
