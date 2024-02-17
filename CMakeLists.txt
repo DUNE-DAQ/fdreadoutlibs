@@ -13,10 +13,13 @@ find_package(opmonlib REQUIRED)
 find_package(readoutlibs REQUIRED)
 find_package(daqdataformats REQUIRED)
 find_package(detchannelmaps REQUIRED)
+find_package(trgdataformats REQUIRED)
 find_package(detdataformats REQUIRED)
 find_package(fddetdataformats REQUIRED)
 find_package(trigger REQUIRED)
-find_package(triggeralgs REQUIRED)
+find_package(hdf5libs REQUIRED)
+find_package(appdal REQUIRED)
+find_package(CLI11 REQUIRED)
 find_package(folly REQUIRED)
 find_package(Boost COMPONENTS iostreams unit_test_framework REQUIRED)
 set(BOOST_LIBS Boost::iostreams ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_LIBRARIES})
@@ -37,9 +40,10 @@ set(FDREADOUTLIBS_DEPENDENCIES
   opmonlib::opmonlib
   daqdataformats::daqdataformats
   detdataformats::detdataformats
+  trgdataformats::trgdataformats
   fddetdataformats::fddetdataformats
   trigger::trigger
-  triggeralgs::triggeralgs
+  appdal::appdal
   detchannelmaps::detchannelmaps
 )
 
@@ -57,8 +61,8 @@ daq_add_library(
   *.cpp
   #  wib/*.cpp
   #wib/tpg/*.cpp
-  wib2/*.cpp
-  wib2/tpg/*.cpp
+  #wib2/*.cpp
+  #wib2/tpg/*.cpp
   wibeth/*.cpp
   wibeth/tpg/*.cpp
   daphne/*.cpp

@@ -6,7 +6,7 @@
  * received with this code.
  */
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
-#include "appdal/TPDataProcessor.hpp"
+#include "appdal/RawDataProcessor.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
@@ -197,7 +197,7 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   // Check it post-processing is active
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
-    auto proc_conf = dp->cast<appdal::TPDataProcessor>();
+    auto proc_conf = dp->cast<appdal::RawDataProcessor>();
     if(proc_conf != nullptr) {  
       m_tpg_algorithm = proc_conf->get_algorithm();  
       TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
