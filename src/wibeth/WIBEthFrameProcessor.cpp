@@ -6,6 +6,7 @@
  * received with this code.
  */
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
+#include "coredal/GeoId.hpp""
 #include "appdal/RawDataProcessor.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
@@ -188,7 +189,14 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
 
   m_sourceid.id = conf->get_source_id();
   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
-  m_det_id = conf->get_detector_id();
+  auto geo_id = conf->get_geo_id();
+  if (geo_id != nullptr) {
+    m_det_id = geo_id->get_detector_id();
+    m_crate_id = geo_id->get_crate_id();
+    m_slot_id = geo_id->get_slot_id();
+    m_stream_id = geo_id->get_stream_id();
+  }
+  m_emulator_mode = conf->get_emulation_mode();
 
   // Setup pre-processing pipeline
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
@@ -198,7 +206,8 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
     auto proc_conf = dp->cast<appdal::RawDataProcessor>();
-    if(proc_conf != nullptr) {  
+    if(proc_conf != nullptr && proc_conf->get_mask_processing() == false) {  
+      m_tpg_enabled = true;
       m_tpg_algorithm = proc_conf->get_algorithm();  
       TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
       if (m_tpg_algorithm == "SimpleThreshold") {
@@ -218,18 +227,10 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
 
       m_tpg_threshold_selected = proc_conf->get_threshold();
 
-      //m_crate_no = config.crate_id;
-      //m_slot_no = config.slot_id;
-      //m_stream_id = config.link_id;
-      // Setup pre-processing pipeline
-      inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
-      inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
-      if (proc_conf->get_tpg_enabled()) {
-        m_tpg_enabled = true;
-        m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+      // Setup post-processing pipeline
+      m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
 
-        inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
-      }
+      inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
     }
   }
   inherited::conf(conf);
@@ -300,21 +301,21 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 void
 WIBEthFrameProcessor::sequence_check(frameptr fp)
 {
-/* FIXME: Make source emulator deal with this!
+  // FIXME: Make source emulator deal with this! Hard to do since source emu is templated...
   // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+  if (m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
     // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
       //auto wfh = const_cast<dunedaq::fddetdataformats::WIBEthFrame*>(wf->header());
-      wf->daq_header.crate_id = m_crate_no;
-      wf->daq_header.slot_id = m_slot_no;
+      wf->daq_header.crate_id = m_crate_id;
+      wf->daq_header.slot_id = m_slot_id;
       wf->daq_header.stream_id = m_stream_id; 
       wf->daq_header.seq_id = (m_previous_seq_id+i) & 0xfff;
       wf++;
     }
   }
-*/
+
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
@@ -365,22 +366,22 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   uint16_t wibeth_tick_difference = types::DUNEWIBEthTypeAdapter::expected_tick_difference;
   uint16_t wibeth_frame_tick_difference = wibeth_tick_difference * fp->get_num_frames();
 
-/* FIXME: let source emulator deal with this!
+  // FIXME: let source emulator deal with this!
   // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+  if (m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
     uint64_t ts_next = m_previous_ts + wibeth_frame_tick_difference; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
       //auto wfh = const_cast<dunedaq::fddetdataformats::WIBEthFrame*>(wf->header());
-      wf->daq_header.crate_id = m_crate_no;
-      wf->daq_header.slot_id = m_slot_no;
+      wf->daq_header.crate_id = m_crate_id;
+      wf->daq_header.slot_id = m_slot_id;
       wf->daq_header.stream_id = m_stream_id; 
       wf->set_timestamp(ts_next);
       ts_next += wibeth_tick_difference;
       wf++;
     }
   }
-*/
+
 
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
@@ -433,8 +434,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
     m_det_id = wfptr->daq_header.det_id;
-    if (wfptr->daq_header.crate_id != m_crate_no || wfptr->daq_header.slot_id != m_slot_no || wfptr->daq_header.stream_id != m_stream_id) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_no, m_slot_no, m_stream_id));
+    if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
     }
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
     // Populate the array 

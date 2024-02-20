@@ -160,9 +160,10 @@ private:
   std::atomic<int> m_tpg_hits_count{ 0 };
 
   uint32_t m_det_id; // NOLINT(build/unsigned)
-  uint32_t m_crate_no; // NOLINT(build/unsigned)
-  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
+  bool m_emulator_mode = false;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
