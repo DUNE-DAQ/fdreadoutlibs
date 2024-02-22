@@ -654,7 +654,7 @@ protected:
           trigprim.detid =
             m_fiber_no; // TODO: convert crate/slot/fiber to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kSimpleThreshold;
           trigprim.version = 1;
 
           if (m_first_coll) {
