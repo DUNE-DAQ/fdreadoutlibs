@@ -6,7 +6,7 @@
  * received with this code.
  */
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
-#include "coredal/GeoId.hpp""
+#include "coredal/GeoId.hpp"
 #include "appdal/RawDataProcessor.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
@@ -199,7 +199,9 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   m_emulator_mode = conf->get_emulation_mode();
 
   // Setup pre-processing pipeline
-  inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
+  if (!m_emulator_mode) 
+    inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
+
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
  
   // Check it post-processing is active
@@ -302,8 +304,8 @@ void
 WIBEthFrameProcessor::sequence_check(frameptr fp)
 {
   // FIXME: Make source emulator deal with this! Hard to do since source emu is templated...
-  // If EMU data, emulate perfectly incrementing timestamp
-  if (m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+  /* If EMU data, emulate perfectly incrementing timestamp
+  if (m_emulator_mode) {  
     // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
     for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
@@ -315,7 +317,8 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
       wf++;
     }
   }
-
+  */
+  	
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
@@ -353,8 +356,8 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
   }
 
   m_previous_seq_id = m_current_seq_id;
-}
 
+}
 
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
@@ -367,7 +370,7 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   uint16_t wibeth_frame_tick_difference = wibeth_tick_difference * fp->get_num_frames();
 
   // FIXME: let source emulator deal with this!
-  // If EMU data, emulate perfectly incrementing timestamp
+  /* If EMU data, emulate perfectly incrementing timestamp
   if (m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
     uint64_t ts_next = m_previous_ts + wibeth_frame_tick_difference; // NOLINT(build/unsigned)
     auto wf = reinterpret_cast<wibframeptr>(((uint8_t*)fp));            // NOLINT
@@ -380,10 +383,8 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
       ts_next += wibeth_tick_difference;
       wf++;
     }
-  }
+  }*/
 
-
-  // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
   m_current_ts = wfptr->get_timestamp();
 
