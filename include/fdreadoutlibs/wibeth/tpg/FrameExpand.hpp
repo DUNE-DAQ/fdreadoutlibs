@@ -205,12 +205,14 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
   const dunedaq::fddetdataformats::WIBEthFrame::word_t (*frame_words_ptr)[14] = frame_ptr->adc_words;
   //auto frame_words_ptr = frame_ptr->adc_words;  
 
+  int reg_index = 0;
   // Loop over time frames
   for (size_t i = 0; i < swtpg_wibeth::FRAMES_PER_MSG; ++i) {
 
     // The register index is used to decide on which of the 
     // registers we want to unpack the ADC messages
-    int reg_index = 0;
+    //int reg_index = 0;
+    reg_index = 0;
 
     // Loop over ADC values (channels) in a given time sample
     for (int j = 0; j < num_adc_words_per_ts; j++) {
@@ -272,8 +274,10 @@ parse_wibeth_adcs(swtpg_wibeth::MessageRegisters* __restrict__ register_array)
       out_val = register_array->uint16(index);
 
       if (itime  == 0) {
-        std::cout << "time_sample: " << itime << " index_output: " << index << "    value:   " << out_val << std::endl;
-      //  std::cout << "============" << std::endl;
+        //std::cout << "register_offset: " << register_offset << " register_index: " << register_index << " register_t0_start: " << register_t0_start << std::endl;
+        //std::cout << "msg_index: " << msg_index << " msg_time_offset: " << msg_time_offset << " msg_start_index: " << msg_start_index << " offset_within_msg: " << offset_within_msg << " index: " << index << std::endl;
+        std::cout << "channel: " << j << " time_sample: " << itime << " index_output: " << index << "    value:   " << out_val << std::endl;
+        std::cout << "============" << std::endl;
       }
 
     }

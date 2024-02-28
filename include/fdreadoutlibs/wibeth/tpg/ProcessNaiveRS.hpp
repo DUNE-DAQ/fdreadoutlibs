@@ -61,9 +61,11 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
-    int16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
-    int16_t& hit_charge = state.hit_charge[ichan];
-    int16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
+    uint16_t& hit_charge = state.hit_charge[ichan];
+    uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
+    uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
+    uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold    
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
       const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
@@ -84,7 +86,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       ss << "ADC value: " << sample;
 
-      frugal_accum_update(median, sample, accum, 10);
+      //frugal_accum_update(median, sample, accum, 10);
+      frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
       sample -= median;
 
       ss << "\tsample: " << sample;
@@ -112,7 +115,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       // --------------------------------------------------------------
       // Pedsub & IQR
-      // --------------------------------------------------------------
+      // --------------------------------------------------------------      
       ss << "  \t25: " << quantile25;
       ss << "  \t75: " << quantile75;
 
@@ -126,7 +129,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       ss << "  \tMedianRS: " << medianRS ;
 
-
+      /*
       int16_t sigma = quantile75 - quantile25;
 
      // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
@@ -140,16 +143,20 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
       ss << "  \tRS after pedsub: " << RS ;
 
-      
+      */
       // --------------------------------------------------------------
       // Hit finding
       // --------------------------------------------------------------
-      bool is_over = RS > 5 * sigma;
+      bool is_over = RS > info.threshold;
       if (is_over) {
         // Simulate saturated add
         int32_t tmp_charge = hit_charge;
         tmp_charge += sample >> info.tap_exponent;
         tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
+        if (sample > hit_peak_adc) {
+          hit_peak_adc = (uint16_t)sample;
+          hit_peak_time = hit_tover;
+        }
         hit_charge = (int16_t)tmp_charge;
         hit_tover++;
         prev_was_over = true;
@@ -167,9 +174,14 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
         (*output_loc++) = itime;           // NOLINT
         (*output_loc++) = hit_charge;      // NOLINT
         (*output_loc++) = hit_tover;       // NOLINT
+        (*output_loc++) = hit_peak_adc;    // NOLINT
+        (*output_loc++) = hit_peak_time;   // NOLINT        
 
         hit_charge = 0;
         hit_tover = 0;
+        hit_peak_adc = 0;
+        hit_peak_time = 0;
+
 
         ++nhits;
         prev_was_over = false;
@@ -183,7 +195,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
   }   // end loop over channels
 
   // Write a magic "end-of-hits" value into the list of hits
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 6; ++i) {
     (*output_loc++) = MAGIC; // NOLINT
   }
 

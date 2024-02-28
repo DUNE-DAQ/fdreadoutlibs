@@ -35,9 +35,9 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 		          ((uint64_t)width) ((uint64_t)channel))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  TPDropped,
-                  "TP with ToT " << width << " for channel " << channel,
-                  ((uint64_t)width) ((uint64_t)channel))
+                  FailedToSendTP,
+                  "Failed to send TP with start time " << s_ts << " and channel number " << channel,
+                  ((dunedaq::daqdataformats::timestamp_t)s_ts) ((uint64_t)channel))
 
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,

@@ -31,7 +31,8 @@
 #include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
 
 #include <atomic>
@@ -66,8 +67,7 @@ WIBEthFrameHandler::~WIBEthFrameHandler()
   if (m_tpg_taps_p) {
     delete[] m_tpg_taps_p;
   }
-  if (m_hits_dest)
-	  delete[] m_hits_dest;
+  if (m_hits_dest) delete[] m_hits_dest;
 }
 
 void
@@ -76,9 +76,8 @@ WIBEthFrameHandler::reset()
   if (m_tpg_taps_p)
       	delete[] m_tpg_taps_p;
   m_tpg_taps_p = nullptr;
-  if (m_hits_dest)
-        delete[] m_hits_dest;
-  m_hits_dest = nullptr;
+  if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
+
   first_hit = true;
 }
 
@@ -97,9 +96,7 @@ WIBEthFrameHandler::initialize(int threshold_value)
     m_tpg_taps_p[i] = m_tpg_taps[i];
   }
 
-  if(m_hits_dest == nullptr) {
-	m_hits_dest = new uint16_t[100000];
-  }
+  if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
 
   m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
                                                                                                             swtpg_wibeth::FRAMES_PER_MSG,
@@ -121,7 +118,6 @@ WIBEthFrameHandler::get_hits_dest()
   return m_hits_dest;
 }
 
-
 WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
   , m_tpg_enabled(false)
@@ -138,7 +134,8 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
 {
   // Reset software TPG resources
   if (m_tpg_enabled) {
-    m_tps_dropped = 0;
+    m_tps_suppressed_too_long = 0;
+    m_tps_send_failed = 0;
 
     m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
   } // end if(m_tpg_enabled)
@@ -216,7 +213,9 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
       } else if (m_tpg_algorithm == "AbsRS" ) {
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      } else {
+      }  else if (m_tpg_algorithm == "StandardRS" ) {
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+  } else {
         throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
       }
 
@@ -254,15 +253,17 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
   if (m_tpg_enabled) {
     int new_hits = m_tpg_hits_count.exchange(0);
     int new_tps = m_new_tps.exchange(0);
-    int new_dropped_tps = m_tps_dropped.exchange(0);
+    int new_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
+    int new_tps_send_failed = m_tps_send_failed.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-    //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_dropped_tps / seconds / 1000.) << " [kHz]";;
+    //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_tps_suppressed_too_long / seconds / 1000.) << " [kHz]";;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
     info.rate_tp_hits = new_hits / seconds / 1000.;
 
     info.num_tps_sent = new_tps;
-    info.num_tps_dropped = new_dropped_tps;
+    info.num_tps_suppressed_too_long = new_tps_suppressed_too_long;
+    info.num_tps_send_failed = new_tps_send_failed;
     // Find the channels with the top  TP rates
     // Create a vector of pairs to store the map elements
     std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
@@ -475,7 +476,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
 
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16]; // NOLINT(build/unsigned)
+  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], left[16]; // NOLINT(build/unsigned)
   unsigned int nhits = 0;
 
   while (*primfind_it != swtpg_wibeth::MAGIC) {
@@ -483,7 +484,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
-    for (int i = 0; i < 16; ++i) {
+   for (int i = 0; i < 16; ++i) {
       hit_end[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
     for (int i = 0; i < 16; ++i) {
@@ -494,18 +495,29 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
       // hit_tover[i] = static_cast<uint16_t>(*primfind_it++); // NOLINT(runtime/increment_decrement)
       hit_tover[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
     }
-
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_adc[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+    for (int i = 0; i < 16; ++i) {
+      hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }  
+    for (int i = 0; i < 16; ++i) {
+      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
+    }
+ 
     // Now that we have all the register values in local
     // variables, loop over the register index (ie, channel) and
     // find the channels which actually had a hit, as indicated by
     // nonzero value of hit_charge
     for (int i = 0; i < 16; ++i) {
-      if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
+      // AAA: condition on the left hits makes sure to count hits
+      // correctly when they are spread across multiple channels 	    
+      if (hit_charge[i] && left[i] == swtpg_wibeth::MAGIC
+          && chan[i] != swtpg_wibeth::MAGIC) {
 
-        uint64_t tp_t_begin =                                                           // NOLINT(build/unsigned)
-            timestamp + clocksPerTPCTick * (int64_t(hit_end[i]) - int64_t(hit_tover[i])); // NOLINT(build/unsigned)
-        uint64_t tp_t_end = timestamp + clocksPerTPCTick * int64_t(hit_end[i]);         // NOLINT(build/unsigned)
-        //TLOG() << "Hit start " << tp_t_begin << ", end: " << tp_t_end << ", online channel: " << chan[i];
+        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
+        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
+
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];
         if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
@@ -521,26 +533,28 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
 	  trigger::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
-          tp.tp.time_peak = (tp_t_begin + tp_t_end) / 2;
-          tp.tp.time_over_threshold = int64_t(hit_tover[i]) * clocksPerTPCTick;
+          tp.tp.time_peak = tp_t_peak;
+	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
-          tp.tp.adc_peak = hit_charge[i] / 20;
-          tp.tp.detid =  m_det_id; // TODO: May just be hardcoded to TDAQ?
+          tp.tp.adc_peak = hit_peak_adc[i];
+          tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
           tp.tp.algorithm = trgdataformats::TriggerPrimitive::Algorithm::kTPCDefault;
           tp.tp.version = 1; // FIXME!!!!
           if(tp.tp.time_over_threshold > m_tp_max_width) {
-		  ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
-		  m_tps_dropped++;
+            ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
+            m_tps_suppressed_too_long++;
 	  }
 	  //Send the TP to the TP handler module
 	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
-		 ers::warning(TPDropped(ERS_HERE, tp.tp.time_start, tp.tp.channel));
-		 m_tps_dropped++;
-	  }	 
-          m_new_tps++;
-          ++nhits;
+            ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
+            m_tps_send_failed++;
+	  }
+          else {
+            m_new_tps++;
+            ++nhits;
+          }
 
           // Update the channel/rate map. Increment the value associated with the TP channel
           m_tp_channel_rate_map[offline_channel]++;

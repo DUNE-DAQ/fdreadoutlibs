@@ -65,7 +65,7 @@ public:
   uint16_t* get_hits_dest();
 private: 
   int m_register_selector;    
-  uint16_t* m_hits_dest ;
+  uint16_t* m_hits_dest;
   uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
   const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
   const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
@@ -182,7 +182,8 @@ private:
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_tps_dropped{ 0 };
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
