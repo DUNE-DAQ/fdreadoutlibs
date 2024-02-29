@@ -115,7 +115,7 @@ public:
       m_tphandler->set_run_number(start_params.run);
   
       m_tphandler->reset();
-      m_tps_dropped = 0;
+      m_tps_suppressed_too_long = 0;
 
       m_coll_taps = swtpg::firwin_int(7, 0.1, m_coll_multiplier);
       m_coll_taps.push_back(0);
@@ -300,7 +300,7 @@ public:
     if (m_tphandler != nullptr) {
       info.num_tps_sent = m_tphandler->get_and_reset_num_sent_tps();
       info.num_tpsets_sent = m_tphandler->get_and_reset_num_sent_tpsets();
-      info.num_tps_dropped = m_tps_dropped.exchange(0);
+      info.num_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
     }
     info.num_frame_errors = m_frame_error_count.exchange(0);
 
@@ -654,7 +654,7 @@ protected:
           trigprim.detid =
             m_fiber_no; // TODO: convert crate/slot/fiber to SourceID Roland Sipos rsipos@cern.ch July-22-2021
           trigprim.type = triggeralgs::TriggerPrimitive::Type::kTPC;
-          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kTPCDefault;
+          trigprim.algorithm = triggeralgs::TriggerPrimitive::Algorithm::kSimpleThreshold;
           trigprim.version = 1;
 
           if (m_first_coll) {
@@ -663,7 +663,7 @@ protected:
           }
 
           if (!m_tphandler->add_tp(trigprim, timestamp)) {
-            m_tps_dropped++;
+            m_tps_suppressed_too_long++;
           }
 
           m_new_tps++;
@@ -751,7 +751,7 @@ private:
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_tps_dropped{ 0 };
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };

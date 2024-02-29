@@ -133,6 +133,9 @@ private:
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
+  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
+
   size_t m_num_msg = 0;
   size_t m_num_push_fail = 0;
 
@@ -165,7 +168,8 @@ private:
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_tps_dropped{ 0 };
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };

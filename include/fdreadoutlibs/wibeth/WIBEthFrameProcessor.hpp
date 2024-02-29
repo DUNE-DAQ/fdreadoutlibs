@@ -146,11 +146,15 @@ protected:
 
 private:
   bool m_tpg_enabled;
+  // Selected TPG algorithm from configuration 
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
+
+  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
@@ -181,7 +185,8 @@ private:
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_tps_dropped{ 0 };
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
