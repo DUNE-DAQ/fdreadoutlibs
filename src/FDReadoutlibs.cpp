@@ -4,7 +4,6 @@
 #include "fdreadoutlibs/ssp/SSPFrameProcessor.hpp"
 //#include "fdreadoutlibs/wib/SWWIBTriggerPrimitiveProcessor.hpp"
 //#include "fdreadoutlibs/wib/WIBFrameProcessor.hpp"
-#include "fdreadoutlibs/wib2/WIB2FrameProcessor.hpp"
+//#include "fdreadoutlibs/wib2/WIB2FrameProcessor.hpp"
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp"
 #include "fdreadoutlibs/tde/TDEFrameProcessor.hpp"
-#include "fdreadoutlibs/TPCTPRequestHandler.hpp"

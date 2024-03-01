@@ -15,11 +15,13 @@
 
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
 
-#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
 //#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
 //#include "trigger/TPSet.hpp"
 
+#include "appdal/ReadoutModule.hpp"
+#include "coredal/Connection.hpp"
 #include "daqdataformats/Types.hpp"
 
 #include "tpg/ProcessingInfo.hpp"
@@ -90,9 +92,7 @@ public:
 
   void stop(const nlohmann::json& args) override;
 
-  void init(const nlohmann::json& args) override;
-
-  void conf(const nlohmann::json& cfg) override;
+  void conf(const appdal::ReadoutModule* conf) override;
 
   void get_info(opmonlib::InfoCollector& ci, int level) override;
 
@@ -148,8 +148,8 @@ private:
   bool m_tpg_enabled;
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
-  std::vector<int> m_channel_mask_vec;
-  std::set<uint> m_channel_mask_set;
+  std::vector<unsigned int> m_channel_mask_vec;
+  std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
@@ -160,9 +160,10 @@ private:
   std::atomic<int> m_tpg_hits_count{ 0 };
 
   uint32_t m_det_id; // NOLINT(build/unsigned)
-  uint32_t m_crate_no; // NOLINT(build/unsigned)
-  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
+  bool m_emulator_mode = false;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
@@ -171,7 +172,7 @@ private:
 
     std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
 
-  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
   std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
 

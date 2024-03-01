@@ -16,15 +16,14 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-TDEFrameProcessor::conf(const nlohmann::json& args)
+TDEFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
   inherited::add_preprocess_task(
       std::bind(&TDEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&TDEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  inherited::conf(args);
+  inherited::conf(conf);
 
-  auto config = args["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
-  m_clock_frequency = config.clock_speed_hz;
+  m_clock_frequency = 50000000; //FIXME
 }
 
 /**
@@ -33,9 +32,9 @@ TDEFrameProcessor::conf(const nlohmann::json& args)
 void 
 TDEFrameProcessor::timestamp_check(frameptr fp)
 {
-  
   //auto tdef.= reinterpret_cast<dunedaq::fddetdataformats::TDE16Frame*>(fp); // NOLINT
   auto tdef = fp->data; // NOLINT
+  /* Let Source Emulator deal with this 
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) {         // emulate perfectly incrementing timestamp
     if (m_previous_ts[tdef.get_channel()] == 0) 
@@ -43,7 +42,7 @@ TDEFrameProcessor::timestamp_check(frameptr fp)
     auto ts_next = m_previous_ts[tdef.get_channel()] + (dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples); // NOLINT(build/unsigned)
     tdef.set_timestamp(ts_next);
   }
-
+*/
   // Acquire timestamp
   m_current_ts = tdef.get_timestamp();
   auto ch = tdef.get_channel();

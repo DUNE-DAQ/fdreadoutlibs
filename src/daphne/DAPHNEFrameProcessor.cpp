@@ -21,12 +21,12 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-DAPHNEFrameProcessor::conf(const nlohmann::json& args)
+DAPHNEFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
   readoutlibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(args);
+  TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(conf);
 }
 
 /**
@@ -35,6 +35,8 @@ DAPHNEFrameProcessor::conf(const nlohmann::json& args)
 void 
 DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 {
+  // Let Source Emulator deal with this
+  /*	
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
     // RS warning : not fixed rate!
@@ -44,7 +46,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
     } else {
       fp->fake_timestamps(m_previous_ts + 192, 16);
     }
-  }
+  }*/
 
   // Acquire timestamp
   m_current_ts = fp->get_first_timestamp();

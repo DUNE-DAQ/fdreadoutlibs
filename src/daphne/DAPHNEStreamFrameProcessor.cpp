@@ -21,12 +21,12 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-DAPHNEStreamFrameProcessor::conf(const nlohmann::json& args)
+DAPHNEStreamFrameProcessor::conf(const appdal::ReadoutModule* conf)
 {
   readoutlibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>::add_preprocess_task(
     std::bind(&DAPHNEStreamFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&DAPHNEStreamFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>::conf(args);
+  TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>::conf(conf);
 }
 
 /**
@@ -35,6 +35,7 @@ DAPHNEStreamFrameProcessor::conf(const nlohmann::json& args)
 void 
 DAPHNEStreamFrameProcessor::timestamp_check(frameptr fp)
 {
+/* Let Source Emulator deal with this
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
     uint64_t ts_next = m_previous_ts + 64; // NOLINT(build/unsigned)
@@ -46,7 +47,7 @@ DAPHNEStreamFrameProcessor::timestamp_check(frameptr fp)
       df++;
     }
   }
-
+*/
   // Acquire timestamp
   m_current_ts = fp->get_first_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
