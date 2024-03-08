@@ -58,17 +58,16 @@ public:
 
   void reset();
 
-  void initialize(int threshold_value);
+  void initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, uint16_t frug_streaming_acclimt);
  
   uint16_t* get_hits_dest();
+
+
 private: 
   int m_register_selector;    
   uint16_t* m_hits_dest;
-  uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
-  const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
-  const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
-  std::vector<int16_t> m_tpg_taps;                       // firwin_int(7, 0.1, multiplier);
-  int16_t* m_tpg_taps_p = nullptr;
+  const uint8_t m_tpg_exponent = 6;                  // NOLINT(build/unsigned)
+  const int m_tpg_multiplier = 1 << m_tpg_exponent;  // 64
 };
 
 class WIBEthFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
@@ -146,12 +145,17 @@ protected:
 
 private:
   bool m_tpg_enabled;
-  // Selected TPG algorithm from configuration 
+  // Selected TPG algorithm properties from configuration 
   std::string m_tpg_algorithm;
+  float m_tpg_rs_memory_factor;
+  uint16_t m_tpg_rs_scale_factor;
+  uint16_t m_tpg_frugal_streaming_accumulator_limit;
+
+
   uint32_t m_tp_max_width;
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
-  uint16_t m_tpg_threshold_selected;
+  uint16_t m_tpg_threshold;
 
   // Algorithm used to form a trigger primitive
   dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
@@ -173,7 +177,7 @@ private:
   // Mapping from expanded AVX register position to offline channel number
   std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
 
-    std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+  std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
 
   std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;

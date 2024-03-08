@@ -35,14 +35,8 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
-      for (size_t j = 0; j < NTAPS; ++j) {
-        prev_samp[i * NTAPS + j] = 0;
-      }
     }
   }
-
-  // TODO: DRY July-22-2021 Philip Rodrigues (rodriges@fnal.gov)
-  static const int NTAPS = 8;
 
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -58,9 +52,6 @@ struct ChanState
   
   alignas(32) int16_t __restrict__ quantile25[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ quantile75[NREGISTERS * SAMPLES_PER_REGISTER];
-
-  // Variables for filtering
-  alignas(32) int16_t __restrict__ prev_samp[NREGISTERS * SAMPLES_PER_REGISTER * NTAPS];
 
   // Variables for hit finding
   alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
@@ -79,25 +70,23 @@ struct ProcessingInfo
                  uint8_t first_register_,           // NOLINT
                  uint8_t last_register_,            // NOLINT
                  uint16_t* __restrict__ output_,    // NOLINT
-                 const int16_t* __restrict__ taps_, // NOLINT
-                 int16_t ntaps_,
-                 const uint8_t tap_exponent_, // NOLINT
+                 const uint8_t exponent_, // NOLINT
                  uint16_t threshold_,         // NOLINT
-                 size_t nhits_,
-                 uint16_t absTimeModNTAPS_) // NOLINT
+                 uint8_t rs_memory_factor_, // NOLINT
+                 uint16_t rs_scale_factor_, // NOLINT
+                 uint16_t frugal_streaming_accumulator_limit_, // NOLINT 
+                 size_t nhits_
+                ) // NOLINT
     : input(input_)
     , timeWindowNumFrames(timeWindowNumFrames_)
     , first_register(first_register_)
     , last_register(last_register_)
     , output(output_)
-    , taps(taps_)
-    , ntaps(ntaps_)
-    , tap_exponent(tap_exponent_)
+    , exponent(exponent_)
     , threshold(threshold_)
-    , multiplier(1 << tap_exponent)
+    , multiplier(1 << exponent)
     , adcMax(INT16_MAX / multiplier)
-    , nhits(nhits_)
-    , absTimeModNTAPS(absTimeModNTAPS_)
+    , nhits(nhits_)    
   {}
 
 
@@ -149,14 +138,11 @@ struct ProcessingInfo
   uint8_t first_register;        // NOLINT
   uint8_t last_register;         // NOLINT
   uint16_t* __restrict__ output; // NOLINT
-  const int16_t* __restrict__ taps;
-  int16_t ntaps;
-  uint8_t tap_exponent; // NOLINT
+  uint8_t exponent; // NOLINT
   uint16_t threshold;   // NOLINT
   int16_t multiplier;
   int16_t adcMax;
   size_t nhits;
-  uint16_t absTimeModNTAPS; // NOLINT
   ChanState<NREGISTERS> chanState;
 };
 
