@@ -94,14 +94,14 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       //printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, sample, info.threshold); // NOLINT
       if (is_over) {
         // Simulate saturated add
-        uint32_t tmp_charge = hit_charge;
+        int32_t tmp_charge = hit_charge;
         tmp_charge += sample;
-        tmp_charge = std::min(tmp_charge, std::numeric_limits<uint32_t>::max());
+        tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
         if (sample > hit_peak_adc) {
           hit_peak_adc = (uint16_t)sample;
           hit_peak_time = hit_tover;
         }
-        hit_charge = tmp_charge;
+        hit_charge = (int16_t)tmp_charge;
         hit_tover++;
       }
       if (prev_was_over && !is_over) {
