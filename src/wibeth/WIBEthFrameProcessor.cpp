@@ -185,16 +185,18 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   }  else if (m_tpg_algorithm == "StandardRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
 
   // Extract algorithm specif configurations
-
-
   // AAA: In the Running Sum algorithms, we multiply everything by 10 
   // in order to deal with only integers instead of floats
   m_tpg_rs_memory_factor = 10*config.tpg_rs_memory_factor;
@@ -204,9 +206,9 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   m_tpg_rs_scale_factor  = 10/config.tpg_rs_scale_factor;
 
   m_tpg_frugal_streaming_accumulator_limit = config.tpg_frugal_streaming_accumulator_limit;
-  TLOG() << "RS memory factor " << m_tpg_rs_memory_factor;
-  TLOG() << "RS scale factor " << m_tpg_rs_scale_factor;
-  TLOG() << "Frugal streaming acc limit " << m_tpg_frugal_streaming_accumulator_limit; 
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS memory factor " << m_tpg_rs_memory_factor;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS scale factor " << m_tpg_rs_scale_factor;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Frugal streaming acc limit " << m_tpg_frugal_streaming_accumulator_limit; 
 
   m_tp_max_width = config.tp_timeout;
 

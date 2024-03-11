@@ -146,7 +146,7 @@ protected:
 private:
   bool m_tpg_enabled;
 
-  bool m_enable_simple_threshold_on_collection;
+  bool m_enable_simple_threshold_on_collection = false;
   // Selected TPG algorithm properties from configuration 
   std::string m_tpg_algorithm;
   uint16_t m_tpg_rs_memory_factor;
