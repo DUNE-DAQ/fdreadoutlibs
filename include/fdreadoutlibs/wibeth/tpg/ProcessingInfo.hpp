@@ -26,8 +26,9 @@ struct ChanState
       pedestals[i] = 0;
       accum[i] = 0;
       RS[i] = 0; 
-      pedestalsRS[i] = 0;
+      pedestalsRS[i] = 0;      
       accumRS[i] = 0;
+      RS_memory_factor[i] = 0;
       accum25[i] = 0;
       accum75[i] = 0;
       prev_was_over[i] = 0;
@@ -45,6 +46,8 @@ struct ChanState
   alignas(32) int16_t __restrict__ RS[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ pedestalsRS[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accumRS[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) uint16_t __restrict__ RS_memory_factor[NREGISTERS * SAMPLES_PER_REGISTER];
+
 
   //Variables for IQR
   alignas(32) int16_t __restrict__ accum25[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -72,9 +75,9 @@ struct ProcessingInfo
                  uint16_t* __restrict__ output_,    // NOLINT
                  const uint8_t exponent_, // NOLINT
                  uint16_t threshold_,         // NOLINT
-                 uint8_t rs_memory_factor_, // NOLINT
+                 uint16_t rs_memory_factor_, // NOLINT
                  uint16_t rs_scale_factor_, // NOLINT
-                 uint16_t frugal_streaming_accumulator_limit_, // NOLINT 
+                 int16_t frugal_streaming_accumulator_limit_, // NOLINT 
                  size_t nhits_
                 ) // NOLINT
     : input(input_)
@@ -95,13 +98,16 @@ struct ProcessingInfo
 
   // Set the initial state from the window starting at first_msg_p
   template<size_t N>
-  void setState(const RegisterArray<N>& first_tick_registers)
+  void setState(const RegisterArray<N>& first_tick_registers, 
+                std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER>& register_memory_factor
+               )
   {
     static_assert(N >= NREGISTERS, "Wrong array size");
 
     // AAA: Loop through all the registers, loop through all the channels, look at the 
     // first message of the superchunk and read the ADC value. This will be used as the 
     // pedestal for the channel state
+    std::cout << "Printing values of the memory factor: ";
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       const size_t register_offset = j % SAMPLES_PER_REGISTER; 
       const size_t register_index = j / SAMPLES_PER_REGISTER;
@@ -123,6 +129,9 @@ struct ProcessingInfo
         break; // breaking in order to select only the first entry
       }
 
+      // Set up the channel state for the memory factor
+      chanState.RS_memory_factor[j] = register_memory_factor[j];
+    
       // Set the pedestals and the 25/75-percentiles
       chanState.pedestals[j] = ped;
       chanState.pedestalsRS[j] = 0;
@@ -134,6 +143,8 @@ struct ProcessingInfo
       chanState.quantile25[j] = ped-20;
       chanState.quantile75[j] = ped+20;
     }
+    std::cout << '\n' ;
+    
   }  
 
   const RegisterArray<NREGISTERS * FRAMES_PER_MSG>* __restrict__ input;
@@ -143,9 +154,9 @@ struct ProcessingInfo
   uint16_t* __restrict__ output; // NOLINT
   uint8_t exponent; // NOLINT
   uint16_t threshold;   // NOLINT
-  uint8_t rs_memory_factor;   // NOLINT
+  uint16_t rs_memory_factor;   // NOLINT
   uint16_t rs_scale_factor;   // NOLINT
-  uint16_t frugal_streaming_accumulator_limit;   // NOLINT
+  int16_t frugal_streaming_accumulator_limit;   // NOLINT
 
 
   int16_t multiplier;

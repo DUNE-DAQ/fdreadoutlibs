@@ -58,7 +58,7 @@ public:
 
   void reset();
 
-  void initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt);
+  void initialize(uint16_t threshold_value, uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt);
  
   uint16_t* get_hits_dest();
 
@@ -145,9 +145,11 @@ protected:
 
 private:
   bool m_tpg_enabled;
+
+  bool m_enable_simple_threshold_on_collection;
   // Selected TPG algorithm properties from configuration 
   std::string m_tpg_algorithm;
-  float m_tpg_rs_memory_factor;
+  uint16_t m_tpg_rs_memory_factor;
   uint16_t m_tpg_rs_scale_factor;
   int16_t m_tpg_frugal_streaming_accumulator_limit;
 
@@ -176,6 +178,13 @@ private:
 
   // Mapping from expanded AVX register position to offline channel number
   std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+
+
+  // Create an array to store the values of the memory factor 
+  // AAA: silver bullet to be able to use SimpleThreshold on collection and RS on induction planes
+  // By default set all the values to the selected memory factor 
+  std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_memory_factor = {0};
+
 
   std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
 

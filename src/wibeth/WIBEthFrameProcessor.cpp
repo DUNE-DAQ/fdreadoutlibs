@@ -72,18 +72,8 @@ WIBEthFrameHandler::reset()
 }
 
 void
-WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
+WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
 {
-
-  // AAA: In the Running Sum algorithms, we multiply everything by 10 
-  // in order to deal with only integers instead of floats
-  uint8_t rs_memory_factor = 10*memory_factor;
-
-  // In the RS algorithms we divide by the scale factor and multiply by 10
-  uint16_t rs_scale_factor = 10/scale_factor;
-
-  int16_t tpg_frugal_streaming_accumulator_limit = frug_streaming_acclimt;
-
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
 
@@ -94,9 +84,9 @@ WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, ui
                                                                                                             m_hits_dest,
                                                                                                             m_tpg_exponent,
                                                                                                             threshold_value,
-                                                                                                            rs_memory_factor,
-                                                                                                            rs_scale_factor,
-                                                                                                            tpg_frugal_streaming_accumulator_limit,
+                                                                                                            memory_factor,
+                                                                                                            scale_factor,
+                                                                                                            frug_streaming_acclimt,
                                                                                                             0);
 }
 
@@ -203,8 +193,16 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   }
 
   // Extract algorithm specif configurations
-  m_tpg_rs_memory_factor = config.tpg_rs_memory_factor;
-  m_tpg_rs_scale_factor  = config.tpg_rs_scale_factor;
+
+
+  // AAA: In the Running Sum algorithms, we multiply everything by 10 
+  // in order to deal with only integers instead of floats
+  m_tpg_rs_memory_factor = 10*config.tpg_rs_memory_factor;
+
+  // In the Running Sum algorithms we divide by the scale factor and multiply by 10
+  // Potential mismatch when using 
+  m_tpg_rs_scale_factor  = 10/config.tpg_rs_scale_factor;
+
   m_tpg_frugal_streaming_accumulator_limit = config.tpg_frugal_streaming_accumulator_limit;
   TLOG() << "RS memory factor " << m_tpg_rs_memory_factor;
   TLOG() << "RS scale factor " << m_tpg_rs_scale_factor;
@@ -228,7 +226,6 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   if (config.enable_tpg) {
     m_tpg_enabled = true;
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
-
     inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
   }
 
@@ -430,16 +427,28 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   if (frame_handler->first_hit) {
     frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map);
 
-    frame_handler->m_tpg_processing_info->setState(registers_array);
-
     m_det_id = wfptr->daq_header.det_id;
     if (wfptr->daq_header.crate_id != m_crate_no || wfptr->daq_header.slot_id != m_slot_no || wfptr->daq_header.stream_id != m_stream_id) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_no, m_slot_no, m_stream_id));
     }
+
+
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
     // Populate the array 
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-      m_register_channels[i] = frame_handler->register_channel_map.channel[i];
+      auto chan_value = frame_handler->register_channel_map.channel[i];
+      m_register_channels[i] = chan_value;
+
+      if (m_enable_simple_threshold_on_collection) {
+        // If the given channel is a collection then set R (memory factor) to zero
+        if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) {
+          m_register_memory_factor[i] = 0;
+        } else {
+          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        }
+      } else {
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+      }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
 
@@ -447,13 +456,13 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    //TLOG() << "Processed the first frame ";
+    frame_handler->m_tpg_processing_info->setState(registers_array, m_register_memory_factor);
+
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
 
   } // end if (frame_handler->first_hit)
-
 
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
