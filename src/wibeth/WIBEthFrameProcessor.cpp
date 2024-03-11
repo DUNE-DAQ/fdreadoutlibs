@@ -72,7 +72,7 @@ WIBEthFrameHandler::reset()
 }
 
 void
-WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, uint16_t frug_streaming_acclimt)
+WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
 {
 
   // AAA: In the Running Sum algorithms, we multiply everything by 10 
@@ -82,7 +82,7 @@ WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, ui
   // In the RS algorithms we divide by the scale factor and multiply by 10
   uint16_t rs_scale_factor = 10/scale_factor;
 
-  uint16_t tpg_frugal_streaming_accumulator_limit = frug_streaming_acclimt;
+  int16_t tpg_frugal_streaming_accumulator_limit = frug_streaming_acclimt;
 
 
   TLOG() << "INITIALIZE: RS memory factor " << rs_memory_factor;

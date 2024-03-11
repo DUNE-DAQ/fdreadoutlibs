@@ -27,11 +27,11 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       
 
   // Running sum scaling factor
-  const __m256i R_factor = _mm256_set1_epi16(8);
+  const __m256i R_factor = _mm256_set1_epi16(info.rs_memory_factor);
 
   // Scaling factor to stop the ADCs from overflowing 
   // (may not needs this, depends on magnitude of FIR output) 
-  const __m256i scale_factor = _mm256_set1_epi16(5);
+  const __m256i scale_factor = _mm256_set1_epi16(info.rs_scale_factor);
 
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
   //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
@@ -114,7 +114,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Update the median itself in all channels
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);
@@ -151,7 +151,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
 
       // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
