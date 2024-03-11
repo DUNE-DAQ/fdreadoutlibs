@@ -85,12 +85,6 @@ WIBEthFrameHandler::initialize(uint16_t threshold_value, float memory_factor, ui
   int16_t tpg_frugal_streaming_accumulator_limit = frug_streaming_acclimt;
 
 
-  TLOG() << "INITIALIZE: RS memory factor " << rs_memory_factor;
-  TLOG() << "INITIALIZE: RS scale factor " << rs_scale_factor;
-  TLOG() << "INITIALIZE: Frugal streaming acc limit " << tpg_frugal_streaming_accumulator_limit; 
-
-
-
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
 
   m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
@@ -534,10 +528,10 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
 
-	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+	        fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = tp_t_peak;
-	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
+	        tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
           tp.tp.adc_peak = hit_peak_adc[i];
@@ -548,7 +542,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           if(tp.tp.time_over_threshold > m_tp_max_width) {
             ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
             m_tps_suppressed_too_long++;
-	  }
+	        }
 	  //Send the TP to the TP handler module
 	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
