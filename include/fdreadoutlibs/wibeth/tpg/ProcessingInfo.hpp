@@ -84,6 +84,9 @@ struct ProcessingInfo
     , output(output_)
     , exponent(exponent_)
     , threshold(threshold_)
+    , rs_memory_factor(rs_memory_factor_)
+    , rs_scale_factor(rs_scale_factor_)
+    , frugal_streaming_accumulator_limit(frugal_streaming_accumulator_limit_)
     , multiplier(1 << exponent)
     , adcMax(INT16_MAX / multiplier)
     , nhits(nhits_)    
@@ -140,6 +143,11 @@ struct ProcessingInfo
   uint16_t* __restrict__ output; // NOLINT
   uint8_t exponent; // NOLINT
   uint16_t threshold;   // NOLINT
+  uint8_t rs_memory_factor;   // NOLINT
+  uint16_t rs_scale_factor;   // NOLINT
+  uint16_t frugal_streaming_accumulator_limit;   // NOLINT
+
+
   int16_t multiplier;
   int16_t adcMax;
   size_t nhits;

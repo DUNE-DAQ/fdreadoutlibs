@@ -58,7 +58,7 @@ public:
 
   void reset();
 
-  void initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, uint16_t frug_streaming_acclimt);
+  void initialize(uint16_t threshold_value, float memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt);
  
   uint16_t* get_hits_dest();
 
@@ -149,7 +149,7 @@ private:
   std::string m_tpg_algorithm;
   float m_tpg_rs_memory_factor;
   uint16_t m_tpg_rs_scale_factor;
-  uint16_t m_tpg_frugal_streaming_accumulator_limit;
+  int16_t m_tpg_frugal_streaming_accumulator_limit;
 
 
   uint32_t m_tp_max_width;
