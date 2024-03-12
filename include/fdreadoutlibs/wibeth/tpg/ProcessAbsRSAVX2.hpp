@@ -27,7 +27,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       
 
   // Running sum scaling factor
-  const __m256i R_factor = _mm256_set1_epi16(info.rs_memory_factor);
+  //const __m256i R_factor = _mm256_set1_epi16(info.rs_memory_factor);
 
   // Scaling factor to stop the ADCs from overflowing 
   // (may not needs this, depends on magnitude of FIR output) 
@@ -70,6 +70,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     __m256i RS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.RS) + ireg);     // NOLINT
     __m256i medianRS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.pedestalsRS) + ireg);     // NOLINT
     __m256i accumRS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accumRS) + ireg);     // NOLINT
+    __m256i R_factor = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.RS_memory_factor) + ireg);     // NOLINT
 
     // ------------------------------------
     // Variables for hit finding
@@ -317,6 +318,10 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.RS) + ireg, RS);     // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.pedestalsRS) + ireg, medianRS); // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accumRS) + ireg, accumRS); // NOLINT
+    
+    // No need to update the memory factor as it is a fixed quantity
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.RS_memory_factor) + ireg, R_factor); // NOLINT
+
     
 
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over) + ireg, prev_was_over); // NOLINT
