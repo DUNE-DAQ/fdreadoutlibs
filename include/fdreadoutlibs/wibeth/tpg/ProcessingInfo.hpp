@@ -37,6 +37,11 @@ struct ChanState
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
     }
+    for (size_t i = 0; i < NREGISTERS * SAMPLES_PER_REGISTER/2; ++i) {
+      hit_charge_low_half[i] = 0;
+      hit_charge_high_half[i] = 0;
+    }
+
   }
 
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -59,6 +64,11 @@ struct ChanState
   // Variables for hit finding
   alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
   alignas(32) uint16_t __restrict__ hit_charge[NREGISTERS * SAMPLES_PER_REGISTER];
+
+  alignas(32) uint32_t __restrict__ hit_charge_low_half[NREGISTERS * SAMPLES_PER_REGISTER/2];
+  alignas(32) uint32_t __restrict__ hit_charge_high_half[NREGISTERS * SAMPLES_PER_REGISTER/2];
+
+
   alignas(32) uint16_t __restrict__ hit_tover[NREGISTERS * SAMPLES_PER_REGISTER]; // time over threshold
 
   alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time

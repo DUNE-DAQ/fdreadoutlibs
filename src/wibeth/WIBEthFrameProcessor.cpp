@@ -28,7 +28,8 @@
 
 #include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
+#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2_32Bit.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
 #include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
@@ -181,7 +182,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
   if (m_tpg_algorithm == "SimpleThreshold") {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kSimpleThreshold;
-    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2_32bit<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
