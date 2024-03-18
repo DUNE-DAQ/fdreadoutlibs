@@ -84,6 +84,7 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
 void
 TPCTPRequestHandler::report_tardy_packet(const types::TriggerPrimitiveTypeAdapter& packet, int64_t tardy_ticks)
 {
+  ++m_new_tps_suppressed_tardy;
   auto current_time = std::chrono::high_resolution_clock::now();
   if (std::chrono::duration_cast<std::chrono::seconds>(current_time - m_run_start_timepoint).count() >
       m_tardy_tp_quiet_time_at_start_sec) {

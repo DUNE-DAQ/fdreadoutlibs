@@ -80,8 +80,6 @@ public:
 
   timestamp_t get_cutoff_timestamp() override {return m_cutoff_timestamp.load();}
   bool supports_cutoff_timestamp() override {return true;}
-  timestamp_t get_allowed_latency() override {return m_ts_set_sender_offset_ticks;}
-  void increment_tardy_tp_count() override {++m_new_tps_suppressed_tardy;}
   void report_tardy_packet(const types::TriggerPrimitiveTypeAdapter& packet, int64_t tardy_ticks) override;
 
 protected:
