@@ -247,6 +247,11 @@ process_window_avx2_32bit(ProcessingInfo<NREGISTERS>& info)
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
         hit_charge = _mm256_blendv_epi8(hit_charge, zero, left);
+
+        // We should be using a blendv_epi32 but this does not exist
+        // Here: https://stackoverflow.com/questions/40746656/howto-vblend-for-32-bit-integer-or-why-is-there-no-mm256-blendv-epi32
+        // The catch is that if your mask is already all-zero / all-one for the whole
+        //  32-bit element (like a vpcmpgtd result), use _mm256_blendv_epi8 directly
         hit_charge_low_half = _mm256_blendv_epi8(hit_charge_low_half, zero, left);
         hit_charge_high_half = _mm256_blendv_epi8(hit_charge_high_half, zero, left);
 
