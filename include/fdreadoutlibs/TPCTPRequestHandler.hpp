@@ -23,6 +23,7 @@
 #include "trigger/TPSet.hpp"
  
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -40,6 +41,16 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                    TPHandlerMsg,
                    infomsg,
                    ((std::string) infomsg))
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  DataPacketArrivedTooLate,
+                  "SourceID[" << sid_subsystem << "," << sid_id << "] Received late data packet, "
+                  << "TP channel " << tpchan << ", "
+                  << msec_diff << " ms beyond the allowed latency ("
+                  << msec_allowed << " ms, " << ticks_allowed << " ticks).",
+                  ((std::string)sid_subsystem)((daqdataformats::SourceID::ID_t)sid_id)
+                  ((trgdataformats::channel_t)tpchan)((double)msec_diff)
+                  ((double)msec_allowed)((daqdataformats::timestamp_t)ticks_allowed))
 
 namespace fdreadoutlibs {
 
@@ -69,7 +80,7 @@ public:
 
   timestamp_t get_cutoff_timestamp() override {return m_cutoff_timestamp.load();}
   bool supports_cutoff_timestamp() override {return true;}
-  void increment_tardy_tp_count() override {++m_new_tps_suppressed_tardy;}
+  void report_tardy_packet(const types::TriggerPrimitiveTypeAdapter& packet, int64_t tardy_ticks) override;
 
 protected:
   
@@ -77,6 +88,7 @@ private:
   std::shared_ptr<iomanager::SenderConcept<dunedaq::trigger::TPSet>> m_tpset_sink;
   int m_tp_set_sender_sleep_us;
   uint64_t m_ts_set_sender_offset_ticks;
+  int m_tardy_tp_quiet_time_at_start_sec;
   dunedaq::daqdataformats::run_number_t m_run_number;
   dunedaq::readoutlibs::ReusableThread  m_tp_set_sender_thread;
   void send_tp_sets();
@@ -90,6 +102,7 @@ private:
   std::atomic<uint64_t> m_new_heartbeats{ 0 };
 
   std::atomic<timestamp_t> m_cutoff_timestamp{ 0 }; // NOLINT(build/unsigned)
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_run_start_timepoint;
 };
 
 } // namespace readoutlibs
