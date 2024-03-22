@@ -274,13 +274,10 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
         top_highest_values = channel_tp_rate_vec.size();
       }
       for (int i = 0; i < top_highest_values; i++) {
-        std::stringstream info_name;
-        info_name << "channel_" << channel_tp_rate_vec[i].first;
-        opmonlib::InfoCollector tmp_ic;
         readoutlibs::readoutinfo::TPChannelInfo tp_info;
         tp_info.num_tp = channel_tp_rate_vec[i].second;
-        tmp_ic.add(tp_info);
-        ci.add(info_name.str(), tmp_ic);
+	tp_info.channel = channel_tp_rate_vec[i].first;
+	ci.add( tp_info );
       }
     }
 
