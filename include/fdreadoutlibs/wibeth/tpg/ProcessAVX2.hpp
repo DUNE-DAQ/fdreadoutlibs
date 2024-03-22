@@ -79,7 +79,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);

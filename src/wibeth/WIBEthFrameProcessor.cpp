@@ -57,42 +57,23 @@ namespace fdreadoutlibs {
 
 WIBEthFrameHandler::WIBEthFrameHandler()
   : m_hits_dest(nullptr)
-  , m_tpg_taps_p(nullptr)
 {}
 
 WIBEthFrameHandler::~WIBEthFrameHandler()
 {
-  if (m_tpg_taps_p) {
-    delete[] m_tpg_taps_p;
-  }
   if (m_hits_dest) delete[] m_hits_dest;
 }
 
 void
 WIBEthFrameHandler::reset()
 {
-  if (m_tpg_taps_p)
-      	delete[] m_tpg_taps_p;
-  m_tpg_taps_p = nullptr;
   if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
-
   first_hit = true;
 }
 
 void
-WIBEthFrameHandler::initialize(int threshold_value)
+WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
 {
-  m_tpg_taps = swtpg_wibeth::firwin_int(7, 0.1, m_tpg_multiplier);
-  m_tpg_taps.push_back(0);
-
-  m_tpg_threshold = threshold_value;
-
-  if (m_tpg_taps_p == nullptr) {
-    m_tpg_taps_p = new int16_t[m_tpg_taps.size()];
-  }
-  for (size_t i = 0; i < m_tpg_taps.size(); ++i) {
-    m_tpg_taps_p[i] = m_tpg_taps[i];
-  }
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
 
@@ -101,11 +82,11 @@ WIBEthFrameHandler::initialize(int threshold_value)
                                                                                                             0,
                                                                                                             swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
                                                                                                             m_hits_dest,
-                                                                                                            m_tpg_taps_p,
-                                                                                                            (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
-                                                                                                            m_tpg_tap_exponent,
-                                                                                                            m_tpg_threshold,
-                                                                                                            0,
+                                                                                                            m_tpg_exponent,
+                                                                                                            threshold_value,
+                                                                                                            memory_factor,
+                                                                                                            scale_factor,
+                                                                                                            frug_streaming_acclimt,
                                                                                                             0);
 }
 
@@ -135,7 +116,11 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
 
-    m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
+    m_wibeth_frame_handler->initialize(m_tpg_threshold, 
+                                       m_tpg_rs_memory_factor,
+                                       m_tpg_rs_scale_factor,
+                                       m_tpg_frugal_streaming_accumulator_limit
+                                       );
   } // end if(m_tpg_enabled)
 
   // Reset timestamp check
@@ -200,12 +185,30 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   }  else if (m_tpg_algorithm == "StandardRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
+
+  // Extract algorithm specif configurations
+  // AAA: In the Running Sum algorithms, we multiply everything by 10 
+  // in order to deal with only integers instead of floats
+  m_tpg_rs_memory_factor = 10*config.tpg_rs_memory_factor;
+
+  // In the Running Sum algorithms we divide by the scale factor and multiply by 10
+  // Potential mismatch when using 
+  m_tpg_rs_scale_factor  = 10/config.tpg_rs_scale_factor;
+
+  m_tpg_frugal_streaming_accumulator_limit = config.tpg_frugal_streaming_accumulator_limit;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS memory factor " << m_tpg_rs_memory_factor;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS scale factor " << m_tpg_rs_scale_factor;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Frugal streaming acc limit " << m_tpg_frugal_streaming_accumulator_limit; 
 
   m_tp_max_width = config.tp_timeout;
 
@@ -214,7 +217,7 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold_selected = config.tpg_threshold;
+  m_tpg_threshold = config.tpg_threshold;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
@@ -225,7 +228,6 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   if (config.enable_tpg) {
     m_tpg_enabled = true;
     m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
-
     inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
   }
 
@@ -427,16 +429,28 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   if (frame_handler->first_hit) {
     frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map);
 
-    frame_handler->m_tpg_processing_info->setState(registers_array);
-
     m_det_id = wfptr->daq_header.det_id;
     if (wfptr->daq_header.crate_id != m_crate_no || wfptr->daq_header.slot_id != m_slot_no || wfptr->daq_header.stream_id != m_stream_id) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_no, m_slot_no, m_stream_id));
     }
+
+
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
     // Populate the array 
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-      m_register_channels[i] = frame_handler->register_channel_map.channel[i];
+      auto chan_value = frame_handler->register_channel_map.channel[i];
+      m_register_channels[i] = chan_value;
+
+      if (m_enable_simple_threshold_on_collection) {
+        // If the given channel is a collection then set R (memory factor) to zero
+        if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) {
+          m_register_memory_factor[i] = 0;
+        } else {
+          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        }
+      } else {
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+      }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
 
@@ -444,13 +458,13 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    //TLOG() << "Processed the first frame ";
+    frame_handler->m_tpg_processing_info->setState(registers_array, m_register_memory_factor);
+
 
     // Set first hit bool to false so that registration of channel map is not executed twice
     frame_handler->first_hit = false;
 
   } // end if (frame_handler->first_hit)
-
 
   // Execute the SWTPG algorithm
   frame_handler->m_tpg_processing_info->input = &registers_array;
@@ -525,10 +539,10 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
           //
 
-	  fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
+	        fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tp;
           tp.tp.time_start = tp_t_begin;
           tp.tp.time_peak = tp_t_peak;
-	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
+	        tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
           tp.tp.channel = offline_channel;
           tp.tp.adc_integral = hit_charge[i];
           tp.tp.adc_peak = hit_peak_adc[i];
@@ -539,7 +553,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           if(tp.tp.time_over_threshold > m_tp_max_width) {
             ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
             m_tps_suppressed_too_long++;
-	  }
+	        }
 	  //Send the TP to the TP handler module
 	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));

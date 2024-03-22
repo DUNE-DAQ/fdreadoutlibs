@@ -1,6 +1,6 @@
 /**
- * @file ProcessStandardRSAVX2.hpp Process frames with AVX2 registers and instructions
- * using the Standard Running Sum algorithm (not absolute)
+ * @file ProcessRSAVX2.hpp Process frames with AVX2 registers and instructions
+ * using the Running Sum algorithm
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -27,11 +27,11 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       
 
   // Running sum scaling factor
-  const __m256i R_factor = _mm256_set1_epi16(8);
+  //const __m256i R_factor = _mm256_set1_epi16(info.rs_memory_factor);
 
   // Scaling factor to stop the ADCs from overflowing 
   // (may not needs this, depends on magnitude of FIR output) 
-  const __m256i scale_factor = _mm256_set1_epi16(5);
+  const __m256i scale_factor = _mm256_set1_epi16(info.rs_scale_factor);
 
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
   //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
@@ -70,6 +70,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     __m256i RS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.RS) + ireg);     // NOLINT
     __m256i medianRS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.pedestalsRS) + ireg);     // NOLINT
     __m256i accumRS = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.accumRS) + ireg);     // NOLINT
+    __m256i R_factor = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.RS_memory_factor) + ireg);     // NOLINT
 
     // ------------------------------------
     // Variables for hit finding
@@ -114,7 +115,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Update the median itself in all channels
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);
@@ -137,6 +138,9 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
      //__m256i first_part_div = _mm256_div_epi16(RS, 10);
 
      //__m256i second_part = s;
+     //__m256i second_part_div = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
+
+     //RS = _mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
      RS = swtpg_wibeth::_mm256_div_epi16(_mm256_add_epi16(first_part, s), 10);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
@@ -148,7 +152,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
 
       // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
@@ -278,12 +282,12 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
-	  _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)	
+	      _mm256_storeu_si256(output_loc++, hit_peak_time); // NOLINT(runtime/increment_decrement)	
 
         // Make sure to count only the channels that are above threshold
         // Store the flags per channel that indicated the waveform went below threshold
         // in order to recover the exact channel(s) that have complete hits. 	
-	  _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
+	      _mm256_storeu_si256(output_loc++, left); // NOLINT(runtime/increment_decrement)
 
         // reset hit_start, hit_charge and hit_tover in the channels we saved
         const __m256i zero = _mm256_setzero_si256();
@@ -314,6 +318,10 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.RS) + ireg, RS);     // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.pedestalsRS) + ireg, medianRS); // NOLINT
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.accumRS) + ireg, accumRS); // NOLINT
+    
+    // No need to update the memory factor as it is a fixed quantity
+    //_mm256_storeu_si256(reinterpret_cast<__m256i*>(state.RS_memory_factor) + ireg, R_factor); // NOLINT
+
     
 
     _mm256_storeu_si256(reinterpret_cast<__m256i*>(state.prev_was_over) + ireg, prev_was_over); // NOLINT
