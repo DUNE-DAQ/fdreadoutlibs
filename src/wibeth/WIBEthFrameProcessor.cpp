@@ -72,7 +72,7 @@ WIBEthFrameHandler::reset()
 }
 
 void
-WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
+WIBEthFrameHandler::initialize(uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
 {
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
@@ -83,7 +83,6 @@ WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor,
                                                                                                             swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
                                                                                                             m_hits_dest,
                                                                                                             m_tpg_exponent,
-                                                                                                            threshold_value,
                                                                                                             memory_factor,
                                                                                                             scale_factor,
                                                                                                             frug_streaming_acclimt,
@@ -116,8 +115,7 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
 
-    m_wibeth_frame_handler->initialize(m_tpg_threshold, 
-                                       m_tpg_rs_memory_factor,
+    m_wibeth_frame_handler->initialize(m_tpg_rs_memory_factor,
                                        m_tpg_rs_scale_factor,
                                        m_tpg_frugal_streaming_accumulator_limit
                                        );
@@ -217,7 +215,12 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold = config.tpg_threshold;
+  m_tpg_threshold_collection = config.tpg_threshold;
+  m_tpg_threshold_induction1 = config.tpg_threshold;
+  m_tpg_threshold_induction2 = config.tpg_threshold;
+
+
+
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
@@ -439,12 +442,18 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_register_channels[i] = chan_value;
 
       if (m_enable_simple_threshold_on_collection) {
-        // If the given channel is a collection then set R (memory factor) to zero
+        // If the given channel is a collection then set R (memory factor) to zero for collection
         if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) {
           m_register_memory_factor[i] = 0;
+          m_tpg_threshold[i] = m_tpg_threshold_collection;
+        } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) {
+          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+          m_tpg_threshold[i] = m_tpg_threshold_induction1;
         } else {
           m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+          m_tpg_threshold[i] = m_tpg_threshold_induction2;          
         }
+      //   
       } else {
         m_register_memory_factor[i] = m_tpg_rs_memory_factor;
       }
@@ -455,6 +464,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
+    frame_handler->m_tpg_processing_info->setThresholdState(m_tpg_threshold);
     frame_handler->m_tpg_processing_info->setState(registers_array, m_register_memory_factor);
 
 
