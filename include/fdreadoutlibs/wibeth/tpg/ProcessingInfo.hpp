@@ -23,6 +23,7 @@ struct ChanState
   ChanState()
   {
     for (size_t i = 0; i < NREGISTERS * SAMPLES_PER_REGISTER; ++i) {
+      threshold[i] = 0;
       pedestals[i] = 0;
       accum[i] = 0;
       RS[i] = 0; 
@@ -39,6 +40,7 @@ struct ChanState
     }
   }
 
+  alignas(32) int16_t __restrict__ threshold[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
   
@@ -74,7 +76,6 @@ struct ProcessingInfo
                  uint8_t last_register_,            // NOLINT
                  uint16_t* __restrict__ output_,    // NOLINT
                  const uint8_t exponent_, // NOLINT
-                 uint16_t threshold_,         // NOLINT
                  uint16_t rs_memory_factor_, // NOLINT
                  uint16_t rs_scale_factor_, // NOLINT
                  int16_t frugal_streaming_accumulator_limit_, // NOLINT 
@@ -86,7 +87,6 @@ struct ProcessingInfo
     , last_register(last_register_)
     , output(output_)
     , exponent(exponent_)
-    , threshold(threshold_)
     , rs_memory_factor(rs_memory_factor_)
     , rs_scale_factor(rs_scale_factor_)
     , frugal_streaming_accumulator_limit(frugal_streaming_accumulator_limit_)
@@ -95,6 +95,16 @@ struct ProcessingInfo
     , nhits(nhits_)    
   {}
 
+  // Set TPG threshold by plane
+  void setThresholdState(std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER>& register_threshold
+               )
+  {
+    // Set the threshold values 
+    for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
+      chanState.threshold[j] = register_threshold[j];
+    }
+
+  }
 
   // Set the initial state from the window starting at first_msg_p
   template<size_t N>
@@ -153,7 +163,6 @@ struct ProcessingInfo
   uint8_t last_register;         // NOLINT
   uint16_t* __restrict__ output; // NOLINT
   uint8_t exponent; // NOLINT
-  uint16_t threshold;   // NOLINT
   uint16_t rs_memory_factor;   // NOLINT
   uint16_t rs_scale_factor;   // NOLINT
   int16_t frugal_streaming_accumulator_limit;   // NOLINT
