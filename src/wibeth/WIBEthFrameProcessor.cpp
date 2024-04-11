@@ -177,6 +177,8 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   m_sourceid.id = config.source_id;
   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
 
+  TLOG() << "TEST LOGGIN SOMETHING "; 
+
   m_tpg_algorithm = config.tpg_algorithm;  
   TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
   if (m_tpg_algorithm == "SimpleThreshold") {
