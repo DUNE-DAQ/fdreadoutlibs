@@ -520,7 +520,8 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
     for (int i = 0; i < 16; ++i) {
       // AAA: condition on the left hits makes sure to count hits
       // correctly when they are spread across multiple channels 	    
-      if (hit_charge[i] && chan[i] != swtpg_wibeth::MAGIC) {
+      if (hit_charge[i] && left[i] == swtpg_wibeth::MAGIC
+          && chan[i] != swtpg_wibeth::MAGIC) {	      
 
         uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
         uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
