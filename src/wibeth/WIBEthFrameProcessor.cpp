@@ -438,7 +438,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
     // Populate the array 
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
       auto chan_value = frame_handler->register_channel_map.channel[i];
-      TLOG () << "Index number " << i << " offline channel " << chan_value;       
       m_register_channels[i] = chan_value;
 
       if (m_enable_simple_threshold_on_collection) {
