@@ -126,22 +126,17 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 
       //--------------------------------------------------------------
-      // Absolute Running Sum
+      // Standard Running Sum
       //--------------------------------------------------------------
       
-      // Naive: RS = (R_factor * RS) + std::abs(filt)/scale; 
+      // Naive: RS = (R_factor * RS) + sample; 
 
       // Instead of using floats in the calcualation of the RS we multiply by 10 and 
       // do operations on the integers. In the end we divide by 10. 
 
-     __m256i first_part = _mm256_mullo_epi16(RS, R_factor);
-     //__m256i first_part_div = _mm256_div_epi16(RS, 10);
+     __m256i first_part = swtpg_wibeth::_mm256_div_epi16(_mm256_mullo_epi16(RS, R_factor), 10);
 
-     //__m256i second_part = s;
-     //__m256i second_part_div = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
-
-     //RS = _mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
-     RS = swtpg_wibeth::_mm256_div_epi16(_mm256_add_epi16(first_part, s), 10);
+     RS = _mm256_add_epi16(first_part, s);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
      //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
