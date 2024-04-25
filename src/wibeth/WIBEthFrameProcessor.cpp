@@ -215,12 +215,10 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold_collection = config.tpg_threshold;
-  m_tpg_threshold_induction1 = config.tpg_threshold;
-  m_tpg_threshold_induction2 = config.tpg_threshold;
-
-
-
+  // Use config.<plane>_threshold if it is non-zero, else default to config.tpg_threshold.
+  m_tpg_threshold_collection = config.collection_threshold ? config.collection_threshold : config.tpg_threshold;
+  m_tpg_threshold_induction1 = config.induction1_threshold ? config.induction1_threshold : config.tpg_threshold;
+  m_tpg_threshold_induction2 = config.induction2_threshold ? config.induction2_threshold : config.tpg_threshold;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
@@ -441,21 +439,16 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       auto chan_value = frame_handler->register_channel_map.channel[i];
       m_register_channels[i] = chan_value;
 
-      if (m_enable_simple_threshold_on_collection) {
-        // If the given channel is a collection then set R (memory factor) to zero for collection
-        if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) {
-          m_register_memory_factor[i] = 0;
-          m_tpg_threshold[i] = m_tpg_threshold_collection;
-        } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) {
-          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-          m_tpg_threshold[i] = m_tpg_threshold_induction1;
-        } else {
-          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-          m_tpg_threshold[i] = m_tpg_threshold_induction2;          
-        }
-      //   
-      } else {
+      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) { // Collection
+        // If SimpleThreshold on collection, then set the memory factor to 0, else use the common memory factor.
+        m_register_memory_factor[i] = m_enable_simple_threshold_on_collection ? 0 : m_tpg_rs_memory_factor;
+        m_tpg_threshold[i] = m_tpg_threshold_collection;
+      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) { // Induction 1
         m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        m_tpg_threshold[i] = m_tpg_threshold_induction1;
+      } else { // Induction 2
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        m_tpg_threshold[i] = m_tpg_threshold_induction2;
       }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
