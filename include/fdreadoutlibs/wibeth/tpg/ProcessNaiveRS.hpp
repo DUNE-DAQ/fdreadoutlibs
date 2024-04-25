@@ -57,6 +57,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
     //int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
+    int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
@@ -116,7 +117,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       // Hit finding
       // --------------------------------------------------------------
-      bool is_over = RS > info.threshold;
+      bool is_over = RS > threshold;
       if (is_over) {
         // Simulate saturated add
         int32_t tmp_charge = hit_charge;
