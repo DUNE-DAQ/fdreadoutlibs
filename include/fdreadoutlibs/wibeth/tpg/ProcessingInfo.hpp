@@ -26,8 +26,9 @@ struct ChanState
       pedestals[i] = 0;
       accum[i] = 0;
       RS[i] = 0; 
-      pedestalsRS[i] = 0;
+      pedestalsRS[i] = 0;      
       accumRS[i] = 0;
+      RS_memory_factor[i] = 0;
       accum25[i] = 0;
       accum75[i] = 0;
       prev_was_over[i] = 0;
@@ -35,14 +36,8 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
-      for (size_t j = 0; j < NTAPS; ++j) {
-        prev_samp[i * NTAPS + j] = 0;
-      }
     }
   }
-
-  // TODO: DRY July-22-2021 Philip Rodrigues (rodriges@fnal.gov)
-  static const int NTAPS = 8;
 
   alignas(32) int16_t __restrict__ pedestals[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accum[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -51,6 +46,8 @@ struct ChanState
   alignas(32) int16_t __restrict__ RS[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ pedestalsRS[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ accumRS[NREGISTERS * SAMPLES_PER_REGISTER];
+  alignas(32) uint16_t __restrict__ RS_memory_factor[NREGISTERS * SAMPLES_PER_REGISTER];
+
 
   //Variables for IQR
   alignas(32) int16_t __restrict__ accum25[NREGISTERS * SAMPLES_PER_REGISTER];
@@ -58,9 +55,6 @@ struct ChanState
   
   alignas(32) int16_t __restrict__ quantile25[NREGISTERS * SAMPLES_PER_REGISTER];
   alignas(32) int16_t __restrict__ quantile75[NREGISTERS * SAMPLES_PER_REGISTER];
-
-  // Variables for filtering
-  alignas(32) int16_t __restrict__ prev_samp[NREGISTERS * SAMPLES_PER_REGISTER * NTAPS];
 
   // Variables for hit finding
   alignas(32) uint16_t __restrict__ prev_was_over[NREGISTERS * SAMPLES_PER_REGISTER]; // was the previous sample over threshold?
@@ -79,37 +73,41 @@ struct ProcessingInfo
                  uint8_t first_register_,           // NOLINT
                  uint8_t last_register_,            // NOLINT
                  uint16_t* __restrict__ output_,    // NOLINT
-                 const int16_t* __restrict__ taps_, // NOLINT
-                 int16_t ntaps_,
-                 const uint8_t tap_exponent_, // NOLINT
+                 const uint8_t exponent_, // NOLINT
                  uint16_t threshold_,         // NOLINT
-                 size_t nhits_,
-                 uint16_t absTimeModNTAPS_) // NOLINT
+                 uint16_t rs_memory_factor_, // NOLINT
+                 uint16_t rs_scale_factor_, // NOLINT
+                 int16_t frugal_streaming_accumulator_limit_, // NOLINT 
+                 size_t nhits_
+                ) // NOLINT
     : input(input_)
     , timeWindowNumFrames(timeWindowNumFrames_)
     , first_register(first_register_)
     , last_register(last_register_)
     , output(output_)
-    , taps(taps_)
-    , ntaps(ntaps_)
-    , tap_exponent(tap_exponent_)
+    , exponent(exponent_)
     , threshold(threshold_)
-    , multiplier(1 << tap_exponent)
+    , rs_memory_factor(rs_memory_factor_)
+    , rs_scale_factor(rs_scale_factor_)
+    , frugal_streaming_accumulator_limit(frugal_streaming_accumulator_limit_)
+    , multiplier(1 << exponent)
     , adcMax(INT16_MAX / multiplier)
-    , nhits(nhits_)
-    , absTimeModNTAPS(absTimeModNTAPS_)
+    , nhits(nhits_)    
   {}
 
 
   // Set the initial state from the window starting at first_msg_p
   template<size_t N>
-  void setState(const RegisterArray<N>& first_tick_registers)
+  void setState(const RegisterArray<N>& first_tick_registers, 
+                std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER>& register_memory_factor
+               )
   {
     static_assert(N >= NREGISTERS, "Wrong array size");
 
     // AAA: Loop through all the registers, loop through all the channels, look at the 
     // first message of the superchunk and read the ADC value. This will be used as the 
     // pedestal for the channel state
+    std::cout << "Printing values of the memory factor: ";
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
       const size_t register_offset = j % SAMPLES_PER_REGISTER; 
       const size_t register_index = j / SAMPLES_PER_REGISTER;
@@ -131,6 +129,9 @@ struct ProcessingInfo
         break; // breaking in order to select only the first entry
       }
 
+      // Set up the channel state for the memory factor
+      chanState.RS_memory_factor[j] = register_memory_factor[j];
+    
       // Set the pedestals and the 25/75-percentiles
       chanState.pedestals[j] = ped;
       chanState.pedestalsRS[j] = 0;
@@ -142,6 +143,8 @@ struct ProcessingInfo
       chanState.quantile25[j] = ped-20;
       chanState.quantile75[j] = ped+20;
     }
+    std::cout << '\n' ;
+    
   }  
 
   const RegisterArray<NREGISTERS * FRAMES_PER_MSG>* __restrict__ input;
@@ -149,14 +152,16 @@ struct ProcessingInfo
   uint8_t first_register;        // NOLINT
   uint8_t last_register;         // NOLINT
   uint16_t* __restrict__ output; // NOLINT
-  const int16_t* __restrict__ taps;
-  int16_t ntaps;
-  uint8_t tap_exponent; // NOLINT
+  uint8_t exponent; // NOLINT
   uint16_t threshold;   // NOLINT
+  uint16_t rs_memory_factor;   // NOLINT
+  uint16_t rs_scale_factor;   // NOLINT
+  int16_t frugal_streaming_accumulator_limit;   // NOLINT
+
+
   int16_t multiplier;
   int16_t adcMax;
   size_t nhits;
-  uint16_t absTimeModNTAPS; // NOLINT
   ChanState<NREGISTERS> chanState;
 };
 

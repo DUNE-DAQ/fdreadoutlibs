@@ -23,6 +23,7 @@ TPCTPRequestHandler::conf(const nlohmann::json& args) {
    inherited2::conf(args);
    m_tp_set_sender_sleep_us = 1000000/conf.tpset_transmission_rate_hz;
    m_ts_set_sender_offset_ticks = conf.tpset_min_latency_ticks;
+   m_tardy_tp_quiet_time_at_start_sec = conf.tardy_tp_quiet_time_at_start_sec;
 }
 
 
@@ -40,6 +41,7 @@ TPCTPRequestHandler::start(const nlohmann::json& args) {
 
    m_cutoff_timestamp.store(0);
    m_tp_set_sender_thread.set_work(&TPCTPRequestHandler::send_tp_sets, this);
+   m_run_start_timepoint = std::chrono::high_resolution_clock::now();
 }
 
 void
@@ -79,6 +81,20 @@ TPCTPRequestHandler::get_info(opmonlib::InfoCollector& ci, int level)
   ci.add(info);
 }
 
+void
+TPCTPRequestHandler::report_tardy_packet(const types::TriggerPrimitiveTypeAdapter& packet, int64_t tardy_ticks)
+{
+  ++m_new_tps_suppressed_tardy;
+  auto current_time = std::chrono::high_resolution_clock::now();
+  if (std::chrono::duration_cast<std::chrono::seconds>(current_time - m_run_start_timepoint).count() >
+      m_tardy_tp_quiet_time_at_start_sec) {
+    ers::warning(DataPacketArrivedTooLate(ERS_HERE, daqdataformats::SourceID::subsystem_to_string(m_sourceid.subsystem),
+                                          m_sourceid.id, packet.tp.channel,
+                                          (static_cast<double>(tardy_ticks)/62500.0),
+                                          (static_cast<double>(m_ts_set_sender_offset_ticks)/62500.0),
+                                          m_ts_set_sender_offset_ticks));
+  }
+}
 
 void
 TPCTPRequestHandler::send_tp_sets() {

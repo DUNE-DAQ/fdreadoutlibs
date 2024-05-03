@@ -29,7 +29,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
 
-  const __m256i iota = _mm256_set_epi16(14, 13, 12, 11, 10, 9, 8, 15, 7, 6, 5, 4, 3, 2, 1, 0);
+  const __m256i iota = _mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 
   int nhits = 0;
  
@@ -79,7 +79,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
-      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, 10, _mm256_set1_epi16(0xffff));
+      swtpg_wibeth::frugal_accum_update_avx2(median, s, accum, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
 #pragma GCC diagnostic pop
       // Actually subtract the pedestal
       s = _mm256_sub_epi16(s, median);

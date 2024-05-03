@@ -51,7 +51,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
     //TLOG_DEBUG(TLVL_BOOKKEEPING) << " offline_ch " << offline_ch; 
     min_ch = std::min(min_ch, offline_ch);
   }
-  TLOG() << "get_register_to_offline_channel_map_wibeth for crate " << frame->daq_header.crate_id << " slot "
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "get_register_to_offline_channel_map_wibeth for crate " << frame->daq_header.crate_id << " slot "
                 << frame->daq_header.slot_id << " stream " << frame->daq_header.stream_id << ". min_ch is "
                 << min_ch;
   // Now set each of the channels in our test frame to their
@@ -61,6 +61,7 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
   dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter wibeth_frame;
   memset(wibeth_frame.data, 0, sizeof(dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter));
 
+  
   dunedaq::fddetdataformats::WIBEthFrame* test_frame =
     reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(&wibeth_frame);
   for (size_t time_sample = 0; time_sample < dunedaq::fddetdataformats::WIBEthFrame::s_time_samples_per_frame; ++time_sample) {  
