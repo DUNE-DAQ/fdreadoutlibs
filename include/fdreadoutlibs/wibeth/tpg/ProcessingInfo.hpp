@@ -101,7 +101,9 @@ struct ProcessingInfo
   {
     // Set the threshold values 
     for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
-      chanState.threshold[j] = register_threshold[j];
+      const size_t i = IOTA[j % SAMPLES_PER_REGISTER];
+      const size_t reg_idx = j / SAMPLES_PER_REGISTER;
+      chanState.threshold[j] = register_threshold[i + reg_idx * SAMPLES_PER_REGISTER];
     }
 
   }

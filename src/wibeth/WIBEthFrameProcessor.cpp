@@ -439,16 +439,16 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       auto chan_value = frame_handler->register_channel_map.channel[i];
       m_register_channels[i] = chan_value;
 
-      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) { // Collection
+      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 2 ) { // Collection
         // If SimpleThreshold on collection, then set the memory factor to 0, else use the common memory factor.
         m_register_memory_factor[i] = m_enable_simple_threshold_on_collection ? 0 : m_tpg_rs_memory_factor;
         m_tpg_threshold[i] = m_tpg_threshold_collection;
-      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) { // Induction 1
-        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-        m_tpg_threshold[i] = m_tpg_threshold_induction1;
-      } else { // Induction 2
+      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) { // Induction 2
         m_register_memory_factor[i] = m_tpg_rs_memory_factor;
         m_tpg_threshold[i] = m_tpg_threshold_induction2;
+      } else { // Induction 1
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        m_tpg_threshold[i] = m_tpg_threshold_induction1;
       }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
