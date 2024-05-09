@@ -183,13 +183,13 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
-    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
+    // Enable simple threshold on plane 2 is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_plane2 = config.enable_simple_threshold_on_plane2;
   }  else if (m_tpg_algorithm == "StandardRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
-    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
+    // Enable simple threshold on plane 2 is used only if you are using a Running Sum algorithm
+    m_enable_simple_threshold_on_plane2 = config.enable_simple_threshold_on_plane2;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
@@ -216,9 +216,9 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
   // Use config.<plane>_threshold if it is non-zero, else default to config.tpg_threshold.
-  m_tpg_threshold_collection = config.collection_threshold ? config.collection_threshold : config.tpg_threshold;
-  m_tpg_threshold_induction1 = config.induction1_threshold ? config.induction1_threshold : config.tpg_threshold;
-  m_tpg_threshold_induction2 = config.induction2_threshold ? config.induction2_threshold : config.tpg_threshold;
+  m_tpg_threshold_plane2 = config.tpg_threshold_plane2 ? config.tpg_threshold_plane2 : config.tpg_threshold_default;
+  m_tpg_threshold_plane1 = config.tpg_threshold_plane1 ? config.tpg_threshold_plane1 : config.tpg_threshold_default;
+  m_tpg_threshold_plane0 = config.tpg_threshold_plane0 ? config.tpg_threshold_plane0 : config.tpg_threshold_default;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
@@ -439,16 +439,16 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       auto chan_value = frame_handler->register_channel_map.channel[i];
       m_register_channels[i] = chan_value;
 
-      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 2 ) { // Collection
-        // If SimpleThreshold on collection, then set the memory factor to 0, else use the common memory factor.
-        m_register_memory_factor[i] = m_enable_simple_threshold_on_collection ? 0 : m_tpg_rs_memory_factor;
-        m_tpg_threshold[i] = m_tpg_threshold_collection;
-      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) { // Induction 2
+      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 2 ) {
+        // If SimpleThreshold on plane 2, then set the memory factor to 0, else use the common memory factor.
+        m_register_memory_factor[i] = m_enable_simple_threshold_on_plane2 ? 0 : m_tpg_rs_memory_factor;
+        m_tpg_threshold[i] = m_tpg_threshold_plane2;
+      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) {
         m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-        m_tpg_threshold[i] = m_tpg_threshold_induction2;
-      } else { // Induction 1
+        m_tpg_threshold[i] = m_tpg_threshold_plane1;
+      } else {
         m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-        m_tpg_threshold[i] = m_tpg_threshold_induction1;
+        m_tpg_threshold[i] = m_tpg_threshold_plane0;
       }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 

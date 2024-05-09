@@ -146,7 +146,7 @@ protected:
 private:
   bool m_tpg_enabled;
 
-  bool m_enable_simple_threshold_on_collection = false;
+  bool m_enable_simple_threshold_on_plane2 = false;
   // Selected TPG algorithm properties from configuration 
   std::string m_tpg_algorithm;
   uint16_t m_tpg_rs_memory_factor;
@@ -158,9 +158,9 @@ private:
   std::vector<int> m_channel_mask_vec;
   std::set<uint> m_channel_mask_set;
 
-  uint16_t m_tpg_threshold_collection;
-  uint16_t m_tpg_threshold_induction1;
-  uint16_t m_tpg_threshold_induction2;
+  uint16_t m_tpg_threshold_plane0;
+  uint16_t m_tpg_threshold_plane1;
+  uint16_t m_tpg_threshold_plane2;
 
   // Algorithm used to form a trigger primitive
   dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
@@ -184,7 +184,7 @@ private:
 
 
   // Create an array to store the values of the memory factor 
-  // AAA: silver bullet to be able to use SimpleThreshold on collection and RS on induction planes
+  // AAA: silver bullet to be able to use SimpleThreshold on plane 2 and RS on planes 0 and 1
   // By default set all the values to the selected memory factor 
   std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_memory_factor = {0};
 

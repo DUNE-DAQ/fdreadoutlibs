@@ -209,7 +209,7 @@ WIB2FrameProcessor::conf(const nlohmann::json& cfg)
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold_selected = config.tpg_threshold;
+  m_tpg_threshold_selected = config.tpg_threshold_default;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
