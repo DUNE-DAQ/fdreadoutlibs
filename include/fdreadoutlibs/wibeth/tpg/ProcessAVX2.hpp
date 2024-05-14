@@ -29,7 +29,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
   // Pointer to keep track of where we'll write the next output hit
   __m256i* output_loc = (__m256i*)(info.output); // NOLINT(readability/casting)
 
-  const __m256i iota = _mm256_set_epi16(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+  const __m256i iota = _mm256_lddqu_si256((__m256i*) IOTA);
 
   int nhits = 0;
  
@@ -42,6 +42,8 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
     // from the previous go-around.
 
     ChanState<NREGISTERS>& state = info.chanState;
+    __m256i threshold = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.threshold) + ireg);     // NOLINT
+
     __m256i median = _mm256_lddqu_si256(reinterpret_cast<__m256i*>(state.pedestals) + ireg);      // NOLINT
     // The accumulator that we increase/decrease when the current
     // sample is greater/less than the median
@@ -93,8 +95,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       // Mask for channels that are over the threshold in this step
       
-      // FIXED THRESHOLD
-      __m256i threshold = _mm256_set1_epi16(info.threshold);
+      // Define a register for elements above the threhsold
       __m256i is_over = _mm256_cmpgt_epi16(s, threshold);
 
       // Mask for channels that left "over threshold" state this step

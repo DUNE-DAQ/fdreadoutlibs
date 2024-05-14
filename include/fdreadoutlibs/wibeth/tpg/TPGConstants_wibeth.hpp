@@ -30,6 +30,9 @@ const constexpr std::size_t BYTES_PER_REGISTER = 32;
 // How many samples are in a register
 const constexpr std::size_t SAMPLES_PER_REGISTER = 16;
 
+// Order of the channels after frame expansion.
+const constexpr std::uint16_t IOTA[SAMPLES_PER_REGISTER] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
 // One netio message's worth of channel ADCs after
 // expansion: 64 frames per message times 4 registers per frame times
 // 32 bytes (256 bits) per register
