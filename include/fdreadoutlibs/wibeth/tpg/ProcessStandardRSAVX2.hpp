@@ -26,13 +26,6 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
   const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
       
 
-  // Running sum scaling factor
-  //const __m256i R_factor = _mm256_set1_epi16(info.rs_memory_factor);
-
-  // Scaling factor to stop the ADCs from overflowing 
-  // (may not needs this, depends on magnitude of FIR output) 
-  //const __m256i scale_factor = _mm256_set1_epi16(info.rs_scale_factor);
-
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
   //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
 
