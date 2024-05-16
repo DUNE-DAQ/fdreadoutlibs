@@ -58,7 +58,7 @@ public:
 
   void reset();
 
-  void initialize(uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt);
+  void initialize(int16_t frug_streaming_acclimt);
  
   uint16_t* get_hits_dest();
 
@@ -146,11 +146,17 @@ protected:
 private:
   bool m_tpg_enabled;
 
-  bool m_enable_simple_threshold_on_plane2 = false;
   // Selected TPG algorithm properties from configuration 
   std::string m_tpg_algorithm;
-  uint16_t m_tpg_rs_memory_factor;
-  uint16_t m_tpg_rs_scale_factor;
+
+  uint16_t m_tpg_rs_memory_factor_plane0;
+  uint16_t m_tpg_rs_memory_factor_plane1;
+  uint16_t m_tpg_rs_memory_factor_plane2;
+
+  uint16_t m_tpg_rs_scale_factor_plane0;
+  uint16_t m_tpg_rs_scale_factor_plane1;
+  uint16_t m_tpg_rs_scale_factor_plane2;
+
   int16_t m_tpg_frugal_streaming_accumulator_limit;
 
 
@@ -192,6 +198,9 @@ private:
   // This is to be used for setting a different value by plane
   // By default set it to 150
   std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_tpg_threshold = {150};
+
+  // Create an array to store the values of the scale factor.
+  std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_scale_factor = {0};
 
 
   std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
