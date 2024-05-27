@@ -72,7 +72,7 @@ WIBEthFrameHandler::reset()
 }
 
 void
-WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor, uint16_t scale_factor, int16_t frug_streaming_acclimt)
+WIBEthFrameHandler::initialize(int16_t frug_streaming_acclimt)
 {
 
   if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
@@ -83,9 +83,6 @@ WIBEthFrameHandler::initialize(uint16_t threshold_value, uint16_t memory_factor,
                                                                                                             swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
                                                                                                             m_hits_dest,
                                                                                                             m_tpg_exponent,
-                                                                                                            threshold_value,
-                                                                                                            memory_factor,
-                                                                                                            scale_factor,
                                                                                                             frug_streaming_acclimt,
                                                                                                             0);
 }
@@ -116,11 +113,7 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
 
-    m_wibeth_frame_handler->initialize(m_tpg_threshold, 
-                                       m_tpg_rs_memory_factor,
-                                       m_tpg_rs_scale_factor,
-                                       m_tpg_frugal_streaming_accumulator_limit
-                                       );
+    m_wibeth_frame_handler->initialize(m_tpg_frugal_streaming_accumulator_limit);
   } // end if(m_tpg_enabled)
 
   // Reset timestamp check
@@ -185,13 +178,9 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   } else if (m_tpg_algorithm == "AbsRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
-    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   }  else if (m_tpg_algorithm == "StandardRS" ) {
     m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
     m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-    // Enable simple threshold on collection is used only if you are using a Running Sum algorithm
-    m_enable_simple_threshold_on_collection = config.enable_simple_threshold_on_collection;
   } else {
     throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
   }
@@ -199,15 +188,36 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   // Extract algorithm specif configurations
   // AAA: In the Running Sum algorithms, we multiply everything by 10 
   // in order to deal with only integers instead of floats
-  m_tpg_rs_memory_factor = 10*config.tpg_rs_memory_factor;
+  // Use the default if the plane isn't specified.
+  m_tpg_rs_memory_factor_plane2 = config.tpg_rs_memory_factor_plane2 != -1 ? 10*config.tpg_rs_memory_factor_plane2
+                                                                           : 10*config.tpg_rs_memory_factor_default;
+
+  m_tpg_rs_memory_factor_plane1 = config.tpg_rs_memory_factor_plane1 != -1 ? 10*config.tpg_rs_memory_factor_plane1
+                                                                           : 10*config.tpg_rs_memory_factor_default;
+
+  m_tpg_rs_memory_factor_plane0 = config.tpg_rs_memory_factor_plane0 != -1 ? 10*config.tpg_rs_memory_factor_plane0
+                                                                           : 10*config.tpg_rs_memory_factor_default;
 
   // In the Running Sum algorithms we divide by the scale factor and multiply by 10
-  // Potential mismatch when using 
-  m_tpg_rs_scale_factor  = 10/config.tpg_rs_scale_factor;
+  // Use the default if the plane isn't specified.
+  m_tpg_rs_scale_factor_plane2 = config.tpg_rs_scale_factor_plane2 ? 10/config.tpg_rs_scale_factor_plane2
+                                                                   : 10/config.tpg_rs_scale_factor_default;
+
+  m_tpg_rs_scale_factor_plane1 = config.tpg_rs_scale_factor_plane1 ? 10/config.tpg_rs_scale_factor_plane1
+                                                                   : 10/config.tpg_rs_scale_factor_default;
+
+  m_tpg_rs_scale_factor_plane0 = config.tpg_rs_scale_factor_plane0 ? 10/config.tpg_rs_scale_factor_plane0
+                                                                   : 10/config.tpg_rs_scale_factor_default;
 
   m_tpg_frugal_streaming_accumulator_limit = config.tpg_frugal_streaming_accumulator_limit;
-  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS memory factor " << m_tpg_rs_memory_factor;
-  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS scale factor " << m_tpg_rs_scale_factor;
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS memory factors (0, 1, 2): "
+                               << m_tpg_rs_memory_factor_plane0 << ", "
+                               << m_tpg_rs_memory_factor_plane1 << ", "
+                               << m_tpg_rs_memory_factor_plane2 << ".";
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "RS scale factors (0, 1, 2): "
+                               << m_tpg_rs_scale_factor_plane0 << ", "
+                               << m_tpg_rs_scale_factor_plane1 << ", "
+                               << m_tpg_rs_scale_factor_plane2 << ".";
   TLOG_DEBUG(TLVL_BOOKKEEPING) << "Frugal streaming acc limit " << m_tpg_frugal_streaming_accumulator_limit; 
 
   m_tp_max_width = config.tp_timeout;
@@ -217,7 +227,10 @@ WIBEthFrameProcessor::conf(const nlohmann::json& cfg)
   // AAA: The set provides faster look up than a std::vector
   m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-  m_tpg_threshold = config.tpg_threshold;
+  // Use config.<plane>_threshold if it is non-zero, else default to config.tpg_threshold.
+  m_tpg_threshold_plane2 = config.tpg_threshold_plane2 ? config.tpg_threshold_plane2 : config.tpg_threshold_default;
+  m_tpg_threshold_plane1 = config.tpg_threshold_plane1 ? config.tpg_threshold_plane1 : config.tpg_threshold_default;
+  m_tpg_threshold_plane0 = config.tpg_threshold_plane0 ? config.tpg_threshold_plane0 : config.tpg_threshold_default;
 
   m_crate_no = config.crate_id;
   m_slot_no = config.slot_id;
@@ -438,15 +451,19 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       auto chan_value = frame_handler->register_channel_map.channel[i];
       m_register_channels[i] = chan_value;
 
-      if (m_enable_simple_threshold_on_collection) {
-        // If the given channel is a collection then set R (memory factor) to zero
-        if (m_channel_map->get_plane_from_offline_channel(chan_value) == 0 ) {
-          m_register_memory_factor[i] = 0;
-        } else {
-          m_register_memory_factor[i] = m_tpg_rs_memory_factor;
-        }
+      // Set all the waveform evaluation and manipulation by plane.
+      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 2 ) {
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor_plane2;
+        m_register_scale_factor[i] = m_tpg_rs_scale_factor_plane2;
+        m_tpg_threshold[i] = m_tpg_threshold_plane2;
+      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) {
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor_plane1;
+        m_register_scale_factor[i] = m_tpg_rs_scale_factor_plane1;
+        m_tpg_threshold[i] = m_tpg_threshold_plane1;
       } else {
-        m_register_memory_factor[i] = m_tpg_rs_memory_factor;
+        m_register_memory_factor[i] = m_tpg_rs_memory_factor_plane0;
+        m_register_scale_factor[i] = m_tpg_rs_scale_factor_plane0;
+        m_tpg_threshold[i] = m_tpg_threshold_plane0;
       }
 
       //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
@@ -455,7 +472,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
-    frame_handler->m_tpg_processing_info->setState(registers_array, m_register_memory_factor);
+    frame_handler->m_tpg_processing_info->setThresholdState(m_tpg_threshold);
+    frame_handler->m_tpg_processing_info->setRunningSumState(m_register_memory_factor, m_register_scale_factor);
+    frame_handler->m_tpg_processing_info->setState(registers_array);
 
 
     // Set first hit bool to false so that registration of channel map is not executed twice

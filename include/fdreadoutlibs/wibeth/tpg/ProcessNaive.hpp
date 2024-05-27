@@ -63,6 +63,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
     int16_t& accum = state.accum[ichan];
 
     // Variables for hit finding
+    int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
@@ -90,7 +91,7 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       // Hit finding
       // --------------------------------------------------------------
-      bool is_over = sample > info.threshold;
+      bool is_over = sample > threshold;
       //printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, sample, info.threshold); // NOLINT
       if (is_over) {
         // Simulate saturated add
