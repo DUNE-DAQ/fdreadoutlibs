@@ -141,7 +141,8 @@ protected:
   //void find_hits(constframeptr fp);
 
 
-  void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
+  void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp,
+  uint16_t plane_numbers[swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER]);
 
 private:
   bool m_tpg_enabled;
