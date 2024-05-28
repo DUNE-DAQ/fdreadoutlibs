@@ -153,8 +153,14 @@ WIBEthFrameProcessor::init(const nlohmann::json& args)
 
   try {
     auto queue_index = appfwk::connection_index(args, {});
-    if (queue_index.find("tp_out") != queue_index.end()) {
-      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
+     if (queue_index.find("tp_out_plane_0") != queue_index.end()) {
+      m_tp_sink[0] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_0"]);
+    }
+    if (queue_index.find("tp_out_plane_1") != queue_index.end()) {
+      m_tp_sink[1] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_1"]);
+    }
+    if (queue_index.find("tp_out_plane_2") != queue_index.end()) {
+      m_tp_sink[2] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_2"]);
     }
   } catch (const ers::Issue& excpt) {
     ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -583,7 +589,7 @@ WIBEthFrameProcessor::process_swtpg_hits
             m_tps_suppressed_too_long++;
 	        }
 	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+	  else if(!m_tp_sink[plane_number]->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
             m_tps_send_failed++;
 	  }
