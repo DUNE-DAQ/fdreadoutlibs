@@ -196,26 +196,28 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   m_emulator_mode = conf->get_emulation_mode();
 
   // Setup pre-processing pipeline
-  if (!m_emulator_mode) 
+  if (!m_emulator_mode)
     inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::sequence_check, this, std::placeholders::_1));
 
   inherited::add_preprocess_task(std::bind(&WIBEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
- 
+
   // Check it post-processing is active
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
     auto proc_conf = dp->cast<appdal::RawDataProcessor>();
-    if(proc_conf != nullptr && proc_conf->get_mask_processing() == false) {  
+    if (proc_conf != nullptr && proc_conf->get_mask_processing() == false && proc_conf->get_tpg_enabled()) {
       m_tpg_enabled = true;
-      m_tpg_algorithm = proc_conf->get_algorithm();  
+      m_tpg_algorithm = proc_conf->get_algorithm();
       TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
       if (m_tpg_algorithm == "SimpleThreshold") {
         m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      } else if (m_tpg_algorithm == "AbsRS" ) {
-        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      }  else if (m_tpg_algorithm == "StandardRS" ) {
-    m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-  } else {
+      } else if (m_tpg_algorithm == "AbsRS") {
+        m_assigned_tpg_algorithm_function =
+          &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+      } else if (m_tpg_algorithm == "StandardRS") {
+        m_assigned_tpg_algorithm_function =
+          &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
+      } else {
         throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
       }
 
