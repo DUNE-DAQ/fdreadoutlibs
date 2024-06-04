@@ -121,10 +121,10 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       if (is_over) {
         // Simulate saturated add
         int32_t tmp_charge = hit_charge;
-	tmp_charge += sample;
+	tmp_charge += RS;
         tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
-        if (sample > hit_peak_adc) {
-          hit_peak_adc = (uint16_t)sample;
+        if (RS > hit_peak_adc) {
+          hit_peak_adc = (uint16_t)RS;
           hit_peak_time = hit_tover;
         }
         hit_charge = (int16_t)tmp_charge;

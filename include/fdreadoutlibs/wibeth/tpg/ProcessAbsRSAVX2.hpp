@@ -195,7 +195,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Really want an epi16 version of this, but the cmpgt and
       // cmplt functions set their epi16 parts to 0xff or 0x0,
       // so treating everything as epi8 works the same
-      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
+      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), RS, is_over);
       hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
 
       // Avoid overflow of the hit charge, if needed in practice 
@@ -217,8 +217,8 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //}
 
       // 1. Calculation of the hit peak time and ADC
-      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
-      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak); 
+      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(RS, hit_peak_adc);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, RS, is_sample_over_adc_peak);
       hit_peak_time = _mm256_blendv_epi8(hit_peak_time, hit_tover, is_sample_over_adc_peak);
 
       // 2. Update of the hit time over threshold  
