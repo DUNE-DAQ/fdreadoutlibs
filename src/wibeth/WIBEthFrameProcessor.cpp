@@ -571,7 +571,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
             m_tps_suppressed_too_long++;
 	        }
 	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+	  else if(!m_tp_sink->try_send(std::move(tp), std::chrono::milliseconds(1))) {
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
             m_tps_send_failed++;
 	  }
