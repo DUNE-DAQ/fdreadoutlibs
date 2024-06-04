@@ -151,6 +151,10 @@ struct ProcessingInfo
 
       // Set the pedestals and the 25/75-percentiles
       chanState.pedestals[j] = ped;
+      chanState.accum[j] = 0;
+      chanState.hit_tover[j] = 0;
+      chanState.hit_charge[j] = 0;
+
       chanState.pedestalsRS[j] = 0;
       chanState.RS[j] = 0;
       // AAA: Quantiles are set to the pedestal value +/- 20 so that the IQR 
