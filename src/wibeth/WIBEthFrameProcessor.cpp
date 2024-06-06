@@ -153,8 +153,14 @@ WIBEthFrameProcessor::init(const nlohmann::json& args)
 
   try {
     auto queue_index = appfwk::connection_index(args, {});
-    if (queue_index.find("tp_out") != queue_index.end()) {
-      m_tp_sink = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out"]);
+     if (queue_index.find("tp_out_plane_0") != queue_index.end()) {
+      m_tp_sink[0] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_0"]);
+    }
+    if (queue_index.find("tp_out_plane_1") != queue_index.end()) {
+      m_tp_sink[1] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_1"]);
+    }
+    if (queue_index.find("tp_out_plane_2") != queue_index.end()) {
+      m_tp_sink[2] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_2"]);
     }
   } catch (const ers::Issue& excpt) {
     ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -445,18 +451,21 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
     }
 
 
+    std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> plane_ids;
     // Add WIBEthFrameHandler channel map to the common m_register_channels.
     // Populate the array 
     for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
       auto chan_value = frame_handler->register_channel_map.channel[i];
       m_register_channels[i] = chan_value;
+      uint16_t plane_id = m_channel_map->get_plane_from_offline_channel(chan_value);
+      plane_ids[i] = plane_id;
 
       // Set all the waveform evaluation and manipulation by plane.
-      if (m_channel_map->get_plane_from_offline_channel(chan_value) == 2 ) {
+      if (plane_id == 2) {
         m_register_memory_factor[i] = m_tpg_rs_memory_factor_plane2;
         m_register_scale_factor[i] = m_tpg_rs_scale_factor_plane2;
         m_tpg_threshold[i] = m_tpg_threshold_plane2;
-      } else if (m_channel_map->get_plane_from_offline_channel(chan_value) == 1) {
+      } else if (plane_id == 1) {
         m_register_memory_factor[i] = m_tpg_rs_memory_factor_plane1;
         m_register_scale_factor[i] = m_tpg_rs_scale_factor_plane1;
         m_tpg_threshold[i] = m_tpg_threshold_plane1;
@@ -472,8 +481,12 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
       m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
     }
 
+    // TODO: This set of set*State methods all do the same for-loop and should be
+    // consolidated, e.g., setStateByPlane with all 4 inputs.
     frame_handler->m_tpg_processing_info->setThresholdState(m_tpg_threshold);
     frame_handler->m_tpg_processing_info->setRunningSumState(m_register_memory_factor, m_register_scale_factor);
+    frame_handler->m_tpg_processing_info->setPlaneState(plane_ids);
+    // End set.
     frame_handler->m_tpg_processing_info->setState(registers_array);
 
 
@@ -490,12 +503,16 @@ WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_hand
   m_assigned_tpg_algorithm_function(*frame_handler->m_tpg_processing_info);
 
   //GLM: avoid the tp_handler queue/thread
-  process_swtpg_hits(frame_handler->m_tpg_processing_info->output, timestamp);
+  process_swtpg_hits(frame_handler->m_tpg_processing_info->output,
+                     timestamp,
+                     frame_handler->m_tpg_processing_info->chanState.plane_numbers);
 
 }
 
 void
-WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp)
+WIBEthFrameProcessor::process_swtpg_hits
+(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp,
+  uint16_t plane_numbers[swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER])
 {
 
   constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
@@ -544,6 +561,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
 
         // This channel had a hit ending here, so we can create and output the hit here
         const uint16_t offline_channel = m_register_channels[chan[i]];
+        const uint16_t plane_number = plane_numbers[chan[i]];
         if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
           // May be needed for TPSet:
           // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
@@ -571,7 +589,7 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
             m_tps_suppressed_too_long++;
 	        }
 	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink->try_send(std::move(tp), std::chrono::milliseconds(1))) {
+	  else if(!m_tp_sink[plane_number]->try_send(std::move(tp), std::chrono::milliseconds(1))) {
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
             m_tps_send_failed++;
 	  }
