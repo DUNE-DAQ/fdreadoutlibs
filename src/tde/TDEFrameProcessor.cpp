@@ -16,7 +16,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-TDEFrameProcessor::conf(const appdal::ReadoutModule* conf)
+TDEFrameProcessor::conf(const appmodel::ReadoutModule* conf)
 {
   inherited::add_preprocess_task(
       std::bind(&TDEFrameProcessor::timestamp_check, this, std::placeholders::_1));
