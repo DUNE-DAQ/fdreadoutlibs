@@ -18,7 +18,7 @@ find_package(detdataformats REQUIRED)
 find_package(fddetdataformats REQUIRED)
 find_package(trigger REQUIRED)
 find_package(hdf5libs REQUIRED)
-find_package(appdal REQUIRED)
+find_package(appmodel REQUIRED)
 find_package(CLI11 REQUIRED)
 find_package(folly REQUIRED)
 find_package(Boost COMPONENTS iostreams unit_test_framework REQUIRED)
@@ -43,7 +43,7 @@ set(FDREADOUTLIBS_DEPENDENCIES
   trgdataformats::trgdataformats
   fddetdataformats::fddetdataformats
   trigger::trigger
-  appdal::appdal
+  appmodel::appmodel
   detchannelmaps::detchannelmaps
 )
 

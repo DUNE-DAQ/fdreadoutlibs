@@ -20,8 +20,8 @@
 //#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
 //#include "trigger/TPSet.hpp"
 
-#include "appdal/ReadoutModule.hpp"
-#include "coredal/Connection.hpp"
+#include "appmodel/ReadoutModule.hpp"
+#include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
 
 #include "tpg/ProcessingInfo.hpp"
@@ -92,7 +92,7 @@ public:
 
   void stop(const nlohmann::json& args) override;
 
-  void conf(const appdal::ReadoutModule* conf) override;
+  void conf(const appmodel::ReadoutModule* conf) override;
 
   void get_info(opmonlib::InfoCollector& ci, int level) override;
 

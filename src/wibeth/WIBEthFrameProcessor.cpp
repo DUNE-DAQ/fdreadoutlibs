@@ -6,8 +6,8 @@
  * received with this code.
  */
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
-#include "coredal/GeoId.hpp"
-#include "appdal/RawDataProcessor.hpp"
+#include "confmodel/GeoId.hpp"
+#include "appmodel/RawDataProcessor.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
@@ -171,7 +171,7 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 }
 
 void
-WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
+WIBEthFrameProcessor::conf(const appmodel::ReadoutModule* conf)
 {
   //auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
   for (auto output : conf->get_outputs()) {
@@ -204,7 +204,7 @@ WIBEthFrameProcessor::conf(const appdal::ReadoutModule* conf)
   // Check it post-processing is active
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
-    auto proc_conf = dp->cast<appdal::RawDataProcessor>();
+    auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
     if (proc_conf != nullptr && proc_conf->get_mask_processing() == false && proc_conf->get_tpg_enabled()) {
       m_tpg_enabled = true;
       m_tpg_algorithm = proc_conf->get_algorithm();

@@ -43,7 +43,7 @@ public:
   {}
 
   // Override config for pipeline setup
-  void conf(const appdal::ReadoutModule* conf) override;
+  void conf(const appmodel::ReadoutModule* conf) override;
 
 protected:
   /**
