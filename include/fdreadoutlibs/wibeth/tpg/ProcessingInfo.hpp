@@ -38,6 +38,7 @@ struct ChanState
       hit_tover[i] = 0;
       hit_peak_time[i] = 0;
       hit_peak_adc[i] = 0;
+      plane_numbers[i] = 0;
     }
   }
 
@@ -67,6 +68,9 @@ struct ChanState
 
   alignas(32) uint16_t __restrict__ hit_peak_time[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak time
   alignas(32) uint16_t __restrict__ hit_peak_adc[NREGISTERS * SAMPLES_PER_REGISTER]; // time peak adc
+
+  // Plane identifier. Conforming to uint16_t.
+  alignas(32) uint16_t __restrict__ plane_numbers[NREGISTERS * SAMPLES_PER_REGISTER];
 };
 
 template<size_t NREGISTERS>
@@ -118,6 +122,16 @@ struct ProcessingInfo
     }
   }
 
+  void setPlaneState(std::array<uint16_t, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER>& plane_ids)
+  {
+    // Set the plane values for each channel.
+    for (size_t j = 0; j < NREGISTERS * SAMPLES_PER_REGISTER; ++j) {
+      const size_t i = IOTA[j % SAMPLES_PER_REGISTER];
+      const size_t reg_idx = j / SAMPLES_PER_REGISTER;
+      chanState.plane_numbers[j] = plane_ids[i + reg_idx * SAMPLES_PER_REGISTER];
+    }
+  }
+
   // Set the initial state from the window starting at first_msg_p
   template<size_t N>
   void setState(const RegisterArray<N>& first_tick_registers)
@@ -151,6 +165,10 @@ struct ProcessingInfo
 
       // Set the pedestals and the 25/75-percentiles
       chanState.pedestals[j] = ped;
+      chanState.accum[j] = 0;
+      chanState.hit_tover[j] = 0;
+      chanState.hit_charge[j] = 0;
+
       chanState.pedestalsRS[j] = 0;
       chanState.RS[j] = 0;
       // AAA: Quantiles are set to the pedestal value +/- 20 so that the IQR 
