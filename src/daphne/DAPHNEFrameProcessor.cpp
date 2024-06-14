@@ -21,7 +21,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-DAPHNEFrameProcessor::conf(const appmodel::ReadoutModule* conf)
+DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   readoutlibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));

@@ -171,7 +171,7 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 }
 
 void
-WIBEthFrameProcessor::conf(const appmodel::ReadoutModule* conf)
+WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   //auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
   for (auto output : conf->get_outputs()) {

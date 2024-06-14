@@ -45,7 +45,7 @@ public:
   {}
 
   // Override configuration to register pipeline
-  void conf(const appmodel::ReadoutModule* conf) override;
+  void conf(const appmodel::DataHandlerModule* conf) override;
 
 protected:
   /**

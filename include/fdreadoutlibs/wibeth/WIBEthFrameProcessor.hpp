@@ -20,7 +20,7 @@
 //#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
 //#include "trigger/TPSet.hpp"
 
-#include "appmodel/ReadoutModule.hpp"
+#include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
 
@@ -92,7 +92,7 @@ public:
 
   void stop(const nlohmann::json& args) override;
 
-  void conf(const appmodel::ReadoutModule* conf) override;
+  void conf(const appmodel::DataHandlerModule* conf) override;
 
   void get_info(opmonlib::InfoCollector& ci, int level) override;
 
