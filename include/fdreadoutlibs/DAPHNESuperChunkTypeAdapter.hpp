@@ -19,9 +19,9 @@ namespace types {
  * @brief For DAPHNE the numbers are different.
  * 12[DAPHNE frames] x 454[32-bit words] x 4[Bytes per word] = 21792[Bytes]
  * */
-const constexpr std::size_t kDAPHNENumFrames = 12;
+const constexpr std::size_t kDAPHNENumFrames = 1;
 const constexpr std::size_t kDAPHNEFrameSize = 1864;
-const constexpr std::size_t kDAPHNESuperChunkSize = kDAPHNENumFrames * kDAPHNEFrameSize; // for 12: 21792
+const constexpr std::size_t kDAPHNESuperChunkSize = kDAPHNENumFrames * kDAPHNEFrameSize; // for 12: 22368
 struct DAPHNESuperChunkTypeAdapter
 {
   using FrameType = dunedaq::fddetdataformats::DAPHNEFrame;
