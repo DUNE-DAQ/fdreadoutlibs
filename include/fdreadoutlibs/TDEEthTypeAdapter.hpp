@@ -23,6 +23,7 @@ const constexpr std::size_t kTDEEthSize = 7200;
 struct TDEEthTypeAdapter
 {
   using FrameType = dunedaq::fddetdataformats::TDEEthFrame;
+
   // data
   char data[kTDEEthSize];
   // comparable based on first timestamp
