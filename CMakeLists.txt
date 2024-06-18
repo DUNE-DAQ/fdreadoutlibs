@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(fdreadoutlibs VERSION 1.9.3)
+project(fdreadoutlibs VERSION 1.9.4)
 
 find_package(daq-cmake REQUIRED)
 
