@@ -90,7 +90,7 @@ struct TDEEthTypeAdapter
 
   static const constexpr size_t fixed_payload_size = 7200;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
-  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kWIBEth;
+  static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kTDEEth;
   // NOTE: the expected_tick_difference is different from WIBs because of the TDE sampling rate
   static const constexpr uint64_t expected_tick_difference = 2000; // NOLINT(build/unsigned)
   static const constexpr uint64_t samples_per_frame = 64; // NOLINT(build/unsigned)
