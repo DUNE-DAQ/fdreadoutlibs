@@ -113,10 +113,7 @@ process_window_avx2(ProcessingInfo<NREGISTERS>& info)
       // cmplt functions set their epi16 parts to 0xff or 0x0,
       // so treating everything as epi8 works the same
       __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
-      hit_charge = _mm256_add_epi16(hit_charge, to_add_charge);
-
-      // Avoid overflow of the hit charge, if needed in practice 
-      hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
+      hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
 
       //if(ireg==0){
       //     printf("itime=%ld\n", itime);

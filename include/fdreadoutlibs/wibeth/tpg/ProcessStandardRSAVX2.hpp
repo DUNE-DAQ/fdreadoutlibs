@@ -131,7 +131,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
      __m256i first_part = swtpg_wibeth::_mm256_div_epi16(_mm256_mullo_epi16(RS, R_factor), 10);
 
-     RS = _mm256_add_epi16(first_part, s);
+     RS = _mm256_adds_epi16(first_part, s);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
      //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
@@ -191,10 +191,6 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // so treating everything as epi8 works the same
       __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), RS, is_over);
       hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
-
-      // Avoid overflow of the hit charge, if needed in practice 
-      hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
-
 
       //if(ireg==0){
       //     printf("itime=%ld\n", itime);
