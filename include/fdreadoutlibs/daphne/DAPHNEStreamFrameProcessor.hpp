@@ -11,10 +11,10 @@
 
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
 #include "fddetdataformats/DAPHNEStreamFrame.hpp"
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
@@ -24,22 +24,22 @@
 #include <memory>
 #include <string>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class DAPHNEStreamFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>
+class DAPHNEStreamFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>;
   using frameptr = types::DAPHNEStreamSuperChunkTypeAdapter*;
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEStreamFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
-  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
-    : readoutlibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry)
+  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry)
   {}
 
   // Override config for pipeline setup

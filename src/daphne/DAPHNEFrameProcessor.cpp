@@ -14,8 +14,8 @@
 #include <memory>
 #include <string>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using dunedaq::readoutlibs::logging::TLVL_FRAME_RECEIVED;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -23,7 +23,7 @@ namespace fdreadoutlibs {
 void 
 DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  readoutlibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
+  datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
   TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(conf);

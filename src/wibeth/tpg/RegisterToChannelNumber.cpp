@@ -7,10 +7,10 @@
  */
 
 #include "fdreadoutlibs/wibeth/tpg/RegisterToChannelNumber.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/ReadoutTypes.hpp"
+#include "datahandlinglibs/ReadoutTypes.hpp"
 #include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
 #include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
 
@@ -19,8 +19,8 @@
 #include <sys/types.h>
 #include <vector>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 namespace swtpg_wibeth {
 
@@ -38,8 +38,8 @@ get_register_to_offline_channel_map_wibeth(const dunedaq::fddetdataformats::WIBE
                                     )
 {
 
-  using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-  using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
+  using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
+  using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
   auto start_time = std::chrono::steady_clock::now();
 

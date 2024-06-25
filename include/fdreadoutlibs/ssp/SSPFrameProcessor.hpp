@@ -11,12 +11,12 @@
 //#include "appfwk/DAQModuleHelper.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/IterableQueueModel.hpp"
-#include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
-#include "readoutlibs/utils/ReusableThread.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/IterableQueueModel.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "fddetdataformats/SSPTypes.hpp"
 
@@ -30,27 +30,27 @@
 #include <utility>
 #include <vector>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class SSPFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>
+class SSPFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>;
   using frameptr = types::SSPFrameTypeAdapter*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
   // Channel map funciton type
   typedef int (*chan_map_fn_t)(int);
 
-  explicit SSPFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
-    : readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>(error_registry)
+  explicit SSPFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>(error_registry)
   {
     // Setup pre-processing pipeline
-    readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(
+    datahandlinglibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(
       std::bind(&SSPFrameProcessor::timestamp_check, this, std::placeholders::_1));
   }
 
@@ -63,7 +63,7 @@ public:
   void conf(const appmodel::DataHandlerModule* conf) override
   {
     // Setup pre-processing pipeline
-    readoutlibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(
+    datahandlinglibs::TaskRawDataProcessorModel<types::SSPFrameTypeAdapter>::add_preprocess_task(
       std::bind(&SSPFrameProcessor::timestamp_check, this, std::placeholders::_1));
 
     inherited::conf(conf);
