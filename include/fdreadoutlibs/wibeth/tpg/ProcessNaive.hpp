@@ -37,6 +37,18 @@ frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acc
   }
 }
 
+int16_t
+naive_avx2_div(int16_t a, int16_t b)
+{
+  int16_t vb = (1 << 15) / b;
+  int32_t mulhrs = a * vb;
+  mulhrs = (mulhrs >> 14) + 1;
+  mulhrs = mulhrs >> 1;
+  int16_t va = (int16_t)(mulhrs);
+  return va;
+}
+
+
 template<size_t NREGISTERS>
 void
 process_window_naive(ProcessingInfo<NREGISTERS>& info)

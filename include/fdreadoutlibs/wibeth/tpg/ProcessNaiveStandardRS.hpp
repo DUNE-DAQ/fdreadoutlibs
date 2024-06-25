@@ -5,8 +5,8 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIBETH_TPG_PROCESSNAIVERS_HPP_
-#define READOUT_SRC_WIBETH_TPG_PROCESSNAIVERS_HPP_
+#ifndef READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_
+#define READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_
 
 #include "FrameExpand.hpp"
 #include "ProcessingInfo.hpp"
@@ -16,13 +16,11 @@
 #include <inttypes.h>
 #include <limits>
 
-#include <cmath>
-
 namespace swtpg_wibeth {
 
 template<size_t NREGISTERS>
 void
-process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
+process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
 {
   uint16_t* output_loc = info.output;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
@@ -93,17 +91,14 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       //--------------------------------------------------------------
       
       // Naive: RS = (R * RS) + std::abs(sample)/scale
-      // RS = RS * RS_memory_factor + abs(sample) / RS_scale_factor;
+      // RS = RS * RS_memory_factor_float + sample / RS_scale_factor_float;
 
       int16_t first_part = (int16_t)(RS * RS_memory_factor);
-      first_part = naive_avx2_div(first_part, (int16_t)10);
+      first_part = naive_avx2_div(first_part, (uint16_t)10);
 
-      int16_t second_part = (int16_t)(std::abs(sample) * RS_scale_factor);
-      second_part = naive_avx2_div(second_part, (int16_t)10);
-
-
+      int16_t second_part = sample;
       RS = (int16_t)(first_part + second_part);
-
+ 
       //ss << "  \tFirst part: " << first_part;
       //ss << "  \tSecond part: " << second_part;
       //ss << "  \tRS value: " << RS;
@@ -111,8 +106,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       // Second pedsub 
       // --------------------------------------------------------------      
-
-      frugal_accum_update(medianRS, RS, accumRS, 10);
+      frugal_accum_update(medianRS, RS, accumRS, 10); 
       //frugal_accum_update((int16_t&)medianRS, RS, (int16_t&)accumRS, 10);
       RS -= medianRS;
       //ss << "  \tMedianRS: " << medianRS ;
@@ -150,7 +144,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
         (*output_loc++) = hit_peak_adc;    // NOLINT
         (*output_loc++) = hit_peak_time;   // NOLINT        
 
-	hit_charge = 0;
+        hit_charge = 0;
         hit_tover = 0;
         hit_peak_adc = 0;
         hit_peak_time = 0;
@@ -185,4 +179,4 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
 } // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIBETH_TPG_PROCESSNAIVERS_HPP_
+#endif // READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_

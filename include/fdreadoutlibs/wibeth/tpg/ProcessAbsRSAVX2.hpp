@@ -129,23 +129,17 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // Instead of using floats in the calcualation of the RS we multiply by 10 and 
       // do operations on the integers. In the end we divide by 10. 
-
+     
      __m256i first_part = _mm256_mullo_epi16(RS, R_factor);
-     //__m256i first_part_div = _mm256_div_epi16(RS, 10);
+     __m256i first_part_div = _mm256_div_epi16(first_part, 10);
 
      __m256i second_part = _mm256_mullo_epi16(_mm256_abs_epi16(s), scale_factor);
-     //__m256i second_part_div = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
+     __m256i second_part_div = _mm256_div_epi16(second_part, 10);
 
-     //RS = _mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
-     RS = swtpg_wibeth::_mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
-
-     //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
-     //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
-     //printf("RS_value:\t\t\t\t"); print256_as16_dec(RS);         printf("\n"); 
+     RS = _mm256_add_epi16(first_part_div, second_part_div);
 
       // Update the medianRS itself in all channels
-      //printf("MedianRS:\t\t\t\t"); print256_as16_dec(medianRS);         printf("\n"); 
-
+       
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
       swtpg_wibeth::frugal_accum_update_avx2(medianRS, RS, accumRS, info.frugal_streaming_accumulator_limit, _mm256_set1_epi16(0xffff));
@@ -153,10 +147,6 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
       // __m256i sigma = _mm256_set1_epi16(2000); // 20 ADC
       RS = _mm256_sub_epi16(RS, medianRS);
-
-      //printf("RS_after_medianRS:\t\t\t\t"); print256_as16_dec(RS);         printf("\n"); 
-
-
 
       // --------------------------------------------------------------
       // Inter-quantile range
@@ -168,7 +158,6 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Clamp sigma to a range where it won't overflow when
       // multiplied by info.multiplier*5
       //sigma = _mm256_min_epi16(sigma, sigmaMax);
-
 
 
       // --------------------------------------------------------------
@@ -203,17 +192,12 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
 
       //if(ireg==0){
-      //     printf("itime=%ld\n", itime);
-      //     printf("s:             "); print256_as16_dec(s);             printf("\n");
-      //     printf("median:        "); print256_as16_dec(median);        printf("\n");
-      //     printf("RS:         "); print256_as16_dec(RS);         printf("\n");
-      //     printf("sigma:         "); print256_as16_dec(sigma);         printf("\n");
-      //     printf("filt:          "); print256_as16_dec(filt);          printf("\n");
-      //     printf("to_add_charge: "); print256_as16_dec(to_add_charge); printf("\n");
-      //     printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
-      //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");     
-      //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
-      //     printf("left:          "); print256_as16_dec(left);          printf("\n");
+           //printf("-------------------------------------\n", itime);
+           //printf("hit_charge:    "); print256_as16_dec(hit_charge);    printf("\n");
+           //printf("hit_peak_adc:    "); print256_as16_dec(hit_peak_adc);    printf("\n");
+           //printf("threshold:        "); print256_as16_dec(threshold);        printf("\n");
+           //printf("R_factor:        "); print256_as16_dec(R_factor);        printf("\n");
+           //printf("scale_factor:        "); print256_as16_dec(scale_factor);        printf("\n");
       //}
 
       // 1. Calculation of the hit peak time and ADC
@@ -246,7 +230,6 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
       if (!no_hits_to_store) {
 
-
         ++nhits;
         // We have to save the whole register, including the
         // lanes that don't have anything interesting, but
@@ -271,9 +254,11 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
-        _mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
-                            _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
-        _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
+        //_mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
+        //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
+        _mm256_storeu_si256(output_loc++, hit_charge);
+
+	_mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 

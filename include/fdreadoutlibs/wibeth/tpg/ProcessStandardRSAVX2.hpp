@@ -134,7 +134,6 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
      RS = _mm256_add_epi16(first_part, s);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
-     //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
      //printf("RS_value:\t\t\t\t"); print256_as16_dec(RS);         printf("\n"); 
 
       // Update the medianRS itself in all channels
@@ -196,7 +195,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
 
 
-      //if(ireg==0){
+      if(ireg==0){
       //     printf("itime=%ld\n", itime);
       //     printf("s:             "); print256_as16_dec(s);             printf("\n");
       //     printf("median:        "); print256_as16_dec(median);        printf("\n");
@@ -208,7 +207,9 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");     
       //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
-      //}
+           //printf("threshold:        "); print256_as16_dec(threshold);        printf("\n");
+           //printf("R_factor:        "); print256_as16_dec(R_factor);        printf("\n");
+      }
 
       // 1. Calculation of the hit peak time and ADC
       __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(RS, hit_peak_adc);
@@ -265,9 +266,11 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
-        _mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
-                            _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
-        _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
+        //_mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
+        //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
+        _mm256_storeu_si256(output_loc++, hit_charge);
+
+	_mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
