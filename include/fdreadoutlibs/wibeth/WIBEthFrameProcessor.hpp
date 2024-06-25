@@ -13,7 +13,7 @@
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
@@ -73,18 +73,18 @@ private:
   int16_t* m_tpg_taps_p = nullptr;
 };
 
-class WIBEthFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
+class WIBEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>;
   using frameptr = types::DUNEWIBEthTypeAdapter*;
   using constframeptr = const types::DUNEWIBEthTypeAdapter*;
   using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
   // Channel map function type
   typedef int (*chan_map_fn_t)(int);
 
-  explicit WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry);
+  explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
 
   ~WIBEthFrameProcessor();
 

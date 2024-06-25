@@ -11,11 +11,11 @@
 
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/DefaultRequestHandlerModel.hpp"
-#include "readoutlibs/models/SkipListLatencyBufferModel.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/DefaultRequestHandlerModel.hpp"
+#include "datahandlinglibs/models/SkipListLatencyBufferModel.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
 
@@ -32,30 +32,30 @@
 #include <utility>
 #include <vector>
 
-using dunedaq::readoutlibs::logging::TLVL_WORK_STEPS;
+using dunedaq::datahandlinglibs::logging::TLVL_WORK_STEPS;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
 class DAPHNEListRequestHandler
-  : public readoutlibs::DefaultRequestHandlerModel<
+  : public datahandlinglibs::DefaultRequestHandlerModel<
       types::DAPHNESuperChunkTypeAdapter,
-      readoutlibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>
+      datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>
 {
 public:
   // Using shorter typenames
   using inherited =
-    readoutlibs::DefaultRequestHandlerModel<types::DAPHNESuperChunkTypeAdapter,
-                                            readoutlibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>;
+    datahandlinglibs::DefaultRequestHandlerModel<types::DAPHNESuperChunkTypeAdapter,
+                                            datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>;
   using SkipListAcc = typename folly::ConcurrentSkipList<types::DAPHNESuperChunkTypeAdapter>::Accessor;
   using SkipListSkip = typename folly::ConcurrentSkipList<types::DAPHNESuperChunkTypeAdapter>::Skipper;
 
   // Constructor
   DAPHNEListRequestHandler(
-    std::unique_ptr<readoutlibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>& latency_buffer,
-    std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
+    std::unique_ptr<datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>& latency_buffer,
+    std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
     : DefaultRequestHandlerModel<types::DAPHNESuperChunkTypeAdapter,
-                                 readoutlibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>(
+                                 datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>(
         latency_buffer,
         error_registry)
   {

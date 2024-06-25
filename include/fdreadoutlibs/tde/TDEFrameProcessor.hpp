@@ -8,38 +8,38 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDE_TDEFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDE_TDEFRAMEPROCESSOR_HPP_
 
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
 #include "fddetdataformats/TDE16Frame.hpp"
 
 #include "fdreadoutlibs/TDEFrameTypeAdapter.hpp"
 
 #include "logging/Logging.hpp"
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
 
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class TDEFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter
+class TDEFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter
 >
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter>;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::TDEFrameTypeAdapter>;
   using frameptr = types::TDEFrameTypeAdapter*;
   using tdeframeptr = dunedaq::fddetdataformats::TDE16Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
-  explicit TDEFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
+  explicit TDEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
     : TaskRawDataProcessorModel<types::TDEFrameTypeAdapter
 >(error_registry)
   {}

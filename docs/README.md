@@ -1,9 +1,9 @@
 # fdreadoutlibs - Far Detector readout libraries
-Collection of Far Detector FrontEnd specific readout specializations. This includes type definitions to be used with the implementations in `readoutlibs` and frontend specific specializations (i.e. frame processors or software hit finding). It is the glue between `readoutlibs` and `readoutmodules` that specifies types and implementations for the use of `readoutlibs` that can then be imported by `fdreadoutmodules` to be initialized in the `DataLinkHandler` module.
+Collection of Far Detector FrontEnd specific readout specializations. This includes type definitions to be used with the implementations in `datahandlinglibs` and frontend specific specializations (i.e. frame processors or software hit finding). It is the glue between `datahandlinglibs` and `datahandlinglibs` that specifies types and implementations for the use of `datahandlinglibs` that can then be imported by `fdreadoutlibs` to be initialized in the `DataLinkHandler` module.
 
 ## Building and setting up the workarea
 
-How to clone and build DUNE DAQ packages, including `readout`, is covered in [the daq-buildtools instructions](https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-buildtools/). For examples on how to run the standalone readout app, take a look at the `fdreadoutmodules` documentation.
+How to clone and build DUNE DAQ packages, including `readout`, is covered in [the daq-buildtools instructions](https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-buildtools/). For examples on how to run the standalone readout app, take a look at the `fdreadoutlibs` documentation.
 
 ## Frontends and features provided by `fdreadoutlibs`
 The following frontends and features are provided by this package:

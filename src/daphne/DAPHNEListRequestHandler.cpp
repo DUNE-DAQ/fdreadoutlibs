@@ -9,7 +9,7 @@
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEListRequestHandler.hpp"
 
-using dunedaq::readoutlibs::logging::TLVL_WORK_STEPS;
+using dunedaq::datahandlinglibs::logging::TLVL_WORK_STEPS;
 
 namespace dunedaq {
 namespace fdreadoutlibs {

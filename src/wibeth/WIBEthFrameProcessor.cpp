@@ -13,13 +13,13 @@
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/IterableQueueModel.hpp"
-//#include "readoutlibs/readoutconfig/Nljs.hpp"
-#include "readoutlibs/readoutinfo/InfoNljs.hpp"
-#include "readoutlibs/utils/ReusableThread.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/IterableQueueModel.hpp"
+//#include "datahandlinglibs/readoutconfig/Nljs.hpp"
+#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
+#include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
 #include "fddetdataformats/WIBEthFrame.hpp"
@@ -46,8 +46,8 @@
 #include <utility>
 #include <vector>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
@@ -118,7 +118,7 @@ WIBEthFrameHandler::get_hits_dest()
   return m_hits_dest;
 }
 
-WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
+WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
   , m_tpg_enabled(false)
 {
@@ -173,14 +173,14 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  //auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+  //auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
          m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
-      ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
+      ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
     }
   }
 
@@ -242,7 +242,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 void
 WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
-  readoutlibs::readoutinfo::RawDataProcessorInfo info;
+  datahandlinglibs::readoutinfo::RawDataProcessorInfo info;
 
   info.num_seq_id_errors = m_seq_id_error_ctr.load();
   info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
@@ -279,7 +279,7 @@ WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
         top_highest_values = channel_tp_rate_vec.size();
       }
       for (int i = 0; i < top_highest_values; i++) {
-        readoutlibs::readoutinfo::TPChannelInfo tp_info;
+        datahandlinglibs::readoutinfo::TPChannelInfo tp_info;
         tp_info.num_tp = channel_tp_rate_vec[i].second;
 	tp_info.channel = channel_tp_rate_vec[i].first;
         ci.add(tp_info);
@@ -339,7 +339,7 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
     m_seq_id_max_jump = std::max(delta_seq_id, m_seq_id_max_jump.load());
     m_seq_id_min_jump = std::min(delta_seq_id, m_seq_id_min_jump.load());
 
-    m_error_registry->add_error("SEQUENCE_ID_JUMP", readoutlibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
+    m_error_registry->add_error("SEQUENCE_ID_JUMP", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
     if (m_first_seq_id_mismatch) { // log once
       TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISSMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
       m_first_seq_id_mismatch = false;
@@ -391,7 +391,7 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   // Check timestamp
   if (m_current_ts - m_previous_ts != wibeth_frame_tick_difference) {
     ++m_ts_error_ctr;
-    m_error_registry->add_error("MISSING_FRAMES", readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
+    m_error_registry->add_error("MISSING_FRAMES", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
     if (m_first_ts_missmatch) { // log once
       TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
       m_first_ts_missmatch = false;

@@ -10,7 +10,7 @@ find_package(iomanager REQUIRED)
 find_package(appfwk REQUIRED)
 find_package(logging REQUIRED)
 find_package(opmonlib REQUIRED)
-find_package(readoutlibs REQUIRED)
+find_package(datahandlinglibs REQUIRED)
 find_package(daqdataformats REQUIRED)
 find_package(detchannelmaps REQUIRED)
 find_package(trgdataformats REQUIRED)
@@ -36,7 +36,7 @@ set(FDREADOUTLIBS_DEPENDENCIES
   logging::logging
 #dunedaq
   appfwk::appfwk
-  readoutlibs::readoutlibs
+  datahandlinglibs::datahandlinglibs
   opmonlib::opmonlib
   daqdataformats::daqdataformats
   detdataformats::detdataformats
