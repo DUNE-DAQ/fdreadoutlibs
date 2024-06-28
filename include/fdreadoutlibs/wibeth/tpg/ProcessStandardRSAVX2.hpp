@@ -23,8 +23,6 @@ inline void
 process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 {
 
-  const __m256i overflowMax = _mm256_set1_epi16(INT16_MAX);
-      
 
   // The maximum value that sigma can have before the threshold overflows a 16-bit signed integer
   //const __m256i sigmaMax = _mm256_set1_epi16((1 << 15) / (info.multiplier * info.threshold));
