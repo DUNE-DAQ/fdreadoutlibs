@@ -131,13 +131,15 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // do operations on the integers. In the end we divide by 10. 
 
      __m256i first_part = _mm256_mullo_epi16(RS, R_factor);
+     first_part = swtpg_wibeth::_mm256_div_epi16(first_part, 10);
      //__m256i first_part_div = _mm256_div_epi16(RS, 10);
 
      __m256i second_part = _mm256_mullo_epi16(_mm256_abs_epi16(s), scale_factor);
+     second_part = swtpg_wibeth::_mm256_div_epi16(second_part, 10);
      //__m256i second_part_div = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
 
      //RS = _mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
-     RS = swtpg_wibeth::_mm256_div_epi16(_mm256_adds_epi16(first_part, second_part), 10);
+     RS = _mm256_adds_epi16(first_part, second_part);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
      //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
