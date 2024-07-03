@@ -130,13 +130,14 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Instead of using floats in the calcualation of the RS we multiply by 10 and 
       // do operations on the integers. In the end we divide by 10. 
      
-     __m256i first_part = _mm256_mullo_epi16(RS, R_factor);
-     __m256i first_part_div = _mm256_div_epi16(first_part, 10);
+      __m256i first_part = _mm256_mullo_epi16(RS, R_factor);
+      __m256i second_part = _mm256_mullo_epi16(_mm256_abs_epi16(s), scale_factor);
+      //RS = swtpg_wibeth::_mm256_div_epi16(_mm256_add_epi16(first_part, second_part), 10);
 
-     __m256i second_part = _mm256_mullo_epi16(_mm256_abs_epi16(s), scale_factor);
-     __m256i second_part_div = _mm256_div_epi16(second_part, 10);
+      __m256i first_part_div = _mm256_div_epi16(first_part, 10);
+      __m256i second_part_div = _mm256_div_epi16(second_part, 10);
+      RS = _mm256_add_epi16(first_part_div, second_part_div);
 
-     RS = _mm256_add_epi16(first_part_div, second_part_div);
 
       // Update the medianRS itself in all channels
        

@@ -96,12 +96,10 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       // RS = RS * RS_memory_factor + abs(sample) / RS_scale_factor;
 
       int16_t first_part = (int16_t)(RS * RS_memory_factor);
-      first_part = naive_avx2_div(first_part, (int16_t)10);
-
       int16_t second_part = (int16_t)(std::abs(sample) * RS_scale_factor);
+
+      first_part = naive_avx2_div(first_part, (int16_t)10);
       second_part = naive_avx2_div(second_part, (int16_t)10);
-
-
       RS = (int16_t)(first_part + second_part);
 
       //ss << "  \tFirst part: " << first_part;
