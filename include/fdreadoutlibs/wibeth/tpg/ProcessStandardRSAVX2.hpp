@@ -195,7 +195,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       hit_charge = _mm256_min_epi16(hit_charge, overflowMax);
 
 
-      if(ireg==0){
+      //if(ireg==0){
       //     printf("itime=%ld\n", itime);
       //     printf("s:             "); print256_as16_dec(s);             printf("\n");
       //     printf("median:        "); print256_as16_dec(median);        printf("\n");
@@ -209,7 +209,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
       //     printf("threshold:        "); print256_as16_dec(threshold);        printf("\n");
       //     printf("R_factor:        "); print256_as16_dec(R_factor);        printf("\n");
-      }
+      //}
 
       // 1. Calculation of the hit peak time and ADC
       __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(RS, hit_peak_adc);

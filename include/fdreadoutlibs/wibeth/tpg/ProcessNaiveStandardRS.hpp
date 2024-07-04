@@ -1,5 +1,5 @@
 /**
- * @file ProcessNaiveRS.hpp Non AVX implementation of AbsRS tpg algorithm
+ * @file ProcessNaiveRS.hpp Non AVX implementation of StandardRS tpg algorithm
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
@@ -45,11 +45,6 @@ process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
     int16_t& RS         = state.RS[ichan]; //value of the RS for the previous sample
     int16_t& medianRS   = state.pedestalsRS[ichan]; //median for the RS waveform needed for IQR & separate pedsub
     int16_t& accumRS    = state.accumRS[ichan];
-    //IQR
-    //int16_t& accum25    = state.accum25[ichan];
-    //int16_t& accum75    = state.accum75[ichan];
-    //int16_t& quantile25 = state.quantile25[ichan];
-    //int16_t& quantile75 = state.quantile75[ichan];
 
     // Variables for hit finding
     int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
@@ -87,14 +82,14 @@ process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
       //ss << "\tsample: " << sample;
 
       //--------------------------------------------------------------
-      // Absolute Running Sum
+      // Standard Running Sum
       //--------------------------------------------------------------
       
-      // Naive: RS = (R * RS) + std::abs(sample)/scale
-      // RS = RS * RS_memory_factor_float + sample / RS_scale_factor_float;
+      // Naive: RS = (R * RS) + sample/scale
+      // RS = RS * RS_memory_factor + sample;
 
       int16_t first_part = (int16_t)(RS * RS_memory_factor);
-      first_part = naive_avx2_div(first_part, (uint16_t)10);
+      first_part = naive_avx2_div(first_part, (int16_t)10);
 
       int16_t second_part = sample;
       RS = (int16_t)(first_part + second_part);
