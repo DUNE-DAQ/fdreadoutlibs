@@ -1,12 +1,12 @@
 /**
- * @file ProcessNaive.hpp Non AVX implementation of sw tpg
+ * @file ProcessNaiveStandardRS.hpp Non AVX implementation of StandardRS tpg algorithm
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_
-#define READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_
+#ifndef READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_
+#define READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_
 
 #include "FrameExpand.hpp"
 #include "ProcessingInfo.hpp"
@@ -18,50 +18,18 @@
 
 namespace swtpg_wibeth {
 
-void
-frugal_accum_update(int16_t& m, const int16_t s, int16_t& acc, const int16_t acclimit)
-{
-  if (s > m)
-    ++acc;
-  if (s < m)
-    --acc;
-
-  if (acc > acclimit) {
-    ++m;
-    acc = 0;
-  }
-
-  if (acc < -1 * acclimit) {
-    --m;
-    acc = 0;
-  }
-}
-
-int16_t
-naive_avx2_div(int16_t a, int16_t b)
-{
-  int16_t vb = (1 << 15) / b;
-  int32_t mulhrs = a * vb;
-  mulhrs = (mulhrs >> 14) + 1;
-  mulhrs = mulhrs >> 1;
-  int16_t va = (int16_t)(mulhrs);
-  return va;
-}
-
-
 template<size_t NREGISTERS>
 void
-process_window_naive(ProcessingInfo<NREGISTERS>& info)
+process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
 {
-  // Start with taps as floats that add to 1. Multiply by some
-  // power of two (2**N) and round to int. Before filtering, cap the
-  // value of the input to INT16_MAX/(2**N)
-
   uint16_t* output_loc = info.output;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
 
   for (size_t ichan = 0; ichan < NREGISTERS * SAMPLES_PER_REGISTER; ++ichan) {
+
+    // AAA: debugging 
+    //std::cout << "CHANNEL: " << ichan << std::endl;
     const size_t register_index = ichan / SAMPLES_PER_REGISTER;
     if (register_index < info.first_register || register_index >= info.last_register)
       continue;
@@ -71,20 +39,26 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
     // Get all the state variables by reference so they "automatically" get saved for the next go-round
     ChanState<NREGISTERS>& state = info.chanState;
-    int16_t& median = state.pedestals[ichan];
-    int16_t& accum = state.accum[ichan];
+    int16_t& median     = state.pedestals[ichan];
+    int16_t& accum      = state.accum[ichan];
+    
+    int16_t& RS         = state.RS[ichan]; //value of the RS for the previous sample
+    int16_t& medianRS   = state.pedestalsRS[ichan]; //median for the RS waveform needed for IQR & separate pedsub
+    int16_t& accumRS    = state.accumRS[ichan];
 
     // Variables for hit finding
     int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
+    uint16_t& RS_memory_factor = state.RS_memory_factor[ichan];
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
     uint16_t& hit_peak_adc = state.hit_peak_adc[ichan]; // time over threshold
-    uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold
+    uint16_t& hit_peak_time = state.hit_peak_time[ichan]; // time over threshold    
 
     for (size_t itime = 0; itime < info.timeWindowNumFrames; ++itime) {
-      const size_t msg_index = itime / info.timeWindowNumFrames;
-      const size_t msg_time_offset = itime % info.timeWindowNumFrames;
+      const size_t msg_index = itime / swtpg_wibeth::FRAMES_PER_MSG;
+      const size_t msg_time_offset = itime % swtpg_wibeth::FRAMES_PER_MSG;
+
       // The index in uint16_t of the start of the message we want // NOLINT
       const size_t msg_start_index = msg_index * swtpg_wibeth::ADCS_SIZE / sizeof(uint16_t); // NOLINT
       const size_t offset_within_msg = register_t0_start + SAMPLES_PER_REGISTER * msg_time_offset + register_offset;
@@ -93,42 +67,76 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
       // --------------------------------------------------------------
       // Pedestal finding/coherent noise removal
       // --------------------------------------------------------------
-      int16_t sample = input16[index]; 
+      
+      int16_t sample = input16[index];
 
-      //frugal_accum_update(median, sample, accum, 10);
-      frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
+      //std::stringstream ss;
 
+      //ss << "ADC value: " << sample;
+
+      frugal_accum_update(median, sample, accum, 10);
+      //frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
       sample -= median;
+
+      //ss << "\tsample: " << sample;
+
+      //--------------------------------------------------------------
+      // Standard Running Sum
+      //--------------------------------------------------------------
+      
+      // Naive: RS = (R * RS) + sample
+      // RS = RS * RS_memory_factor + sample;
+
+      int16_t first_part = (int16_t)(RS * RS_memory_factor);
+      first_part = naive_avx2_div(first_part, (int16_t)10);
+
+      int16_t second_part = sample;
+      RS = (int16_t)(first_part + second_part);
+ 
+      //ss << "  \tFirst part: " << first_part;
+      //ss << "  \tSecond part: " << second_part;
+      //ss << "  \tRS value: " << RS;
+
+      // --------------------------------------------------------------
+      // Second pedsub 
+      // --------------------------------------------------------------      
+      frugal_accum_update(medianRS, RS, accumRS, 10); 
+      //frugal_accum_update((int16_t&)medianRS, RS, (int16_t&)accumRS, 10);
+      RS -= medianRS;
+      //ss << "  \tMedianRS: " << medianRS ;
+
 
       // --------------------------------------------------------------
       // Hit finding
       // --------------------------------------------------------------
-      bool is_over = sample > threshold;
-      //printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, sample, info.threshold); // NOLINT
+      bool is_over = RS > threshold;
       if (is_over) {
         // Simulate saturated add
         int32_t tmp_charge = hit_charge;
-        tmp_charge += sample;
+	tmp_charge += RS;
         tmp_charge = std::min(tmp_charge, (int32_t)std::numeric_limits<int16_t>::max());
-        if (sample > hit_peak_adc) {
-          hit_peak_adc = (uint16_t)sample;
+        if (RS > hit_peak_adc) {
+          hit_peak_adc = (uint16_t)RS;
           hit_peak_time = hit_tover;
         }
         hit_charge = (int16_t)tmp_charge;
         hit_tover++;
       }
       if (prev_was_over && !is_over) {
-         //if(hit_tover==1){
-         //    printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
-         //}
+
+        //ss << "\tis_over: " << is_over;
+
+        // if(hit_tover==1){
+        //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
+        // }
 
         // We reached the end of the hit: write it out
-	(*output_loc++) = (uint16_t)ichan; // NOLINT
-        (*output_loc++) = (uint16_t)itime;         // NOLINT 
+        (*output_loc++) = (uint16_t)ichan; // NOLINT
+        (*output_loc++) = (uint16_t)itime;           // NOLINT
         (*output_loc++) = hit_charge;      // NOLINT
-        (*output_loc++) = hit_tover;     // NOLINT
+        (*output_loc++) = hit_tover;       // NOLINT
         (*output_loc++) = hit_peak_adc;    // NOLINT
-        (*output_loc++) = hit_peak_time;   // NOLINT
+        (*output_loc++) = hit_peak_time;   // NOLINT        
 
         hit_charge = 0;
         hit_tover = 0;
@@ -139,20 +147,30 @@ process_window_naive(ProcessingInfo<NREGISTERS>& info)
 
       } // end if left hit
       prev_was_over = is_over;
-    
+
+      //std::cout << ss.str() << std::endl;      
+
+
     } // end loop over samples
   }   // end loop over channels
 
-  // printf("Found %d hits\n", nhits);
-  info.nhits = nhits;
-
   // Write a magic "end-of-hits" value into the list of hits
-  // Arguably not needed, we can avoid using MAGIC 
   for (int i = 0; i < 6; ++i) {
     (*output_loc++) = MAGIC; // NOLINT
   }
+
+  info.nhits += nhits;
+
+  //if (nhits > 0) { 
+  //  std::cout << "FOUND HITS: " << nhits << std::endl;
+  //} 
+
+
+  //printf("Found %d hits\n", nhits);
+
+
 }
 
 } // namespace swtpg_wibeth
 
-#endif // READOUT_SRC_WIBEth_TPG_PROCESSNAIVE_HPP_
+#endif // READOUT_SRC_WIBETH_TPG_PROCESSNAIVESTANDARDRS_HPP_

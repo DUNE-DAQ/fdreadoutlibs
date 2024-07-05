@@ -170,6 +170,7 @@ struct ProcessingInfo
       chanState.hit_charge[j] = 0;
 
       chanState.pedestalsRS[j] = 0;
+      chanState.accumRS[j] = 0;
       chanState.RS[j] = 0;
       // AAA: Quantiles are set to the pedestal value +/- 20 so that the IQR 
       // becomes above the RMS value of the input ADCs. We use the frugal 

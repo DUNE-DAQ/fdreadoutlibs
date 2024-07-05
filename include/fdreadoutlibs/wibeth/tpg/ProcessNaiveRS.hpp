@@ -16,17 +16,14 @@
 #include <inttypes.h>
 #include <limits>
 
-namespace swtpg_wibeth {
+#include <cmath>
 
+namespace swtpg_wibeth {
 
 template<size_t NREGISTERS>
 void
 process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 {
-  const float   R = 0.8; //"deweighting factor" for running sum
-  //scaling factor to stop the ADCs from overflowing (may not needs this, depends on magnitude of FIR output) 
-  const size_t  scale = 2; 
-
   uint16_t* output_loc = info.output;           // NOLINT
   const uint16_t* input16 = info.input->data(); // NOLINT
   int nhits = 0;
@@ -58,6 +55,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
 
     // Variables for hit finding
     int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
+    uint16_t& RS_memory_factor = state.RS_memory_factor[ichan];
+    uint16_t& RS_scale_factor = state.RS_scale_factor[ichan];
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
@@ -79,40 +78,53 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       
       int16_t sample = input16[index];
 
-      std::stringstream ss;
+      //std::stringstream ss;
 
-      ss << "ADC value: " << sample;
+      //ss << "ADC value: " << sample;
 
-      //frugal_accum_update(median, sample, accum, 10);
-      frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
+      frugal_accum_update(median, sample, accum, 10);
+      //frugal_accum_update((int16_t&)median, sample, (int16_t&)accum, 10);
       sample -= median;
 
-      ss << "\tsample: " << sample;
+      //ss << "\tsample: " << sample;
 
       //--------------------------------------------------------------
       // Absolute Running Sum
       //--------------------------------------------------------------
       
-      //RS = (R * RS) + std::abs(sample)/scale;       
+      // Naive: RS = (R * RS) + std::abs(sample)/scale
+      // RS = RS * RS_memory_factor + abs(sample) / RS_scale_factor;
 
-      float first_part = R*RS;
-      float second_part = (float)std::abs(sample)/scale; 
-      //int16_t second_part = std::abs(sample); 
+      /*
+      int16_t first_part = (int16_t)(RS * RS_memory_factor);
+      int16_t second_part = (int16_t)(std::abs(sample) * RS_scale_factor);
 
-      // Round the RS result to the closest int16_t because
-      // AVX code uses only int16_t
-      RS = std::round(first_part+second_part); 
+      first_part = naive_avx2_div(first_part, (int16_t)10);
+      second_part = naive_avx2_div(second_part, (int16_t)10);
+      RS = (int16_t)(first_part + second_part);
+      */
 
-      ss << "  \tFirst part: " << first_part;
-      ss << "  \tSecond part: " << second_part;
-      ss << "  \tRS value: " << RS;
+      int16_t first_part = naive_avx2_div(RS, (int16_t)10);
+      first_part = (int16_t)(first_part * RS_memory_factor);
+      int16_t second_part = naive_avx2_div(std::abs(sample), (int16_t)10);
+      second_part = (int16_t)(second_part * RS_scale_factor);
+
+      int32_t overflow_part = first_part + second_part;
+      RS = std::min(overflow_part, INT16_MAX);
+
+      //ss << "  \tFirst part: " << first_part;
+      //ss << "  \tSecond part: " << second_part;
+      //ss << "  \tRS value: " << RS;
 
       // --------------------------------------------------------------
       // Second pedsub 
       // --------------------------------------------------------------      
+
       frugal_accum_update(medianRS, RS, accumRS, 10);
+      //frugal_accum_update((int16_t&)medianRS, RS, (int16_t&)accumRS, 10);
       RS -= medianRS;
-      ss << "  \tMedianRS: " << medianRS ;
+      //ss << "  \tMedianRS: " << medianRS ;
+
 
       // --------------------------------------------------------------
       // Hit finding
@@ -132,7 +144,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       }
       if (prev_was_over && !is_over) {
 
-        ss << "\tis_over: " << is_over;
+        //ss << "\tis_over: " << is_over;
 
         // if(hit_tover==1){
         //     printf("% 5d % 5d % 5d % 5d\n", (uint16_t)ichan, (uint16_t)itime, hit_charge, hit_tover); // NOLINT
@@ -146,7 +158,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
         (*output_loc++) = hit_peak_adc;    // NOLINT
         (*output_loc++) = hit_peak_time;   // NOLINT        
 
-        hit_charge = 0;
+	hit_charge = 0;
         hit_tover = 0;
         hit_peak_adc = 0;
         hit_peak_time = 0;
@@ -174,7 +186,7 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
   //} 
 
 
-  printf("Found %d hits\n", nhits);
+  //printf("Found %d hits\n", nhits);
 
 
 }
