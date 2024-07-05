@@ -49,7 +49,6 @@ process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
     // Variables for hit finding
     int16_t& threshold = state.threshold[ichan]; // Threshold for this channel.
     uint16_t& RS_memory_factor = state.RS_memory_factor[ichan];
-    uint16_t& RS_scale_factor = state.RS_scale_factor[ichan];
     uint16_t& prev_was_over = state.prev_was_over[ichan]; // was the previous sample over threshold?
     uint16_t& hit_charge = state.hit_charge[ichan];
     uint16_t& hit_tover = state.hit_tover[ichan]; // time over threshold
@@ -85,7 +84,7 @@ process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
       // Standard Running Sum
       //--------------------------------------------------------------
       
-      // Naive: RS = (R * RS) + sample/scale
+      // Naive: RS = (R * RS) + sample
       // RS = RS * RS_memory_factor + sample;
 
       int16_t first_part = (int16_t)(RS * RS_memory_factor);
