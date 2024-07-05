@@ -1,5 +1,5 @@
 /**
- * @file ProcessNaiveRS.hpp Non AVX implementation of StandardRS tpg algorithm
+ * @file ProcessNaiveStandardRS.hpp Non AVX implementation of StandardRS tpg algorithm
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have

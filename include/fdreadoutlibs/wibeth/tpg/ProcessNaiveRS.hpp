@@ -109,7 +109,8 @@ process_window_naive_RS(ProcessingInfo<NREGISTERS>& info)
       int16_t second_part = naive_avx2_div(std::abs(sample), (int16_t)10);
       second_part = (int16_t)(second_part * RS_scale_factor);
 
-      RS = (int16_t)(first_part + second_part);
+      int32_t overflow_part = first_part + second_part;
+      RS = std::min(overflow_part, INT16_MAX);
 
       //ss << "  \tFirst part: " << first_part;
       //ss << "  \tSecond part: " << second_part;

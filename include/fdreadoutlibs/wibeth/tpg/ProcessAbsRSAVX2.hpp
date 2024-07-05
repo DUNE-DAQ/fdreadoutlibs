@@ -146,7 +146,7 @@ process_window_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       __m256i second_part = _mm256_div_epi16(_mm256_abs_epi16(s), 10);
       second_part = _mm256_mullo_epi16(second_part, scale_factor);
 
-      RS = _mm256_add_epi16(first_part, second_part);
+      RS = _mm256_adds_epi16(first_part, second_part);
 
       // Update the medianRS itself in all channels
        
