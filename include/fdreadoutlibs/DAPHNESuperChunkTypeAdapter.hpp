@@ -9,7 +9,7 @@
 #include <memory>  // unique_ptr
 #include <vector>
 #include <cstring> // memcpy
-#include <tuple> // tie
+#include <tuple> // forward_as_tuple
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -27,12 +27,13 @@ struct DAPHNESuperChunkTypeAdapter
   using FrameType = dunedaq::fddetdataformats::DAPHNEFrame;
   // data
   char data[kDAPHNESuperChunkSize];
-  // comparable based on first timestamp
+  // comparable based on first timestamp and first channel
   bool operator<(const DAPHNESuperChunkTypeAdapter& other) const
   {
     auto thisptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&data);        // NOLINT
     auto otherptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&other.data); // NOLINT
-    return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
+
+    return std::forward_as_tuple(thisptr->get_timestamp(), thisptr->get_channel()) < std::forward_as_tuple(otherptr->get_timestamp(), otherptr->get_channel());
   }
 
   uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
