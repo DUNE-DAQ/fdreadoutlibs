@@ -14,6 +14,7 @@
 #include "logging/Logging.hpp"
 
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/DataMoveCallbackRegistry.hpp"
 
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
@@ -146,6 +147,8 @@ protected:
 
 private:
   bool m_tpg_enabled;
+  bool m_callback_mode;
+
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
   std::vector<unsigned int> m_channel_mask_vec;
@@ -173,6 +176,7 @@ private:
     std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
 
   std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<std::function<void(trigger::TriggerPrimitiveTypeAdapter&&)>> m_tp_callback_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
   std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
 

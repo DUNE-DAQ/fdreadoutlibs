@@ -174,10 +174,21 @@ void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   //auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
+  const char delim = '_';
   for (auto output : conf->get_outputs()) {
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+      if (output->get_data_type() != "TriggerPrimitive") continue;
+
+      // Separate the UID to find if we're supposed to use callback.
+      std::string target = output->UID();
+
+      // Callback processes are prefixed with "cb".
+      if (target.substr(0, 2) != "cb") {
+         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(target);
+      } else {
+        auto dmcbr = datahandlinglibs::DataMoveCallbackRegistry::get();
+        m_tp_callback_sink = dmcbr->get_callback<trigger::TriggerPrimitiveTypeAdapter>(target);
+        m_callback_mode = true;
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -544,12 +555,14 @@ WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdata
           if(tp.tp.time_over_threshold > m_tp_max_width) {
             ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
             m_tps_suppressed_too_long++;
-	  }
-	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
+	        }
+          // Send the TP to the TP handler module
+          else if (m_callback_mode) { // Check for the callback mode.
+            (*m_tp_callback_sink)(std::move(tp));
+          } else if(!m_tp_sink->try_send(std::move(tp), std::chrono::milliseconds(1))) { // Otherwise try to send through iom.
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
             m_tps_send_failed++;
-	  }
+          }
           else {
             m_new_tps++;
             ++nhits;
