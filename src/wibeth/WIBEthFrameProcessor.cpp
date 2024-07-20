@@ -153,14 +153,31 @@ WIBEthFrameProcessor::init(const nlohmann::json& args)
 
   try {
     auto queue_index = appfwk::connection_index(args, {});
-     if (queue_index.find("tp_out_plane_0") != queue_index.end()) {
+    bool callback = true;  // TODO: Make this cleaner.
+    if (queue_index.find("tp_out_plane_0") != queue_index.end()) {
       m_tp_sink[0] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_0"]);
+      callback = false;
     }
     if (queue_index.find("tp_out_plane_1") != queue_index.end()) {
       m_tp_sink[1] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_1"]);
+      callback = false;
     }
     if (queue_index.find("tp_out_plane_2") != queue_index.end()) {
       m_tp_sink[2] = get_iom_sender<types::TriggerPrimitiveTypeAdapter>(queue_index["tp_out_plane_2"]);
+      callback = false;
+    }
+    if (callback) {
+      auto dmcbr = readoutlibs::DataMoveCallbackRegistry::get();
+      if (queue_index.find("cb_tp_out_plane_0") != queue_index.end()) {
+        m_tp_callback_sink[0] = dmcbr->get_callback<types::TriggerPrimitiveTypeAdapter>(queue_index["cb_tp_out_plane_0"]);
+      }
+      if (queue_index.find("cb_tp_out_plane_1") != queue_index.end()) {
+        m_tp_callback_sink[1] = dmcbr->get_callback<types::TriggerPrimitiveTypeAdapter>(queue_index["cb_tp_out_plane_1"]);
+      }
+      if (queue_index.find("cb_tp_out_plane_2") != queue_index.end()) {
+        m_tp_callback_sink[2] = dmcbr->get_callback<types::TriggerPrimitiveTypeAdapter>(queue_index["cb_tp_out_plane_2"]);
+      }
+      m_callback_mode = true;
     }
   } catch (const ers::Issue& excpt) {
     ers::error(readoutlibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -588,11 +605,13 @@ WIBEthFrameProcessor::process_swtpg_hits
             ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
             m_tps_suppressed_too_long++;
 	        }
-	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink[plane_number]->try_send(std::move(tp), std::chrono::milliseconds(1))) {
+          // Send the TP to the TP handler module
+          else if (m_callback_mode) { // Check for the callback mode.
+            (*m_tp_callback_sink[plane_number])(std::move(tp));
+          } else if(!m_tp_sink[plane_number]->try_send(std::move(tp), std::chrono::milliseconds(1))) { // Otherwise try to send through iom.
             ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
             m_tps_send_failed++;
-	  }
+          }
           else {
             m_new_tps++;
             ++nhits;
