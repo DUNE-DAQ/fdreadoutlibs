@@ -87,8 +87,8 @@ process_window_naive_StandardRS(ProcessingInfo<NREGISTERS>& info)
       // Naive: RS = (R * RS) + sample
       // RS = RS * RS_memory_factor + sample;
 
-      int16_t first_part = (int16_t)(RS * RS_memory_factor);
-      first_part = naive_avx2_div(first_part, (int16_t)10);
+      int16_t first_part = naive_avx2_div(first_part, (int16_t)10);
+      first_part = (int16_t)(RS * RS_memory_factor);
 
       int16_t second_part = sample;
       RS = (int16_t)(first_part + second_part);

@@ -126,10 +126,10 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       
       // Naive: RS = (R_factor * RS) + sample; 
 
-      // Instead of using floats in the calcualation of the RS we multiply by 10 and 
-      // do operations on the integers. In the end we divide by 10. 
+      // Instead of using floats in the calculation of the RS, we first divide by 10
+      // then multiply by R_factor. This order is to reduce cases of overflow.
 
-     __m256i first_part = swtpg_wibeth::_mm256_div_epi16(_mm256_mullo_epi16(RS, R_factor), 10);
+     __m256i first_part = _mm256_mullo_epi16(swtpg_wibeth::_mm256_div_epi16(RS, 10), R_factor);
 
      RS = _mm256_add_epi16(first_part, s);
 
