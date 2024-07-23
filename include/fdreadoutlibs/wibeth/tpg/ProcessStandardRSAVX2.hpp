@@ -134,7 +134,6 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
      RS = _mm256_add_epi16(first_part, s);
 
      //printf("first_part:\t\t\t\t"); print256_as16_dec(first_part);         printf("\n"); 
-     //printf("second_part:\t\t\t\t"); print256_as16_dec(second_part);         printf("\n"); 
      //printf("RS_value:\t\t\t\t"); print256_as16_dec(RS);         printf("\n"); 
 
       // Update the medianRS itself in all channels
@@ -189,7 +188,7 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       // Really want an epi16 version of this, but the cmpgt and
       // cmplt functions set their epi16 parts to 0xff or 0x0,
       // so treating everything as epi8 works the same
-      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), s, is_over);
+      __m256i to_add_charge = _mm256_blendv_epi8(_mm256_set1_epi16(0), RS, is_over);
       hit_charge = _mm256_adds_epi16(hit_charge, to_add_charge);
 
       // Avoid overflow of the hit charge, if needed in practice 
@@ -208,11 +207,13 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
       //     printf("channels:    "); print256_as16_dec(channels);    printf("\n");     
       //     printf("is_over:          "); print256_as16_dec(is_over);          printf("\n");
       //     printf("left:          "); print256_as16_dec(left);          printf("\n");
+      //     printf("threshold:        "); print256_as16_dec(threshold);        printf("\n");
+      //     printf("R_factor:        "); print256_as16_dec(R_factor);        printf("\n");
       //}
 
       // 1. Calculation of the hit peak time and ADC
-      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(s, hit_peak_adc);
-      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, s, is_sample_over_adc_peak); 
+      __m256i is_sample_over_adc_peak = _mm256_cmpgt_epi16(RS, hit_peak_adc);
+      hit_peak_adc = _mm256_blendv_epi8(hit_peak_adc, RS, is_sample_over_adc_peak);
       hit_peak_time = _mm256_blendv_epi8(hit_peak_time, hit_tover, is_sample_over_adc_peak);
 
       // 2. Update of the hit time over threshold  
@@ -265,9 +266,11 @@ process_window_standard_rs_avx2(ProcessingInfo<NREGISTERS>& info)
 
         _mm256_storeu_si256(output_loc++, timenow); // NOLINT(runtime/increment_decrement)
         // STORE_MASK(hit_charge);
-        _mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
-                            _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
-        _mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
+        //_mm256_storeu_si256(output_loc++, // NOLINT(runtime/increment_decrement)
+        //                    _mm256_blendv_epi8(_mm256_set1_epi16(0), hit_charge, left));
+	_mm256_storeu_si256(output_loc++, hit_charge);
+
+	_mm256_storeu_si256(output_loc++, hit_tover); // NOLINT(runtime/increment_decrement)
 
         _mm256_storeu_si256(output_loc++, hit_peak_adc); // NOLINT(runtime/increment_decrement)
 
