@@ -41,7 +41,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
-DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
 
 
 namespace dunedaq {
@@ -80,15 +80,9 @@ TDEEthFrameProcessor::stop(const nlohmann::json& args)
 }
 
 void
-TDEEthFrameProcessor::init(const nlohmann::json& args)
-{
-//  inherited::init(args);
-}
-
-void
 TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
+  // auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
 
   for (auto output : conf->get_outputs()) {
     try {
@@ -101,7 +95,7 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   }
 
   m_sourceid.id = conf->get_source_id();
-  m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
+  m_sourceid.subsystem = types::TDEEthTypeAdapter::subsystem;
   auto geo_id = conf->get_geo_id();
   if (geo_id != nullptr) {
     m_det_id = geo_id->get_detector_id();
@@ -111,7 +105,7 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   }
   m_emulator_mode = conf->get_emulation_mode();
 
-  inherited::conf(cfg);
+  inherited::conf(conf);
 }
 
 void
@@ -137,19 +131,19 @@ void
 TDEEthFrameProcessor::sequence_check(frameptr fp)
 {
 
-  // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
-    // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
-    auto tf = reinterpret_cast<tdeframeptr>(((uint8_t*)fp));            // NOLINT
-    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      //auto wfh = const_cast<tdeframeptr>(tf->header());
-      tf->daq_header.crate_id = m_crate_no;
-      tf->daq_header.slot_id = m_slot_no;
-      tf->daq_header.stream_id = m_stream_id; 
-      tf->daq_header.seq_id = (m_previous_seq_id+i) & 0xfff;
-      tf++;
-    }
-  }
+  // // If EMU data, emulate perfectly incrementing timestamp
+  // if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+  //   // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
+  //   auto tf = reinterpret_cast<tdeframeptr>(((uint8_t*)fp));            // NOLINT
+  //   for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
+  //     //auto wfh = const_cast<tdeframeptr>(tf->header());
+  //     tf->daq_header.crate_id = m_crate_no;
+  //     tf->daq_header.slot_id = m_slot_no;
+  //     tf->daq_header.stream_id = m_stream_id; 
+  //     tf->daq_header.seq_id = (m_previous_seq_id+i) & 0xfff;
+  //     tf++;
+  //   }
+  // }
 
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::TDEEthFrame*>(fp); // NOLINT
@@ -202,19 +196,19 @@ TDEEthFrameProcessor::timestamp_check(frameptr fp)
   uint16_t tdeeth_frame_tick_difference = tdeeth_tick_difference * fp->get_num_frames();
 
   // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
-    uint64_t ts_next = m_previous_ts + tdeeth_frame_tick_difference; // NOLINT(build/unsigned)
-    auto tf = reinterpret_cast<tdeframeptr>(((uint8_t*)fp));            // NOLINT
-    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      //auto wfh = const_cast<tdeframeptr>(tf->header());
-      tf->daq_header.crate_id = m_crate_no;
-      tf->daq_header.slot_id = m_slot_no;
-      tf->daq_header.stream_id = m_stream_id; 
-      tf->set_timestamp(ts_next);
-      ts_next += tdeeth_tick_difference;
-      tf++;
-    }
-  }
+  // if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
+  //   uint64_t ts_next = m_previous_ts + tdeeth_frame_tick_difference; // NOLINT(build/unsigned)
+  //   auto tf = reinterpret_cast<tdeframeptr>(((uint8_t*)fp));            // NOLINT
+  //   for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
+  //     //auto wfh = const_cast<tdeframeptr>(tf->header());
+  //     tf->daq_header.crate_id = m_crate_no;
+  //     tf->daq_header.slot_id = m_slot_no;
+  //     tf->daq_header.stream_id = m_stream_id; 
+  //     tf->set_timestamp(ts_next);
+  //     ts_next += tdeeth_tick_difference;
+  //     tf++;
+  //   }
+  // }
 
   // Acquire timestamp
   auto wfptr = reinterpret_cast<tdeframeptr>(fp); // NOLINT
