@@ -6,24 +6,25 @@
  * received with this code.
  */
 #include "fdreadoutlibs/tde/TDEEthFrameProcessor.hpp" // NOLINT(build/include)
+#include "confmodel/GeoId.hpp"
+#include "appmodel/RawDataProcessor.hpp"
 
-#include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/FrameErrorRegistry.hpp"
-#include "readoutlibs/ReadoutIssues.hpp"
-#include "readoutlibs/ReadoutLogging.hpp"
-#include "readoutlibs/models/IterableQueueModel.hpp"
-#include "readoutlibs/readoutconfig/Nljs.hpp"
-#include "readoutlibs/readoutinfo/InfoNljs.hpp"
-#include "readoutlibs/utils/ReusableThread.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/IterableQueueModel.hpp"
+// #include "datahandlinglibs/readoutconfig/Nljs.hpp"
+#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
+#include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "fddetdataformats/TDEEthFrame.hpp"
 
 
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
-#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 
 #include <atomic>
 #include <bitset>
@@ -36,8 +37,8 @@
 #include <utility>
 #include <vector>
 
-using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
-using dunedaq::readoutlibs::logging::TLVL_TAKE_NOTE;
+using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
+using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
@@ -46,7 +47,7 @@ DUNE_DAQ_TYPESTRING(dunedaq::fdreadoutlibs::types::TriggerPrimitiveTypeAdapter, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-TDEEthFrameProcessor::TDEEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry)
+TDEEthFrameProcessor::TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::TDEEthTypeAdapter>(error_registry)
 {
 }
@@ -85,18 +86,30 @@ TDEEthFrameProcessor::init(const nlohmann::json& args)
 }
 
 void
-TDEEthFrameProcessor::conf(const nlohmann::json& cfg)
+TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  auto config = cfg["rawdataprocessorconf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+  auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
 
-  m_sourceid.subsystem = types::TDEEthTypeAdapter::subsystem;
+  for (auto output : conf->get_outputs()) {
+    try {
+      if (output->get_data_type() == "TriggerPrimitive") {
+         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+      }
+    } catch (const ers::Issue& excpt) {
+      ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
+    }
+  }
 
-  m_crate_no = config.crate_id;
-  m_slot_no = config.slot_id;
-  m_stream_id = config.link_id;
-  // Setup pre-processing pipeline
-  inherited::add_preprocess_task(std::bind(&TDEEthFrameProcessor::sequence_check, this, std::placeholders::_1));
-  inherited::add_preprocess_task(std::bind(&TDEEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
+  m_sourceid.id = conf->get_source_id();
+  m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
+  auto geo_id = conf->get_geo_id();
+  if (geo_id != nullptr) {
+    m_det_id = geo_id->get_detector_id();
+    m_crate_id = geo_id->get_crate_id();
+    m_slot_id = geo_id->get_slot_id();
+    m_stream_id = geo_id->get_stream_id();
+  }
+  m_emulator_mode = conf->get_emulation_mode();
 
   inherited::conf(cfg);
 }
@@ -104,7 +117,7 @@ TDEEthFrameProcessor::conf(const nlohmann::json& cfg)
 void
 TDEEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
 {
-  readoutlibs::readoutinfo::RawDataProcessorInfo info;
+  datahandlinglibs::readoutinfo::RawDataProcessorInfo info;
 
   info.num_seq_id_errors = m_seq_id_error_ctr.load();
   info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
@@ -158,7 +171,7 @@ TDEEthFrameProcessor::sequence_check(frameptr fp)
     m_seq_id_max_jump = std::max(delta_seq_id, m_seq_id_max_jump.load());
     m_seq_id_min_jump = std::min(delta_seq_id, m_seq_id_min_jump.load());
 
-    m_error_registry->add_error("SEQUENCE_ID_JUMP", readoutlibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
+    m_error_registry->add_error("SEQUENCE_ID_JUMP", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
     if (m_first_seq_id_mismatch) { // log once
       TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISSMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
       m_first_seq_id_mismatch = false;
@@ -210,7 +223,7 @@ TDEEthFrameProcessor::timestamp_check(frameptr fp)
   // Check timestamp
   if (m_current_ts - m_previous_ts != tdeeth_frame_tick_difference) {
     ++m_ts_error_ctr;
-    m_error_registry->add_error("MISSING_FRAMES", readoutlibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + tdeeth_frame_tick_difference, m_current_ts));
+    m_error_registry->add_error("MISSING_FRAMES", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + tdeeth_frame_tick_difference, m_current_ts));
     if (m_first_ts_missmatch) { // log once
       TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
       m_first_ts_missmatch = false;

@@ -13,7 +13,7 @@
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
-#include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
@@ -37,16 +37,16 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class TDEEthFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types::TDEEthTypeAdapter>
+class TDEEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::TDEEthTypeAdapter>
 {
 
 public:
-  using inherited = readoutlibs::TaskRawDataProcessorModel<types::TDEEthTypeAdapter>;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::TDEEthTypeAdapter>;
   using frameptr = types::TDEEthTypeAdapter*;
   using constframeptr = const types::TDEEthTypeAdapter*;
   using tdeframeptr = dunedaq::fddetdataformats::TDEEthFrame*;
 
-  explicit TDEEthFrameProcessor(std::unique_ptr<readoutlibs::FrameErrorRegistry>& error_registry);
+  explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
 
   ~TDEEthFrameProcessor();
 
