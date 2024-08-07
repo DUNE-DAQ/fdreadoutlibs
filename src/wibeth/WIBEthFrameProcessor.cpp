@@ -17,8 +17,6 @@
 #include "datahandlinglibs/DataHandlingIssues.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/IterableQueueModel.hpp"
-//#include "datahandlinglibs/readoutconfig/Nljs.hpp"
-#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
 #include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "detchannelmaps/TPCChannelMap.hpp"
@@ -239,62 +237,62 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   inherited::conf(conf);
 }
 
-void
-WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
-{
-  datahandlinglibs::readoutinfo::RawDataProcessorInfo info;
+// void
+// WIBEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
+// {
+//   datahandlinglibs::readoutinfo::RawDataProcessorInfo info;
 
-  info.num_seq_id_errors = m_seq_id_error_ctr.load();
-  info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
-  info.max_seq_id_jump = m_seq_id_max_jump.exchange(0);
+//   info.num_seq_id_errors = m_seq_id_error_ctr.load();
+//   info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
+//   info.max_seq_id_jump = m_seq_id_max_jump.exchange(0);
 
-  info.num_ts_errors = m_ts_error_ctr.load();
+//   info.num_ts_errors = m_ts_error_ctr.load();
   
 
-  auto now = std::chrono::high_resolution_clock::now();
-  if (m_tpg_enabled) {
-    int new_hits = m_tpg_hits_count.exchange(0);
-    int new_tps = m_new_tps.exchange(0);
-    int new_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
-    int new_tps_send_failed = m_tps_send_failed.exchange(0);
-    double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-    //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_tps_suppressed_too_long / seconds / 1000.) << " [kHz]";;
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
-    info.rate_tp_hits = new_hits / seconds / 1000.;
+//   auto now = std::chrono::high_resolution_clock::now();
+//   if (m_tpg_enabled) {
+//     int new_hits = m_tpg_hits_count.exchange(0);
+//     int new_tps = m_new_tps.exchange(0);
+//     int new_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
+//     int new_tps_send_failed = m_tps_send_failed.exchange(0);
+//     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
+//     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
+//     //TLOG() << " Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz], dropped rate: " << std::to_string(new_tps_suppressed_too_long / seconds / 1000.) << " [kHz]";;
+//     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
+//     info.rate_tp_hits = new_hits / seconds / 1000.;
 
-    info.num_tps_sent = new_tps;
-    info.num_tps_suppressed_too_long = new_tps_suppressed_too_long;
-    info.num_tps_send_failed = new_tps_send_failed;
-    // Find the channels with the top  TP rates
-    // Create a vector of pairs to store the map elements
-    std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
-    // Sort the vector in descending order of the value of the pairs
-    sort(channel_tp_rate_vec.begin(), channel_tp_rate_vec.end(), [](std::pair<uint, int>& a, std::pair<uint, int>& b) { return a.second > b.second; });
-    // Add the metrics to opmon
-    // For convenience we are selecting only the top 10 elements
-    if (channel_tp_rate_vec.size() != 0) {
-      int top_highest_values = 10;
-      if (channel_tp_rate_vec.size() < 10) {
-        top_highest_values = channel_tp_rate_vec.size();
-      }
-      for (int i = 0; i < top_highest_values; i++) {
-        datahandlinglibs::readoutinfo::TPChannelInfo tp_info;
-        tp_info.num_tp = channel_tp_rate_vec[i].second;
-	tp_info.channel = channel_tp_rate_vec[i].first;
-        ci.add(tp_info);
-      }
-    }
+//     info.num_tps_sent = new_tps;
+//     info.num_tps_suppressed_too_long = new_tps_suppressed_too_long;
+//     info.num_tps_send_failed = new_tps_send_failed;
+//     // Find the channels with the top  TP rates
+//     // Create a vector of pairs to store the map elements
+//     std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
+//     // Sort the vector in descending order of the value of the pairs
+//     sort(channel_tp_rate_vec.begin(), channel_tp_rate_vec.end(), [](std::pair<uint, int>& a, std::pair<uint, int>& b) { return a.second > b.second; });
+//     // Add the metrics to opmon
+//     // For convenience we are selecting only the top 10 elements
+//     if (channel_tp_rate_vec.size() != 0) {
+//       int top_highest_values = 10;
+//       if (channel_tp_rate_vec.size() < 10) {
+//         top_highest_values = channel_tp_rate_vec.size();
+//       }
+//       for (int i = 0; i < top_highest_values; i++) {
+//         datahandlinglibs::readoutinfo::TPChannelInfo tp_info;
+//         tp_info.num_tp = channel_tp_rate_vec[i].second;
+// 	tp_info.channel = channel_tp_rate_vec[i].first;
+//         ci.add(tp_info);
+//       }
+//     }
 
-    // Reset the counter in the channel rate map
-    for (auto& el : m_tp_channel_rate_map) {
-      el.second = 0;
-    }
-  }
-  m_t0 = now;
-  inherited::get_info(ci, level);
-  ci.add(info);
-}
+//     // Reset the counter in the channel rate map
+//     for (auto& el : m_tp_channel_rate_map) {
+//       el.second = 0;
+//     }
+//   }
+//   m_t0 = now;
+//   inherited::get_info(ci, level);
+//   ci.add(info);
+// }
 
 
 /**

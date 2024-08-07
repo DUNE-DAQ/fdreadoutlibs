@@ -69,7 +69,8 @@ public:
     inherited::conf(conf);
   }
 
-  void get_info(opmonlib::InfoCollector& /*ci*/, int /*level*/) {}
+  #warning MISSING OPMON
+  // void get_info(opmonlib::InfoCollector& /*ci*/, int /*level*/) {}
 
   void timestamp_check(frameptr fp)
   {
