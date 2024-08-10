@@ -98,6 +98,8 @@ public:
   //  void get_info(opmonlib::InfoCollector& ci, int level) override;
 
 protected:
+  virtual void generate_opmon_data() override;
+
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
