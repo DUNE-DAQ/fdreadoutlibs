@@ -49,7 +49,7 @@ DAPHNEStreamFrameProcessor::timestamp_check(frameptr fp)
   }
 */
   // Acquire timestamp
-  m_current_ts = fp->get_first_timestamp();
+  m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNEStream frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)"; // NOLINT
 

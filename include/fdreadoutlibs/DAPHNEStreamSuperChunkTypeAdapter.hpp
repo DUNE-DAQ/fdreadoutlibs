@@ -31,12 +31,12 @@ namespace dunedaq::fdreadoutlibs::types {
       return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
     }
 
-    uint64_t get_first_timestamp() const // NOLINT(build/unsigned)                                                          
+    uint64_t get_timestamp() const // NOLINT(build/unsigned)                                                          
     {
       return reinterpret_cast<const FrameType*>(&data)->daq_header.get_timestamp(); // NOLINT                                                                                                               
     }
 
-    void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)                                                         
+    void set_timestamp(uint64_t ts) // NOLINT(build/unsigned)                                                         
     {
       auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT                  
       frame->daq_header.timestamp_1 = ts;

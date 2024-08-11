@@ -35,10 +35,10 @@ BOOST_AUTO_TEST_CASE(Timestamps)
 
   const uint64_t timestamp = 0xDEADBEEFA0B0C0D0;
 
-  blob_of_junk.set_first_timestamp(timestamp);
-  BOOST_REQUIRE(blob_of_junk.get_first_timestamp() == timestamp);
+  blob_of_junk.set_timestamp(timestamp);
+  BOOST_REQUIRE(blob_of_junk.get_timestamp() == timestamp);
 
-  blob_of_junk2.set_first_timestamp(timestamp + 1);
+  blob_of_junk2.set_timestamp(timestamp + 1);
 
   BOOST_REQUIRE(blob_of_junk < blob_of_junk2);
 

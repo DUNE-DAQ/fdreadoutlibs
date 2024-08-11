@@ -75,7 +75,7 @@ public:
   void timestamp_check(frameptr fp)
   {
     // TLOG() << "Got frame with timestamp: " << fp->get_timestamp();
-    inherited::m_last_processed_daq_ts = fp->get_first_timestamp();
+    inherited::m_last_processed_daq_ts = fp->get_timestamp();
   }
 
 protected:

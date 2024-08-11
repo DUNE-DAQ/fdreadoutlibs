@@ -52,7 +52,7 @@ public:
 
   // Constructor
   DAPHNEListRequestHandler(
-    std::unique_ptr<datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>& latency_buffer,
+    std::shared_ptr<datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>& latency_buffer,
     std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
     : DefaultRequestHandlerModel<types::DAPHNESuperChunkTypeAdapter,
                                  datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>(

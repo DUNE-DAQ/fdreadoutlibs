@@ -29,15 +29,10 @@ struct SSPFrameTypeAdapter
   // comparable based on start timestamp
   bool operator<(const SSPFrameTypeAdapter& other) const
   {
-    return this->get_first_timestamp() < other.get_first_timestamp() ? true : false;
+    return this->get_timestamp() < other.get_timestamp() ? true : false;
   }
 
-  uint64_t get_timestamp() const  // NOLINT(build/unsigned)
-  {
-    return get_first_timestamp();
-  }
-
-  uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
+  uint64_t get_timestamp() const // NOLINT(build/unsigned)
   {
     auto ehptr = &header;
     unsigned long ts = 0; // NOLINT(runtime/int)
@@ -47,7 +42,7 @@ struct SSPFrameTypeAdapter
     return ts;
   }
 
-  void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
+  void set_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
     uint64_t bitmask = (1 << 16) - 1; // NOLINT(build/unsigned)
     for (unsigned int iword = 0; iword <= 3; ++iword) {

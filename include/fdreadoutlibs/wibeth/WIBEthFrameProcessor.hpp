@@ -8,7 +8,6 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
-// #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -17,8 +16,6 @@
 
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
-//#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
-//#include "trigger/TPSet.hpp"
 
 #include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
