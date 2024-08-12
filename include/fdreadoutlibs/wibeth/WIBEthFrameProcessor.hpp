@@ -91,9 +91,6 @@ public:
 
   void conf(const appmodel::DataHandlerModule* conf) override;
 
-  #warning MISSING OPMON
-  //  void get_info(opmonlib::InfoCollector& ci, int level) override;
-
 protected:
   virtual void generate_opmon_data() override;
 
