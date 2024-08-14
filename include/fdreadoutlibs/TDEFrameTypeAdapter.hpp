@@ -35,12 +35,12 @@ struct TDEFrameTypeAdapter
     return std::tie(ts,ch) < std::tie(ots,och);
   }
 
-  uint64_t get_first_timestamp() const // NOLINT(build/unsigned)
+  uint64_t get_timestamp() const // NOLINT(build/unsigned)
   {
     return data.get_timestamp(); // NOLINT
   }
 
-  void set_first_timestamp(uint64_t ts) // NOLINT(build/unsigned)
+  void set_timestamp(uint64_t ts) // NOLINT(build/unsigned)
   {
     data.set_timestamp(ts); // NOLINT
   }

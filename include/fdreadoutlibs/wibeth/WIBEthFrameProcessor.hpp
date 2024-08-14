@@ -8,7 +8,6 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
-// #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -17,8 +16,6 @@
 
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
-//#include "fdreadoutlibs/wibeth/WIBEthTPHandler.hpp"
-//#include "trigger/TPSet.hpp"
 
 #include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
@@ -94,9 +91,9 @@ public:
 
   void conf(const appmodel::DataHandlerModule* conf) override;
 
-  void get_info(opmonlib::InfoCollector& ci, int level) override;
-
 protected:
+  virtual void generate_opmon_data() override;
+
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;

@@ -28,8 +28,8 @@ DAPHNEListRequestHandler::daphne_cleanup_request()
     if (tail && head) {
       // auto tailptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(tail); // NOLINT
       // auto headptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(head); // NOLINT
-      tailts = (*tail).get_first_timestamp(); // tailptr->get_timestamp();
-      headts = (*head).get_first_timestamp(); // headptr->get_timestamp();
+      tailts = (*tail).get_timestamp(); // tailptr->get_timestamp();
+      headts = (*head).get_timestamp(); // headptr->get_timestamp();
       TLOG_DEBUG(TLVL_WORK_STEPS) << "Cleanup REQUEST with "
                                   << "Oldest stored TS=" << headts << " "
                                   << "Newest stored TS=" << tailts;
@@ -45,7 +45,7 @@ DAPHNEListRequestHandler::daphne_cleanup_request()
           }
           head = acc.first();
           // headptr = reinterpret_cast<const fddetdataformats::DAPHNEFrame*>(head);
-          headts = (*head).get_first_timestamp(); // headptr->get_timestamp();
+          headts = (*head).get_timestamp(); // headptr->get_timestamp();
           timediff = tailts - headts;
         }
         inherited::m_pops_count += removed_ctr;
