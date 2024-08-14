@@ -17,7 +17,7 @@
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/IterableQueueModel.hpp"
 // #include "datahandlinglibs/readoutconfig/Nljs.hpp"
-#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
+//#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
 #include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "fddetdataformats/TDEEthFrame.hpp"
@@ -109,20 +109,20 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 }
 
 void
-TDEEthFrameProcessor::get_info(opmonlib::InfoCollector& ci, int level)
+TDEEthFrameProcessor::generate_opmon_data()
 {
-  datahandlinglibs::readoutinfo::RawDataProcessorInfo info;
+   datahandlinglibs::opmon::FixedRateDataProcessorInfo info;
 
-  info.num_seq_id_errors = m_seq_id_error_ctr.load();
-  info.min_seq_id_jump = m_seq_id_min_jump.exchange(0);
-  info.max_seq_id_jump = m_seq_id_max_jump.exchange(0);
+   info.set_num_seq_id_errors(m_seq_id_error_ctr.load());
+   info.set_min_seq_id_jump(m_seq_id_min_jump.exchange(0));
+   info.set_max_seq_id_jump(m_seq_id_max_jump.exchange(0));
 
-  info.num_ts_errors = m_ts_error_ctr.load();
+   info.set_num_ts_errors(m_ts_error_ctr.load());
 
-  inherited::get_info(ci, level);
-  ci.add(info);
+   publish(std::move(info));
+
+   inherited::generate_opmon_data();
 }
-
 
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in WIB frame
