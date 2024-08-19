@@ -174,7 +174,6 @@ void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   //auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
-  const char delim = '_';
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() != "TriggerPrimitive") continue;
