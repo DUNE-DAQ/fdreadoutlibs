@@ -8,6 +8,9 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
+#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+
+// #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -20,9 +23,10 @@
 #include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
 
-#include "tpg/ProcessingInfo.hpp"
-#include "tpg/RegisterToChannelNumber.hpp"
+//#include "tpg/ProcessingInfo.hpp"
+//#include "tpg/RegisterToChannelNumber.hpp"
 
 #include "tpglibs/TPGenerator.hpp"
 
@@ -52,7 +56,7 @@ public:
   using constframeptr = const types::DUNEWIBEthTypeAdapter*;
   using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
   // Channel map function type
-  typedef int (*chan_map_fn_t)(int);
+  //typedef int (*chan_map_fn_t)(int);
 
   explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
 
@@ -136,7 +140,7 @@ private:
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
-  std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+  //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
   std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
 
   std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;

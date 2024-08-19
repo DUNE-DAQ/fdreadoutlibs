@@ -10,8 +10,8 @@
 #include "appmodel/RawDataProcessor.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
-#include "iomanager/Sender.hpp"
-#include "logging/Logging.hpp"
+//#include "iomanager/Sender.hpp"
+//#include "logging/Logging.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -21,30 +21,30 @@
 
 #include  "datahandlinglibs/opmon/datahandling_info.pb.h"
 
-#include "detchannelmaps/TPCChannelMap.hpp"
-#include "fddetdataformats/WIBEthFrame.hpp"
+//#include "detchannelmaps/TPCChannelMap.hpp"
+//#include "fddetdataformats/WIBEthFrame.hpp"
 
 
-#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
+//#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+//#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 
-#include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
-#include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
+//#include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
 
-#include <atomic>
-#include <bitset>
-#include <functional>
-#include <future>
-#include <memory>
-#include <queue>
-#include <string>
-#include <thread>
-#include <utility>
-#include <vector>
+//#include <atomic>
+//#include <bitset>
+//#include <functional>
+//#include <future>
+//#include <memory>
+//#include <queue>
+//#include <string>
+//#include <thread>
+//#include <utility>
+//#include <vector>
 
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
