@@ -43,35 +43,6 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class WIBEthFrameHandler {
-
-public: 
-  explicit WIBEthFrameHandler();
-  ~WIBEthFrameHandler();
-  std::unique_ptr<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
-
-  // Map from expanded AVX register position to offline channel number
-  swtpg_wibeth::RegisterChannelMap register_channel_map; 
-
-  bool first_hit = true;                                                  
-                                                  
-  int get_registers_selector();
-
-  void reset();
-
-  void initialize(int threshold_value);
- 
-  uint16_t* get_hits_dest();
-private: 
-  int m_register_selector;    
-  uint16_t* m_hits_dest;
-  uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
-  const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
-  const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
-  std::vector<int16_t> m_tpg_taps;                       // firwin_int(7, 0.1, multiplier);
-  int16_t* m_tpg_taps_p = nullptr;
-};
-
 class WIBEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
 {
 
@@ -84,8 +55,6 @@ public:
   typedef int (*chan_map_fn_t)(int);
 
   explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
-
-  ~WIBEthFrameProcessor();
 
   void start(const nlohmann::json& args) override;
 
@@ -137,11 +106,9 @@ protected:
    * Pipeline Stage 2.: Do software TPG
    * */
 
-  void find_hits(constframeptr fp, WIBEthFrameHandler* frame_handler);
+  void find_hits(constframeptr fp);
   //void find_hits(constframeptr fp);
 
-
-  void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
 
 private:
   bool m_tpg_enabled;
@@ -174,7 +141,6 @@ private:
 
   std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
-  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
 
   //std::thread m_add_hits_tphandler_thread;
 

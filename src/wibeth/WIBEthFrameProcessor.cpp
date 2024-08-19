@@ -56,77 +56,10 @@ DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimi
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-
-WIBEthFrameHandler::WIBEthFrameHandler()
-  : m_hits_dest(nullptr)
-  , m_tpg_taps_p(nullptr)
-{}
-
-WIBEthFrameHandler::~WIBEthFrameHandler()
-{
-  if (m_tpg_taps_p) {
-    delete[] m_tpg_taps_p;
-  }
-  if (m_hits_dest) delete[] m_hits_dest;
-}
-
-void
-WIBEthFrameHandler::reset()
-{
-  if (m_tpg_taps_p)
-      	delete[] m_tpg_taps_p;
-  m_tpg_taps_p = nullptr;
-  if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
-
-  first_hit = true;
-}
-
-void
-WIBEthFrameHandler::initialize(int threshold_value)
-{
-  m_tpg_taps = swtpg_wibeth::firwin_int(7, 0.1, m_tpg_multiplier);
-  m_tpg_taps.push_back(0);
-
-  m_tpg_threshold = threshold_value;
-
-  if (m_tpg_taps_p == nullptr) {
-    m_tpg_taps_p = new int16_t[m_tpg_taps.size()];
-  }
-  for (size_t i = 0; i < m_tpg_taps.size(); ++i) {
-    m_tpg_taps_p[i] = m_tpg_taps[i];
-  }
-
-  if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
-
-  m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
-                                                                                                            swtpg_wibeth::FRAMES_PER_MSG,
-                                                                                                            0,
-                                                                                                            swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
-                                                                                                            m_hits_dest,
-                                                                                                            m_tpg_taps_p,
-                                                                                                            (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
-                                                                                                            m_tpg_tap_exponent,
-                                                                                                            m_tpg_threshold,
-                                                                                                            0,
-                                                                                                            0);
-}
-
-// Get destination ptr for the frame handler
-uint16_t*
-WIBEthFrameHandler::get_hits_dest()
-{
-  return m_hits_dest;
-}
-
 WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
   , m_tpg_enabled(false)
 {
-}
-
-WIBEthFrameProcessor::~WIBEthFrameProcessor()
-{
-  m_wibeth_frame_handler->reset();
 }
 
 void
@@ -226,7 +159,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
 
-      inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
+      inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1));
     }
   }
   inherited::conf(conf);
@@ -411,7 +344,7 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
  * Pipeline Stage 2.: Do software TPG
  * */
 void
-WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_handler)
+WIBEthFrameProcessor::find_hits(constframeptr fp)
 {
   size_t nhits = 0;
   if (!fp)
