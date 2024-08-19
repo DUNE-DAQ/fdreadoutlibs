@@ -8,6 +8,7 @@
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
+#include "appmodel/ProcessingStep.hpp"
 
 //#include "appfwk/DAQModuleHelper.hpp"
 //#include "iomanager/Sender.hpp"
@@ -137,17 +138,20 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
     auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
-    if (proc_conf != nullptr && proc_conf->get_mask_processing() == false && proc_conf->get_tpg_enabled()) {
+    if (proc_conf != nullptr && proc_conf->get_mask_processing() == false) {
       m_tpg_enabled = true;
 
-      m_tp_max_width = proc_conf->get_max_ticks_tot();
+      //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
       m_channel_mask_vec = proc_conf->get_channel_mask();
       // Converting the input vector of channels masks into an std::set
       // AAA: The set provides faster look up than a std::vector
       m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-      m_tpg_threshold_selected = proc_conf->get_threshold();
+      std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
+      for (auto step : processing_steps) {
+        m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(true)));
+      }
 
       // Setup post-processing pipeline
       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());

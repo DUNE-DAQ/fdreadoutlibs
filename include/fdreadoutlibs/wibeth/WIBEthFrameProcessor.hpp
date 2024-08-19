@@ -118,7 +118,7 @@ private:
   bool m_tpg_enabled;
   bool m_first_hit = true;
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
-  nlohmann::json m_tpg_configs;
+  std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
   std::vector<unsigned int> m_channel_mask_vec;
   std::set<unsigned int> m_channel_mask_set;
