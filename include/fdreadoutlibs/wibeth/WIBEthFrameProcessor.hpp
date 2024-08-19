@@ -24,6 +24,8 @@
 #include "tpg/ProcessingInfo.hpp"
 #include "tpg/RegisterToChannelNumber.hpp"
 
+#include "tpglibs/TPGenerator.hpp"
+
 #include <atomic>
 #include <bitset>
 #include <functional>
@@ -143,7 +145,9 @@ protected:
 
 private:
   bool m_tpg_enabled;
-  std::string m_tpg_algorithm;
+  bool m_first_hit = true;
+  std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
+  nlohmann::json m_tpg_configs;
   uint32_t m_tp_max_width;
   std::vector<unsigned int> m_channel_mask_vec;
   std::set<unsigned int> m_channel_mask_set;
@@ -166,8 +170,7 @@ private:
 
   // Mapping from expanded AVX register position to offline channel number
   std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
-
-    std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+  std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
 
   std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
