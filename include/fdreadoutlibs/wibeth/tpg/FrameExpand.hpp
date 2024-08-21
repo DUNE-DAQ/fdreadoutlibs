@@ -232,6 +232,9 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         // Check the spreadsheet for further details
         char* cursor = (char*) first_half;
         cursor += 224 / 8; // divide by 8 to get the results in bytes
+        if (reg_index == 3) {
+          cursor -= 32 / 8; // Take a step back of 32 bits for the last "half".
+        }
         dunedaq::fddetdataformats::WIBEthFrame::word_t * second_half = (dunedaq::fddetdataformats::WIBEthFrame::word_t*) cursor;
         // Unpack another register and add it to the register array
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
