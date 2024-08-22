@@ -205,6 +205,7 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
   const dunedaq::fddetdataformats::WIBEthFrame::word_t (*frame_words_ptr)[14] = frame_ptr->adc_words;
   //auto frame_words_ptr = frame_ptr->adc_words;  
 
+  size_t frame_ptr_index = 0;
   int reg_index = 0;
   // Loop over time frames
   for (size_t i = 0; i < swtpg_wibeth::FRAMES_PER_MSG; ++i) {
@@ -226,6 +227,9 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         // Unpack one register and add it to the register array
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(first_half));
         reg_index += 1;
+        frame_ptr_index++;
+        if (frame_ptr_index % 10 == 0)
+          TLOG() << "frame_ptr_index = " << frame_ptr_index;
 
         // Increment the cursor by 224 bits to get the second part of the first time sample
         // 224 corresponds to 16 (U blocks or ADCs) times 14 which are the bits per ADC. 
@@ -240,6 +244,7 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
 
         reg_index += 1;
+        frame_ptr_index++;
       }
 
 
