@@ -70,7 +70,6 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   if (m_tpg_enabled) {
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
-    m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
   } // end if(m_tpg_enabled)
 
   // Reset timestamp check
@@ -140,6 +139,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
     if (proc_conf != nullptr && proc_conf->get_mask_processing() == false) {
       m_tpg_enabled = true;
+      m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
       //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
@@ -150,7 +150,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
       for (auto step : processing_steps) {
-        m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(true)));
+        m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
       }
 
       // Setup post-processing pipeline
@@ -158,7 +158,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       for (int chan = 0; chan < 64; chan++) {
         int16_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
         int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
-        m_channel_plane_numbers.push_back({off_channel, plane});
+        m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
       }
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
