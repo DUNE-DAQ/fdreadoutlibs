@@ -20,11 +20,13 @@ namespace types {
  * Header + (64 channels * 64 time slices) = 7200[Bytes]
  * */
 const constexpr std::size_t kDUNEWIBEthSize = 7200; 
+const constexpr std::size_t kDUNEWIBEthPad  = 992;
 struct DUNEWIBEthTypeAdapter
 {
   using FrameType = dunedaq::fddetdataformats::WIBEthFrame;
   // data
   char data[kDUNEWIBEthSize];
+  char pad[kDUNEWIBEthPad];
   // comparable based on first timestamp
   bool operator<(const DUNEWIBEthTypeAdapter& other) const
   {
