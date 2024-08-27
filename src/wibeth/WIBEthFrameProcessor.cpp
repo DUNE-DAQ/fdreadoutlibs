@@ -285,13 +285,13 @@ WIBEthFrameProcessor::generate_opmon_data()
        if (channel_tp_rate_vec.size() < 10) {
          top_highest_values = channel_tp_rate_vec.size();
        }
-       datahandlinglibs::opmon::TPChannelsInfo channels_info;
+       //datahandlinglibs::opmon::TPChannelsInfo channels_info;
        for (int i = 0; i < top_highest_values; i++) {
-         datahandlinglibs::opmon::TPChannelInfo* tpc_info = channels_info.add_channels();
-         tpc_info->set_number_of_tps(channel_tp_rate_vec[i].second);
- 	 tpc_info->set_channel_id(channel_tp_rate_vec[i].first);
+         datahandlinglibs::opmon::TPChannelInfo tpc_info;
+         tpc_info.set_number_of_tps(channel_tp_rate_vec[i].second);
+ 	 tpc_info.set_channel_id(channel_tp_rate_vec[i].first);
+         publish(std::move(tpc_info), {{"channel", std::to_string(channel_tp_rate_vec[i].first)}});
        }
-       publish(std::move(channels_info));
      }
 
      // Reset the counter in the channel rate map
