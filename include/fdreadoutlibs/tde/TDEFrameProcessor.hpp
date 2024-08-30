@@ -39,9 +39,9 @@ public:
   using tdeframeptr = dunedaq::fddetdataformats::TDE16Frame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
-  explicit TDEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
+  explicit TDEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
     : TaskRawDataProcessorModel<types::TDEFrameTypeAdapter
->(error_registry)
+>(error_registry, post_processing_enabled)
   {}
 
   // Override configuration to register pipeline

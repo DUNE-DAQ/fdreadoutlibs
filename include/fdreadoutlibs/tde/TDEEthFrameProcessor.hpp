@@ -47,7 +47,7 @@ public:
   using constframeptr = const types::TDEEthTypeAdapter*;
   using tdeframeptr = dunedaq::fddetdataformats::TDEEthFrame*;
 
-  explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
+  explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled);
 
   ~TDEEthFrameProcessor();
 

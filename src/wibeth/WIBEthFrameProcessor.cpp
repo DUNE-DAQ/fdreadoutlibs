@@ -118,9 +118,8 @@ WIBEthFrameHandler::get_hits_dest()
   return m_hits_dest;
 }
 
-WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
-  : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry)
-  , m_tpg_enabled(false)
+WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled)
+  : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry, processing_enabled)
 {
 }
 
@@ -133,12 +132,12 @@ void
 WIBEthFrameProcessor::start(const nlohmann::json& args)
 {
   // Reset software TPG resources
-  if (m_tpg_enabled) {
+  if (m_post_processing_enabled) {
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
 
     m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
-  } // end if(m_tpg_enabled)
+  } // end if(m_post_processing_enabled)
 
   // Reset timestamp check
   m_previous_ts = 0;
@@ -164,7 +163,7 @@ void
 WIBEthFrameProcessor::stop(const nlohmann::json& args)
 {
   inherited::stop(args);
-  if (m_tpg_enabled) {
+  if (m_post_processing_enabled) {
     // Make temp. buffers reusable on next start.
     m_wibeth_frame_handler->reset();
   }
@@ -205,8 +204,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
     auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
-    if (proc_conf != nullptr && proc_conf->get_mask_processing() == false && proc_conf->get_tpg_enabled()) {
-      m_tpg_enabled = true;
+    if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tpg_algorithm = proc_conf->get_algorithm();
       TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
       if (m_tpg_algorithm == "SimpleThreshold") {
@@ -252,7 +250,7 @@ WIBEthFrameProcessor::generate_opmon_data()
    
    publish(std::move(info));
 
-   if (m_tpg_enabled) {
+   if (m_post_processing_enabled) {
      auto now = std::chrono::high_resolution_clock::now();
      int new_hits = m_tpg_hits_count.exchange(0);
      int new_tps = m_new_tps.exchange(0);

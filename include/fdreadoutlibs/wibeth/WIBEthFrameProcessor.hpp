@@ -81,7 +81,7 @@ public:
   // Channel map function type
   typedef int (*chan_map_fn_t)(int);
 
-  explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry);
+  explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
   ~WIBEthFrameProcessor();
 
@@ -142,7 +142,6 @@ protected:
   void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
 
 private:
-  bool m_tpg_enabled;
   std::string m_tpg_algorithm;
   uint32_t m_tp_max_width;
   std::vector<unsigned int> m_channel_mask_vec;

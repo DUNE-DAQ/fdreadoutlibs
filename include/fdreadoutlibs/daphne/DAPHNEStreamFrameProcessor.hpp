@@ -38,8 +38,8 @@ public:
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEStreamFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
-  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
-    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry)
+  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
   // Override config for pipeline setup
