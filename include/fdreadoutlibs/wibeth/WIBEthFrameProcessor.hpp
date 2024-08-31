@@ -8,6 +8,9 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
+#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+
+// #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
@@ -20,9 +23,12 @@
 #include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
 
-#include "tpg/ProcessingInfo.hpp"
-#include "tpg/RegisterToChannelNumber.hpp"
+//#include "tpg/ProcessingInfo.hpp"
+//#include "tpg/RegisterToChannelNumber.hpp"
+
+#include "tpglibs/TPGenerator.hpp"
 
 #include <atomic>
 #include <bitset>
@@ -41,35 +47,6 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class WIBEthFrameHandler {
-
-public: 
-  explicit WIBEthFrameHandler();
-  ~WIBEthFrameHandler();
-  std::unique_ptr<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>> m_tpg_processing_info;
-
-  // Map from expanded AVX register position to offline channel number
-  swtpg_wibeth::RegisterChannelMap register_channel_map; 
-
-  bool first_hit = true;                                                  
-                                                  
-  int get_registers_selector();
-
-  void reset();
-
-  void initialize(int threshold_value);
- 
-  uint16_t* get_hits_dest();
-private: 
-  int m_register_selector;    
-  uint16_t* m_hits_dest;
-  uint16_t m_tpg_threshold;                    // units of sigma // NOLINT(build/unsigned)
-  const uint8_t m_tpg_tap_exponent = 6;                  // NOLINT(build/unsigned)
-  const int m_tpg_multiplier = 1 << m_tpg_tap_exponent;  // 64
-  std::vector<int16_t> m_tpg_taps;                       // firwin_int(7, 0.1, multiplier);
-  int16_t* m_tpg_taps_p = nullptr;
-};
-
 class WIBEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
 {
 
@@ -79,11 +56,9 @@ public:
   using constframeptr = const types::DUNEWIBEthTypeAdapter*;
   using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
   // Channel map function type
-  typedef int (*chan_map_fn_t)(int);
+  //typedef int (*chan_map_fn_t)(int);
 
   explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
-
-  ~WIBEthFrameProcessor();
 
   void start(const nlohmann::json& args) override;
 
@@ -135,14 +110,14 @@ protected:
    * Pipeline Stage 2.: Do software TPG
    * */
 
-  void find_hits(constframeptr fp, WIBEthFrameHandler* frame_handler);
+  void find_hits(constframeptr fp);
   //void find_hits(constframeptr fp);
 
 
-  void process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp);
-
 private:
-  std::string m_tpg_algorithm;
+  bool m_first_hit = true;
+  std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
+  std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
   std::vector<unsigned int> m_channel_mask_vec;
   std::set<unsigned int> m_channel_mask_set;
@@ -167,13 +142,11 @@ private:
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
-  std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
-
-    std::function<void(swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>& info)> m_assigned_tpg_algorithm_function;
+  //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+  std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
 
   std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
-  std::unique_ptr<WIBEthFrameHandler> m_wibeth_frame_handler = std::make_unique<WIBEthFrameHandler>();
 
   //std::thread m_add_hits_tphandler_thread;
 

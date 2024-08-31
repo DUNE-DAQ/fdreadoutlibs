@@ -8,10 +8,7 @@
 #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
-
-//#include "appfwk/DAQModuleHelper.hpp"
-#include "iomanager/Sender.hpp"
-#include "logging/Logging.hpp"
+#include "appmodel/ProcessingStep.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -20,31 +17,6 @@
 #include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include  "datahandlinglibs/opmon/datahandling_info.pb.h"
-
-#include "detchannelmaps/TPCChannelMap.hpp"
-#include "fddetdataformats/WIBEthFrame.hpp"
-
-
-#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
-
-#include "fdreadoutlibs/wibeth/tpg/DesignFIR.hpp"
-#include "fdreadoutlibs/wibeth/tpg/FrameExpand.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessAbsRSAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/ProcessStandardRSAVX2.hpp"
-#include "fdreadoutlibs/wibeth/tpg/TPGConstants_wibeth.hpp"
-
-#include <atomic>
-#include <bitset>
-#include <functional>
-#include <future>
-#include <memory>
-#include <queue>
-#include <string>
-#include <thread>
-#include <utility>
-#include <vector>
 
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
@@ -56,76 +28,9 @@ DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimi
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-
-WIBEthFrameHandler::WIBEthFrameHandler()
-  : m_hits_dest(nullptr)
-  , m_tpg_taps_p(nullptr)
-{}
-
-WIBEthFrameHandler::~WIBEthFrameHandler()
-{
-  if (m_tpg_taps_p) {
-    delete[] m_tpg_taps_p;
-  }
-  if (m_hits_dest) delete[] m_hits_dest;
-}
-
-void
-WIBEthFrameHandler::reset()
-{
-  if (m_tpg_taps_p)
-      	delete[] m_tpg_taps_p;
-  m_tpg_taps_p = nullptr;
-  if (m_hits_dest) { delete[] m_hits_dest; } m_hits_dest = nullptr;
-
-  first_hit = true;
-}
-
-void
-WIBEthFrameHandler::initialize(int threshold_value)
-{
-  m_tpg_taps = swtpg_wibeth::firwin_int(7, 0.1, m_tpg_multiplier);
-  m_tpg_taps.push_back(0);
-
-  m_tpg_threshold = threshold_value;
-
-  if (m_tpg_taps_p == nullptr) {
-    m_tpg_taps_p = new int16_t[m_tpg_taps.size()];
-  }
-  for (size_t i = 0; i < m_tpg_taps.size(); ++i) {
-    m_tpg_taps_p[i] = m_tpg_taps[i];
-  }
-
-  if(m_hits_dest == nullptr) {m_hits_dest = new uint16_t[100000];}
-
-  m_tpg_processing_info = std::make_unique<swtpg_wibeth::ProcessingInfo<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>>(nullptr,
-                                                                                                            swtpg_wibeth::FRAMES_PER_MSG,
-                                                                                                            0,
-                                                                                                            swtpg_wibeth::NUM_REGISTERS_PER_FRAME,
-                                                                                                            m_hits_dest,
-                                                                                                            m_tpg_taps_p,
-                                                                                                            (uint8_t)m_tpg_taps.size(), // NOLINT(build/unsigned)
-                                                                                                            m_tpg_tap_exponent,
-                                                                                                            m_tpg_threshold,
-                                                                                                            0,
-                                                                                                            0);
-}
-
-// Get destination ptr for the frame handler
-uint16_t*
-WIBEthFrameHandler::get_hits_dest()
-{
-  return m_hits_dest;
-}
-
 WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled)
   : TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>(error_registry, processing_enabled)
 {
-}
-
-WIBEthFrameProcessor::~WIBEthFrameProcessor()
-{
-  m_wibeth_frame_handler->reset();
 }
 
 void
@@ -135,9 +40,7 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   if (m_post_processing_enabled) {
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
-
-    m_wibeth_frame_handler->initialize(m_tpg_threshold_selected);
-  } // end if(m_post_processing_enabled)
+  } 
 
   // Reset timestamp check
   m_previous_ts = 0;
@@ -164,15 +67,14 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 {
   inherited::stop(args);
   if (m_post_processing_enabled) {
-    // Make temp. buffers reusable on next start.
-    m_wibeth_frame_handler->reset();
+    // Clears the pipelines and resets with the given configs.
+    m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
   }
 }
 
 void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  //auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
@@ -205,36 +107,31 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   if (dp != nullptr) {
     auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
     if (proc_conf != nullptr && m_post_processing_enabled) {
-      m_tpg_algorithm = proc_conf->get_algorithm();
-      TLOG() << "Selected software TPG algorithm: " << m_tpg_algorithm;
-      if (m_tpg_algorithm == "SimpleThreshold") {
-        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kSimpleThreshold;
-        m_assigned_tpg_algorithm_function = &swtpg_wibeth::process_window_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      } else if (m_tpg_algorithm == "AbsRS") {
-        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kAbsRunningSum;
-        m_assigned_tpg_algorithm_function =
-          &swtpg_wibeth::process_window_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      } else if (m_tpg_algorithm == "StandardRS") {
-        m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kRunningSum;
-        m_assigned_tpg_algorithm_function =
-          &swtpg_wibeth::process_window_standard_rs_avx2<swtpg_wibeth::NUM_REGISTERS_PER_FRAME>;
-      } else {
-        throw TPGAlgorithmInexistent(ERS_HERE, m_tpg_algorithm);
-      }
+      m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
-      m_tp_max_width = proc_conf->get_max_ticks_tot();
+      //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
       m_channel_mask_vec = proc_conf->get_channel_mask();
       // Converting the input vector of channels masks into an std::set
       // AAA: The set provides faster look up than a std::vector
       m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
 
-      m_tpg_threshold_selected = proc_conf->get_threshold();
+      std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
+      for (auto step : processing_steps) {
+        m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
+      }
 
       // Setup post-processing pipeline
       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+      for (int chan = 0; chan < 64; chan++) {
+        int16_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
+        int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
+        m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
+      }
 
-      inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1, m_wibeth_frame_handler.get()));
+      m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
+
+      inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1));
     }
   }
   inherited::conf(conf);
@@ -419,151 +316,35 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
  * Pipeline Stage 2.: Do software TPG
  * */
 void
-WIBEthFrameProcessor::find_hits(constframeptr fp, WIBEthFrameHandler* frame_handler)
+WIBEthFrameProcessor::find_hits(constframeptr fp)
 {
+  size_t nhits = 0;
   if (!fp)
     return;
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>((uint8_t*)fp); // NOLINT
-  uint64_t timestamp = wfptr->get_timestamp();                                            // NOLINT(build/unsigned)
 
-  // Frame expansion
-  swtpg_wibeth::MessageRegisters registers_array;
-  expand_wibeth_adcs(fp, &registers_array);
-
-  // For debugging purposes you can check the single ADCs 
-  //parse_wibeth_adcs(&registers_array);
-
-  // Only for the first WIBEth frame, create an offline register map
-  if (frame_handler->first_hit) {
-    frame_handler->register_channel_map = swtpg_wibeth::get_register_to_offline_channel_map_wibeth(wfptr, m_channel_map);
-
-    frame_handler->m_tpg_processing_info->setState(registers_array);
-
-    m_det_id = wfptr->daq_header.det_id;
+  // Check that the system is properly configured from the first hit.
+  if (m_first_hit) {
     if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
     }
-    // Add WIBEthFrameHandler channel map to the common m_register_channels.
-    // Populate the array 
-    for (size_t i = 0; i < swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER; ++i) {
-      m_register_channels[i] = frame_handler->register_channel_map.channel[i];
 
-      //TLOG () << "Index number " << i << " offline channel " << frame_handler->register_channel_map.channel[i]; 
+    m_first_hit = false;
+  }
 
-      // Set up a map of channels and number of TPs for monitoring/debug
-      m_tp_channel_rate_map[frame_handler->register_channel_map.channel[i]] = 0;
-    }
+  std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
 
-    //TLOG() << "Processed the first frame ";
-
-    // Set first hit bool to false so that registration of channel map is not executed twice
-    frame_handler->first_hit = false;
-
-  } // end if (frame_handler->first_hit)
-
-
-  // Execute the SWTPG algorithm
-  frame_handler->m_tpg_processing_info->input = &registers_array;
-  // Set the first word to "magic" indicating there is no hit, initially
-  frame_handler->m_tpg_processing_info->output[0] = swtpg_wibeth::MAGIC;
-
-  m_assigned_tpg_algorithm_function(*frame_handler->m_tpg_processing_info);
-
-  //GLM: avoid the tp_handler queue/thread
-  process_swtpg_hits(frame_handler->m_tpg_processing_info->output, timestamp);
-
-}
-
-void
-WIBEthFrameProcessor::process_swtpg_hits(uint16_t* primfind_it, dunedaq::daqdataformats::timestamp_t timestamp)
-{
-
-  constexpr int clocksPerTPCTick = types::DUNEWIBEthTypeAdapter::samples_tick_difference;
-
-  uint16_t chan[16], hit_end[16], hit_charge[16], hit_tover[16], hit_peak_time[16], hit_peak_adc[16], left[16]; // NOLINT(build/unsigned)
-  unsigned int nhits = 0;
-
-  while (*primfind_it != swtpg_wibeth::MAGIC) {
-    // First, get all of the register values (including those with no hit) into local variables
-    for (int i = 0; i < 16; ++i) {
-      chan[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
-   for (int i = 0; i < 16; ++i) {
-      hit_end[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
-    for (int i = 0; i < 16; ++i) {
-      hit_charge[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-      // TLOG() << "hit_charge:" << hit_charge[i];
-    }
-    for (int i = 0; i < 16; ++i) {
-      // hit_tover[i] = static_cast<uint16_t>(*primfind_it++); // NOLINT(runtime/increment_decrement)
-      hit_tover[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
-    for (int i = 0; i < 16; ++i) {
-      hit_peak_adc[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
-    for (int i = 0; i < 16; ++i) {
-      hit_peak_time[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }  
-    for (int i = 0; i < 16; ++i) {
-      left[i] = *primfind_it++; // NOLINT(runtime/increment_decrement)
-    }
- 
-    // Now that we have all the register values in local
-    // variables, loop over the register index (ie, channel) and
-    // find the channels which actually had a hit, as indicated by
-    // nonzero value of hit_charge
-    for (int i = 0; i < 16; ++i) {
-      // AAA: condition on the left hits makes sure to count hits
-      // correctly when they are spread across multiple channels 	    
-      if (hit_charge[i] && left[i] == swtpg_wibeth::MAGIC
-          && chan[i] != swtpg_wibeth::MAGIC) {
-
-        uint64_t tp_t_begin = timestamp + clocksPerTPCTick * ((int64_t)hit_end[i] - (int64_t)hit_tover[i]);
-        uint64_t tp_t_peak  = tp_t_begin + clocksPerTPCTick * hit_peak_time[i];
-
-        // This channel had a hit ending here, so we can create and output the hit here
-        const uint16_t offline_channel = m_register_channels[chan[i]];
-        if (m_channel_mask_set.find(offline_channel) == m_channel_mask_set.end()) {
-          // May be needed for TPSet:
-          // uint64_t tspan = clocksPerTPCTick * hit_tover[i]; // is/will be this needed?
-          //
-
-          // For quick n' dirty debugging: print out time/channel of hits.
-          // Can then make a text file suitable for numpy plotting with, eg:
-          //
-          // sed -n -e 's/.*Hit: \(.*\) \(.*\).*/\1 \2/p' log.txt  > hits.txt
-          //
-
-	  trigger::TriggerPrimitiveTypeAdapter tp;
-          tp.tp.time_start = tp_t_begin;
-          tp.tp.time_peak = tp_t_peak;
-	  tp.tp.time_over_threshold = uint64_t((hit_tover[i]) * clocksPerTPCTick);
-          tp.tp.channel = offline_channel;
-          tp.tp.adc_integral = hit_charge[i];
-          tp.tp.adc_peak = hit_peak_adc[i];
-          tp.tp.detid =  m_det_id; // TODO: convert crate/slot/link to SourceID Roland Sipos rsipos@cern.ch July-22-2021
-          tp.tp.type = trgdataformats::TriggerPrimitive::Type::kTPC;
-          tp.tp.algorithm = m_tp_algo;
-          tp.tp.version = 1;
-          if(tp.tp.time_over_threshold > m_tp_max_width) {
-            ers::warning(TPTooLong(ERS_HERE, tp.tp.time_over_threshold, tp.tp.channel));
-            m_tps_suppressed_too_long++;
-	  }
-	  //Send the TP to the TP handler module
-	  else if(!m_tp_sink->try_send(std::move(tp), iomanager::Sender::s_no_block)) {
-            ers::warning(FailedToSendTP(ERS_HERE, tp.tp.time_start, tp.tp.channel));
-            m_tps_send_failed++;
-	  }
-          else {
-            m_new_tps++;
-            ++nhits;
-          }
-
-          // Update the channel/rate map. Increment the value associated with the TP channel
-          m_tp_channel_rate_map[offline_channel]++;
-        }
-      }
+  for (auto tp : tps) {
+    // Need to move into a type adapter.
+    trigger::TriggerPrimitiveTypeAdapter tpa;
+    tpa.tp = tp;
+    tpa.tp.detid = m_det_id;  // Last missing piece.
+    if(!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
+      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
+      m_tps_send_failed++;
+    } else {
+      m_new_tps++;
+      ++nhits;
     }
   }
   m_tpg_hits_count += nhits;
