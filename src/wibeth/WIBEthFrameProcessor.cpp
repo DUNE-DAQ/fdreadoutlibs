@@ -371,6 +371,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
     tpa.tp.detid = m_det_id;  // Last missing piece.
+    m_tp_channel_rate_map[tp.channel]++;
     if(!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
       ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
