@@ -16,6 +16,7 @@ find_package(detchannelmaps REQUIRED)
 find_package(trgdataformats REQUIRED)
 find_package(detdataformats REQUIRED)
 find_package(fddetdataformats REQUIRED)
+find_package(tpglibs REQUIRED)
 find_package(trigger REQUIRED)
 find_package(hdf5libs REQUIRED)
 find_package(appmodel REQUIRED)
@@ -42,6 +43,7 @@ set(FDREADOUTLIBS_DEPENDENCIES
   detdataformats::detdataformats
   trgdataformats::trgdataformats
   fddetdataformats::fddetdataformats
+  tpglibs::tpglibs
   trigger::trigger
   appmodel::appmodel
   detchannelmaps::detchannelmaps

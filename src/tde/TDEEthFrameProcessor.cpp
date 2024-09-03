@@ -47,8 +47,8 @@ DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimi
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-TDEEthFrameProcessor::TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry)
-  : TaskRawDataProcessorModel<types::TDEEthTypeAdapter>(error_registry)
+TDEEthFrameProcessor::TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+  : TaskRawDataProcessorModel<types::TDEEthTypeAdapter>(error_registry, post_processing_enabled)
 {
 }
 
