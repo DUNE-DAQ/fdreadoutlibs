@@ -111,10 +111,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
       //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
-      m_channel_mask_vec = proc_conf->get_channel_mask();
-      // Converting the input vector of channels masks into an std::set
-      // AAA: The set provides faster look up than a std::vector
-      m_channel_mask_set.insert(m_channel_mask_vec.begin(), m_channel_mask_vec.end());
+      const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
       for (auto step : processing_steps) {
@@ -127,6 +124,11 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
         int16_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
         int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
+
+        // This processor only needs to handle some (maybe 0) of the masked channels.
+        // Only get those relevant channels for the later check.
+        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
+          m_channel_mask_set.insert(off_channel);
       }
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
@@ -335,6 +337,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
 
   for (auto tp : tps) {
+    // If this TP is on a masked channel, skip it.
+    if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
+      continue;
     // Need to move into a type adapter.
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
