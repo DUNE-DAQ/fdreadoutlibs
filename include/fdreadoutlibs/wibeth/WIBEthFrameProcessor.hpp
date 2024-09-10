@@ -30,6 +30,7 @@
 
 #include "tpglibs/TPGenerator.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <bitset>
 #include <functional>
@@ -119,7 +120,6 @@ private:
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
-  std::vector<unsigned int> m_channel_mask_vec;
   std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
 
