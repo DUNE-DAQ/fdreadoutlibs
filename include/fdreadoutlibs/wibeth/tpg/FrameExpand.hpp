@@ -80,6 +80,27 @@ print256_as16(__m256i var);
 void
 print256_as16_dec(__m256i var);
 
+
+inline __m256i new_unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame::word_t* first_word)
+{
+  __m256i regi=_mm256_lddqu_si256((__m256i*)first_word);
+
+  // Prepare even (2,4,6,8), odd (1,3,5,7) rows in 64-bit sense.
+  __m256i odd  = _mm256_permutevar8x32_epi32(regi, _mm256_setr_epi32(1, 0, 1, 2, 3, 4, 5, 6));
+
+  // Shift into place.
+  __m256i even = _mm256_sllv_epi64(regi, _mm256_setr_epi64x(6, 14, 22, 30));
+  odd  = _mm256_srlv_epi64(odd, _mm256_setr_epi64x(30, 22, 14, 6));
+
+  // Everything is center aligned in 32-bit. Mask and right-align the right side.
+  __m256i both  = _mm256_blend_epi32(even, odd, 0b01010101);
+  __m256i right = _mm256_and_si256(_mm256_set1_epi32(0xFFFFu), both);
+  __m256i left  = _mm256_and_si256(_mm256_set1_epi32(0x3FFF0000u), both);
+
+  right = _mm256_srli_epi32(right, 2);
+  return _mm256_or_si256(left, right);
+}
+
 //==============================================================================
 inline __m256i unpack_one_register(const dunedaq::fddetdataformats::WIBEthFrame::word_t* first_word)
 {
@@ -224,7 +245,7 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         const dunedaq::fddetdataformats::WIBEthFrame::word_t * first_half = (*(frame_words_ptr + i) + j);
 
         // Unpack one register and add it to the register array
-        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(first_half));
+        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, new_unpack_one_register(first_half));
         reg_index += 1;
 
         // Increment the cursor by 224 bits to get the second part of the first time sample
@@ -234,7 +255,7 @@ expand_wibeth_adcs(const dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter* _
         cursor += 224 / 8; // divide by 8 to get the results in bytes
         dunedaq::fddetdataformats::WIBEthFrame::word_t * second_half = (dunedaq::fddetdataformats::WIBEthFrame::word_t*) cursor;
         // Unpack another register and add it to the register array
-        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, unpack_one_register(second_half));
+        register_array->set_ymm(i+reg_index*swtpg_wibeth::FRAMES_PER_MSG, new_unpack_one_register(second_half));
 
         reg_index += 1;
       }
