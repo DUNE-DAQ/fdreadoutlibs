@@ -75,10 +75,11 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
+  size_t idx = 0;	
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -345,7 +346,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     tpa.tp = tp;
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_tp_channel_rate_map[tp.channel]++;
-    if(!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
+    if(!m_tp_sink[m_channel_map->get_plane_from_offline_channel(tp.channel)]->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
       ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
     } else {
