@@ -294,7 +294,8 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
   m_current_ts = wfptr->get_timestamp();
 
   // Check timestamp
-  if (m_current_ts - m_previous_ts != wibeth_frame_tick_difference) {
+  if (m_previous_ts > 0 &&
+      m_current_ts - m_previous_ts != wibeth_frame_tick_difference) {
     ++m_ts_error_ctr;
     m_error_registry->add_error("MISSING_FRAMES", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
     if (m_first_ts_missmatch) { // log once
