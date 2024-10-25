@@ -346,6 +346,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
 
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> tpas[3];
   for (auto tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
@@ -356,15 +357,20 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
     tpa.tp.algorithm = m_tp_algo;
+    tpas[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
-    if(!m_tp_sink[m_channel_map->get_plane_from_offline_channel(tp.channel)]->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
-      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
+  }
+
+  for (int i; i < 3; i++) {
+    if(!m_tp_sink[i]->try_send(std::move(tpas[i]), iomanager::Sender::s_no_block)) {
+//      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
     } else {
-      m_new_tps++;
-      ++nhits;
+      m_new_tps += tpas[i].size();
+      nhits += tpas[i].size();
     }
   }
+
   m_tpg_hits_count += nhits;
   return;
 }
