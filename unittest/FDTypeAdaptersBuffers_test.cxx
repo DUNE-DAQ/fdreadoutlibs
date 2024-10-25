@@ -121,7 +121,11 @@ void test_queue_model()
   TypeAdapter test_element;
   uint64_t ticks_between = TypeAdapter::expected_tick_difference*test_element.get_num_frames();
 
-
+  /*
+   * Unskipped buffer should have elements with index [0, 1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 ]
+   *                                   and timestamps [0,1*T,2*T,3*T,4*T,5*T,6*T,7*T,8*T,9*T]
+   * where T = DTS ticks between successive elements (tick_diff_per_frame * n_frames_per_obj_in_buffer)
+   */
   BOOST_TEST_MESSAGE("Testing buffer without skips...");
   fill_buffer(buffer_noskip,0,10);
   print_buffer(buffer_noskip,"noskip");
@@ -135,8 +139,13 @@ void test_queue_model()
   test_lower_bound<BufferType,TypeAdapter>(buffer_noskip,ticks_between*5/2,3);
   
   // get lower bound when minimally unaligned, next instance
-  test_lower_bound<BufferType,TypeAdapter>(buffer_noskip,ticks_between+1,2);  
+  test_lower_bound<BufferType,TypeAdapter>(buffer_noskip,ticks_between+1,2);
 
+  /*
+   * Skipped buffer should have elements with index [0, 1 , 2 , 3 , 4 , 5 , 6 , 7 ,  8 ,  9 ]
+   *                                 and timestamps [0,1*T,2*T,5*T,6*T,7*T,8*T,9*T,10*T,11*T]
+   * where T = DTS ticks between successive elements (tick_diff_per_frame * n_frames_per_obj_in_buffer)
+  */
   BOOST_TEST_MESSAGE("Testing buffer with skips...");
   std::set<size_t> obj_to_skip = {2,3};
   fill_buffer(buffer_skip,0,10,obj_to_skip);
@@ -152,9 +161,12 @@ void test_queue_model()
   // should return next available
   test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*3/2,2,true);
   test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*5/2,2,true);
+  test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*7/2,2,true);
   // should be unaffected
   test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*1/2,1,true);
-  
+  test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*9/2,3,true);
+  test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*11/2,4,true);
+
   // get lower bound when minimally unaligned, next instance
   test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between+1,2,true);  
   test_lower_bound<BufferType,TypeAdapter>(buffer_skip,ticks_between*2+1,2,true);  
