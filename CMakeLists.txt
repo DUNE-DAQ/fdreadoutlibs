@@ -84,6 +84,7 @@ daq_add_application(wibeth_test_bench wibeth_test_bench.cxx TEST LINK_LIBRARIES 
 daq_add_unit_test(DAPHNEStreamSuperChunkTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(WIBEthFrameExpansion_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDTypeAdaptersBuffers_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(FDReadoutRequestHandlers_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
