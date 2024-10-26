@@ -36,7 +36,7 @@ void
 DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 {
   // Let Source Emulator deal with this
-  /*	
+  /*
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
     // RS warning : not fixed rate!

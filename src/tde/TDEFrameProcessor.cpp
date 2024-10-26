@@ -38,7 +38,7 @@ TDEFrameProcessor::timestamp_check(frameptr fp)
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) {         // emulate perfectly incrementing timestamp
     if (m_previous_ts[tdef.get_channel()] == 0) 
-	    m_previous_ts[tdef.get_channel()] = tdef.get_timestamp();
+            m_previous_ts[tdef.get_channel()] = tdef.get_timestamp();
     auto ts_next = m_previous_ts[tdef.get_channel()] + (dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples); // NOLINT(build/unsigned)
     tdef.set_timestamp(ts_next);
   }
@@ -48,7 +48,7 @@ TDEFrameProcessor::timestamp_check(frameptr fp)
   auto ch = tdef.get_channel();
   auto tdefh = tdef.get_daq_header();
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Checking TDE frame timestamp value of " << m_current_ts 
-	  << " , crate " << tdefh->crate_id << ", slot " << tdefh->slot_id << ", stream " << tdefh->stream_id; // NOLINT
+          << " , crate " << tdefh->crate_id << ", slot " << tdefh->slot_id << ", stream " << tdefh->stream_id; // NOLINT
 
   // Check timestamp
   if (m_previous_ts[ch]!=0 && m_current_ts - m_previous_ts[ch] != dunedaq::fddetdataformats::ticks_between_adc_samples * dunedaq::fddetdataformats::tot_adc16_samples) {
