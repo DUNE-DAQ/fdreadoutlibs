@@ -362,12 +362,13 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   for (int i; i < 3; i++) {
+    int new_tps = tpas[i].size()
     if(!m_tp_sink[i]->try_send(std::move(&(tpas[i])[0]), iomanager::Sender::s_no_block)) {
 //      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
     } else {
-      m_new_tps += tpas[i].size();
-      nhits += tpas[i].size();
+      m_new_tps += new_tps;
+      nhits += new_tps;
     }
   }
 
