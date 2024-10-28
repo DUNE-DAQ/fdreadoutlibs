@@ -22,6 +22,7 @@
 #include "boost/test/unit_test.hpp"
 
 #include <iostream>
+#include <cmath>
 #include <sstream>
 #include <set>
 #include <iterator>
@@ -89,12 +90,67 @@ public:
 template <template<class> class BufferType, class TypeAdapter>
 void test_request_model()
 {
-    using DefaultRequestHandler = TestDefaultRequestHandlerModel<TypeAdapter, BufferType<TypeAdapter> >;
+
+  using DefaultRequestHandler = TestDefaultRequestHandlerModel<TypeAdapter, BufferType<TypeAdapter> >;
 
   //some testing vars
   TypeAdapter test_element;
-  uint64_t ticks_between = TypeAdapter::expected_tick_difference*test_element.get_num_frames();
+  uint64_t n_frames = test_element.get_num_frames();
+  uint64_t ticks_per_frame = TypeAdapter::expected_tick_difference;
+  uint64_t ticks_between = ticks_per_frame*n_frames;
 
+
+  //
+  auto test_req_bounds = [&](std::shared_ptr<BufferType<TypeAdapter>> buffer,
+                             uint64_t start_win, uint64_t end_win,
+                             bool check_exact){
+
+      //make the error registry we need
+      auto errorRegistry = std::make_unique<dunedaq::datahandlinglibs::FrameErrorRegistry>();
+
+      //create the request handler
+      DefaultRequestHandler requestHandler(buffer,errorRegistry);
+
+      //call the get_fragment_pieces
+      auto dfmessage = dunedaq::dfmessages::DataRequest();
+      auto req_res = typename DefaultRequestHandler::RequestResult(DefaultRequestHandler::ResultCode::kUnknown,dfmessage);
+      auto ret = requestHandler.get_fragment_pieces(start_win,end_win,req_res);
+
+      //check that the return code is correct.
+      BOOST_CHECK_EQUAL(req_res.result_code,DefaultRequestHandler::ResultCode::kFound);
+
+      //check that the first and last returned blocks are note empty
+      BOOST_CHECK_GT(ret.front().second,0);
+      BOOST_CHECK_GT(ret.back().second,0);
+
+      //grab the (first) timestamps of the first and last frames
+      uint64_t first_ts = reinterpret_cast<const TypeAdapter::FrameType*>(ret.front().first)->get_timestamp();
+      uint64_t last_ts = reinterpret_cast<const TypeAdapter::FrameType*>((char*)(ret.back().first)+(ret.back().second)-sizeof(typename TypeAdapter::FrameType))->get_timestamp();
+
+      //general check:
+      // first_ts <= start_win < first_ts + ticks_per_frame
+      // last_ts < end_win <= last_ts + ticks_per_frame
+      BOOST_CHECK_MESSAGE((first_ts<=start_win && start_win<(first_ts+TypeAdapter::expected_tick_difference)),
+                          "Check first_frame_ts{" << first_ts << "} <= start_win{"
+                          << start_win << "} < first_frame_ts+ticks_per_frame{" << first_ts+TypeAdapter::expected_tick_difference << "}");
+      BOOST_CHECK_MESSAGE((last_ts<end_win && end_win<=(last_ts+TypeAdapter::expected_tick_difference)),
+                          "Check last_frame_ts{" << last_ts << "} < end_win{"
+                          << end_win << "} < last_frame_ts+ticks_per_frame{" << last_ts+TypeAdapter::expected_tick_difference << "}");
+
+      if(check_exact) {
+          auto expected_start = TypeAdapter::expected_tick_difference *
+                                (uint64_t) std::floor((float) (start_win) / (float) (ticks_per_frame));
+          auto expected_end = TypeAdapter::expected_tick_difference *
+                              (uint64_t) std::ceil((float) (end_win) / (float) (ticks_per_frame));
+
+          //specfic check: are values for this request what we expect
+          BOOST_CHECK_MESSAGE(first_ts == expected_start,
+                              "Fragment start ts {" << first_ts << "} is expected value {" << expected_start << "}");
+          BOOST_CHECK_MESSAGE((last_ts + TypeAdapter::expected_tick_difference) == expected_end,
+                              "Fragment 'end' ts {" << last_ts + TypeAdapter::expected_tick_difference
+                                                    << "} is expected value {" << expected_end << "}");
+      }
+  };
 
   /*
    * Unskipped buffer should have elements with index [0, 1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 ]
@@ -106,71 +162,64 @@ void test_request_model()
   fill_buffer<BufferType,TypeAdapter>(buffer_noskip,0,10);
   print_buffer<BufferType,TypeAdapter>(buffer_noskip,"noskip");
 
-  //make the error registry we need
-  auto errorRegistry_noskip = std::make_unique<dunedaq::datahandlinglibs::FrameErrorRegistry>();
+  test_req_bounds(buffer_noskip,ticks_between*2,ticks_between*5,true);
+  test_req_bounds(buffer_noskip,ticks_between*3/2,ticks_between*9/2,true);
+  test_req_bounds(buffer_noskip,ticks_between*2+1,ticks_between*5+1,true);
 
-  //create the request handler
-  DefaultRequestHandler requestHandler(buffer_noskip,errorRegistry_noskip);
+  /*
+   * Skipped buffer should have elements with index [0, 1 , 2 , 3 , 4 , 5 , 6 , 7 ,  8 ,  9 ]
+   *                                 and timestamps [0,1*T,2*T,5*T,6*T,7*T,8*T,9*T,10*T,11*T]
+   * where T = DTS ticks between successive elements (tick_diff_per_frame * n_frames_per_obj_in_buffer)
+  */
+  /*
+  BOOST_TEST_MESSAGE("Testing buffer with skips...");
+  std::set<size_t> obj_to_skip = {2,3};
+  auto buffer_skip = std::make_shared< BufferType<TypeAdapter> >();
+  fill_buffer<BufferType,TypeAdapter>(buffer_skip,0,10,obj_to_skip);
+  print_buffer<BufferType,TypeAdapter>(buffer_skip,"skip");
 
-  //
-  auto test_req_bounds = [&](uint64_t start_win, uint64_t end_win,
-                             uint64_t expected_start, uint64_t expected_end){
-
-      auto dfmessage = dunedaq::dfmessages::DataRequest();
-      auto req_res = typename DefaultRequestHandler::RequestResult(DefaultRequestHandler::ResultCode::kUnknown,dfmessage);
-      auto ret = requestHandler.get_fragment_pieces(start_win,end_win,req_res);
-
-      //check that the return code is correct.
-      BOOST_CHECK_EQUAL(req_res.result_code,DefaultRequestHandler::ResultCode::kFound);
-
-      //grab the (first) timestamps of the first and last frames
-      uint64_t first_ts = reinterpret_cast<const TypeAdapter::FrameType*>(ret.front().first)->get_timestamp();
-      uint64_t last_ts = reinterpret_cast<const TypeAdapter::FrameType*>((char*)(ret.back().first)+(ret.back().second)-sizeof(typename TypeAdapter::FrameType))->get_timestamp();
-
-      //general check:
-      // first_ts <= start_win < first_ts + ticks_per_frame
-      // last_ts < end_win <= last_ts + ticks_per_frame
-      BOOST_CHECK_LE(first_ts,start_win);
-      BOOST_CHECK_GT(first_ts+TypeAdapter::expected_tick_difference,start_win);
-
-      BOOST_CHECK_GE(last_ts+TypeAdapter::expected_tick_difference,end_win);
-      BOOST_CHECK_LT(last_ts,end_win);
-
-      //specfic check: are values for this request what we expect
-      BOOST_CHECK_EQUAL(first_ts,expected_start);
-      BOOST_CHECK_EQUAL(last_ts+TypeAdapter::expected_tick_difference,expected_end);
-  };
-  test_req_bounds(ticks_between*2,ticks_between*5,ticks_between*2,ticks_between*5);
-  test_req_bounds(ticks_between*3/2,ticks_between*9/2,ticks_between,ticks_between*5);
-
+    test_req_bounds(ticks_between*2,ticks_between*5,false);
+    test_req_bounds(ticks_between*3/2,ticks_between*9/2,false);
+    test_req_bounds(ticks_between*2+1,ticks_between*5+1,false);
+*/
 }
 
 BOOST_AUTO_TEST_SUITE(FDReadoutRequestHandlers_test)
 
 BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DUNEWIBEth)
 {
-  test_request_model<
-          dunedaq::datahandlinglibs::FixedRateQueueModel,
-          dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter>();
+    test_request_model<
+            dunedaq::datahandlinglibs::FixedRateQueueModel,
+            dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter>();
 }
-/*
+
 BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DUNEWIBEth)
 {
-  test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter>();
+    test_request_model<
+            dunedaq::datahandlinglibs::BinarySearchQueueModel,
+            dunedaq::fdreadoutlibs::types::DUNEWIBEthTypeAdapter>();
 }
 BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEStreamSuperChunk)
 {
-  test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
+    test_request_model<
+            dunedaq::datahandlinglibs::FixedRateQueueModel,
+            dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
 }
+
 BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEStreamSuperChunk)
 {
-  test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
+    test_request_model<
+            dunedaq::datahandlinglibs::BinarySearchQueueModel,
+            dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
 }
+
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNESuperChunk)
 {
-  test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,dunedaq::fdreadoutlibs::types::DAPHNESuperChunkTypeAdapter>();
+    test_request_model<
+            dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+            dunedaq::fdreadoutlibs::types::DAPHNESuperChunkTypeAdapter>();
 }
-*/
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

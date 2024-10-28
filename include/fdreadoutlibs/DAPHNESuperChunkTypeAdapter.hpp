@@ -19,8 +19,8 @@ namespace types {
  * @brief For DAPHNE the numbers are different.
  * 12[DAPHNE frames] x 454[32-bit words] x 4[Bytes per word] = 21792[Bytes]
  * */
-const constexpr std::size_t kDAPHNENumFrames = 12;
-const constexpr std::size_t kDAPHNEFrameSize = 1816;
+const constexpr std::size_t kDAPHNENumFrames = 3;
+const constexpr std::size_t kDAPHNEFrameSize = sizeof(dunedaq::fddetdataformats::DAPHNEFrame);
 const constexpr std::size_t kDAPHNESuperChunkSize = kDAPHNENumFrames * kDAPHNEFrameSize; // for 12: 21792
 struct DAPHNESuperChunkTypeAdapter
 {
@@ -47,10 +47,10 @@ struct DAPHNESuperChunkTypeAdapter
     frame->daq_header.timestamp_2 = ts >> 32;
   }
 
-  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 25) // NOLINT(build/unsigned)
+  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = expected_tick_difference) // NOLINT(build/unsigned)
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
-    for (unsigned int i = 0; i < 12; ++i) {
+    for (unsigned int i = 0; i < get_num_frames(); ++i) {
       auto df = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * get_frame_size()); // NOLINT
       df->daq_header.timestamp_1 = ts_next;
       df->daq_header.timestamp_2 = ts_next >> 32;
@@ -93,7 +93,7 @@ struct DAPHNESuperChunkTypeAdapter
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
-  static const constexpr uint64_t expected_tick_difference = 16; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = 1024; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct DAPHNESuperChunkTypeAdapter) == kDAPHNESuperChunkSize,
