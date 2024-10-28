@@ -9,6 +9,7 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+#include "fdreadoutlibs/TPGAlgorithmClassifier.hpp"
 
 // #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
