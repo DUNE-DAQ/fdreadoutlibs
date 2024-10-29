@@ -14,7 +14,7 @@ namespace dunedaq::fdreadoutlibs::types {
    * 12[DAPHNE frames] x 472[Bytes] = 5664[Bytes]                                                                           
    * */
   const constexpr std::size_t kDAPHNEStreamNumFrames = 12;
-  const constexpr std::size_t kDAPHNEStreamFrameSize = 472;
+  const constexpr std::size_t kDAPHNEStreamFrameSize = sizeof(dunedaq::fddetdataformats::DAPHNEStreamFrame);
   const constexpr std::size_t kDAPHNEStreamSuperChunkSize = kDAPHNEStreamNumFrames * kDAPHNEStreamFrameSize; // for 12: 5664 
 
   struct DAPHNEStreamSuperChunkTypeAdapter {
