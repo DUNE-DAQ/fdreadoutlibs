@@ -21,11 +21,11 @@ BOOST_AUTO_TEST_CASE(Sizes)
   DAPHNEStreamSuperChunkTypeAdapter blob_of_junk;
   
   BOOST_REQUIRE(blob_of_junk.end() - blob_of_junk.begin() \
-		== blob_of_junk.get_num_frames());
+    == blob_of_junk.get_num_frames());
 
   BOOST_REQUIRE(reinterpret_cast<uint8_t*>(blob_of_junk.end()) - \
-		reinterpret_cast<uint8_t*>(blob_of_junk.begin()) \
-		== blob_of_junk.get_payload_size());
+    reinterpret_cast<uint8_t*>(blob_of_junk.begin()) \
+    == blob_of_junk.get_payload_size());
 }
 
 BOOST_AUTO_TEST_CASE(Timestamps)

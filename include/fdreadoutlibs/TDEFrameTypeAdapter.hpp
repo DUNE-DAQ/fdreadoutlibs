@@ -55,8 +55,6 @@ struct TDEFrameTypeAdapter
         auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
         df->get_daq_header()->crate_id = crate_id;
         df->get_daq_header()->slot_id = slot_id;
-        //df->get_daq_header()->stream_id = link_id;
-	//df->get_tde_header()->channel = link_id;
       }
   }
 

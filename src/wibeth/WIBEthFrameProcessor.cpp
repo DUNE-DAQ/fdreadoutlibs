@@ -75,7 +75,7 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  size_t idx = 0;	
+  size_t idx = 0;
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
@@ -196,7 +196,7 @@ WIBEthFrameProcessor::generate_opmon_data()
        for (int i = 0; i < top_highest_values; i++) {
          datahandlinglibs::opmon::TPChannelInfo tpc_info;
          tpc_info.set_number_of_tps(channel_tp_rate_vec[i].second);
- 	 tpc_info.set_channel_id(channel_tp_rate_vec[i].first);
+          tpc_info.set_channel_id(channel_tp_rate_vec[i].first);
          publish(std::move(tpc_info), {{"channel", std::to_string(channel_tp_rate_vec[i].first)}});
        }
      }
@@ -232,7 +232,7 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
     }
   }
   */
-  	
+          
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::WIBEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
