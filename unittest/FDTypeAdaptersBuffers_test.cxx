@@ -11,6 +11,7 @@
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 
 #include "datahandlinglibs/testutils/TestUtilities.hpp"
 
@@ -47,6 +48,14 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEStreamSuperChunk)
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNESuperChunk)
 {
     dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,dunedaq::fdreadoutlibs::types::DAPHNESuperChunkTypeAdapter>();
+}
+BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)
+{
+    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
+}
+BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_TDEEth)
+{
+    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

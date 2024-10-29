@@ -45,7 +45,7 @@ struct TDEEthTypeAdapter
     frame->set_timestamp(ts);
   }
 
-  void fake_timestamps(uint64_t first_timestamp, uint64_t /*offset = 2048*/ ) // NOLINT(build/unsigned)
+  void fake_timestamps(uint64_t first_timestamp, uint64_t /*offset*/ = 2048 ) // NOLINT(build/unsigned)
   {
     auto wef = reinterpret_cast<FrameType*>(((uint8_t*)(&data))); // NOLINT
     wef->set_timestamp(first_timestamp);
