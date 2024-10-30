@@ -82,8 +82,6 @@ TDEEthFrameProcessor::stop(const nlohmann::json& args)
 void
 TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  // auto config = cfg["rawdataprocessorconf"].get<datahandlinglibs::readoutconfig::RawDataProcessorConf>();
-
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
@@ -105,23 +103,32 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   }
   m_emulator_mode = conf->get_emulation_mode();
 
+  // Setup pre-processing pipeline
+  if (!m_emulator_mode)
+    inherited::add_preprocess_task(std::bind(&TDEEthFrameProcessor::sequence_check, this, std::placeholders::_1));
+
+  inherited::add_preprocess_task(std::bind(&TDEEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
+
   inherited::conf(conf);
 }
 
 void
 TDEEthFrameProcessor::generate_opmon_data()
 {
-   datahandlinglibs::opmon::FixedRateDataProcessorInfo info;
 
-   info.set_num_seq_id_errors(m_seq_id_error_ctr.load());
-   info.set_min_seq_id_jump(m_seq_id_min_jump.exchange(0));
-   info.set_max_seq_id_jump(m_seq_id_max_jump.exchange(0));
+  TLOG() << "Generating opmon data";
 
-   info.set_num_ts_errors(m_ts_error_ctr.load());
+  datahandlinglibs::opmon::FixedRateDataProcessorInfo info;
 
-   publish(std::move(info));
+  info.set_num_seq_id_errors(m_seq_id_error_ctr.load());
+  info.set_min_seq_id_jump(m_seq_id_min_jump.exchange(0));
+  info.set_max_seq_id_jump(m_seq_id_max_jump.exchange(0));
 
-   inherited::generate_opmon_data();
+  info.set_num_ts_errors(m_ts_error_ctr.load());
+
+  publish(std::move(info));
+
+  inherited::generate_opmon_data();
 }
 
 /**
@@ -130,6 +137,7 @@ TDEEthFrameProcessor::generate_opmon_data()
 void
 TDEEthFrameProcessor::sequence_check(frameptr fp)
 {
+
 
   // // If EMU data, emulate perfectly incrementing timestamp
   // if (inherited::m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
@@ -148,6 +156,7 @@ TDEEthFrameProcessor::sequence_check(frameptr fp)
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::TDEEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
+  TLOG() << "Checking SeqID" << m_current_seq_id;
 
   // Check sequence id
   // Calculate the next sequence id (12 bits)
@@ -213,6 +222,7 @@ TDEEthFrameProcessor::timestamp_check(frameptr fp)
   // Acquire timestamp
   auto wfptr = reinterpret_cast<tdeframeptr>(fp); // NOLINT
   m_current_ts = wfptr->get_timestamp();
+  // TLOG() << "Checking TimeStamp " << wfptr->get_timestamp();
 
   // Check timestamp
   if (m_current_ts - m_previous_ts != tdeeth_frame_tick_difference) {
