@@ -79,7 +79,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -361,9 +361,15 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  for (int i; i < 3; i++) {
-    int new_tps = tpas[i].size()
-    if(!m_tp_sink[i]->try_send(std::move(&(tpas[i])[0]), iomanager::Sender::s_no_block)) {
+  for (int i = 0; i < 3; i++) {
+    int new_tps = tpas[i].size();
+
+    auto tpa_array = std::make_unique_for_overwrite<trigger::TriggerPrimitiveTypeAdapter[]>(new_tps);
+    std::move(tpas[i].begin(), tpas[i].end(), tpa_array.get());
+
+    trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair tpa_array_pair(std::move(tpa_array), new_tps);
+
+    if(!m_tp_sink[i]->try_send(std::move(tpa_array_pair), iomanager::Sender::s_no_block)) {
 //      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
     } else {
