@@ -146,7 +146,7 @@ private:
   //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
   std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
 
-  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair>> m_tp_sink[3];
+  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter::TPAVector>> m_tp_sink[3];
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
 
   //std::thread m_add_hits_tphandler_thread;

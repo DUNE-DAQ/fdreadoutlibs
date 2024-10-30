@@ -23,7 +23,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
-
+DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, "TriggerPrimitiveVector")
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -79,7 +79,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair>(output->UID());
+         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter::TPAVector>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -346,7 +346,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
 
-  std::vector<trigger::TriggerPrimitiveTypeAdapter> tpas[3];
+  trigger::TriggerPrimitiveTypeAdapter::TPAVector tpas[3];
   for (auto tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
@@ -363,13 +363,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   for (int i = 0; i < 3; i++) {
     int new_tps = tpas[i].size();
-
-    auto tpa_array = std::make_unique_for_overwrite<trigger::TriggerPrimitiveTypeAdapter[]>(new_tps);
-    std::move(tpas[i].begin(), tpas[i].end(), tpa_array.get());
-
-    trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair tpa_array_pair(std::move(tpa_array), new_tps);
-
-    if(!m_tp_sink[i]->try_send(std::move(tpa_array_pair), iomanager::Sender::s_no_block)) {
+    if(!m_tp_sink[i]->try_send(std::move(tpas[i]), iomanager::Sender::s_no_block)) {
 //      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
     } else {
