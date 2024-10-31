@@ -364,6 +364,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   for (int i = 0; i < 3; i++) {
     int new_tps = tpas[i].size();
+    if(new_tps == 0) continue;
     if(!m_tp_sink[i]->try_send(std::move(tpas[i]), iomanager::Sender::s_no_block)) {
 //      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
       m_tps_send_failed++;
