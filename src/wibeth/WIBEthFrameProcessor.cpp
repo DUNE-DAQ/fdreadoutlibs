@@ -364,7 +364,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   for (int i = 0; i < 3; i++) {
     int new_tps = tpas[i].size();
-
+    if(new_tps == 0) continue;
+    
     auto tpa_array = std::make_unique_for_overwrite<trigger::TriggerPrimitiveTypeAdapter[]>(new_tps);
     std::move(tpas[i].begin(), tpas[i].end(), tpa_array.get());
 
