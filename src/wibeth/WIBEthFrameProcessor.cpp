@@ -78,7 +78,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   size_t idx = 0;
   for (auto output : conf->get_outputs()) {
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
          m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter::TPAVector>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
