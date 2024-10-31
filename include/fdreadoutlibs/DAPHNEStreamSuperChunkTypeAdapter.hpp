@@ -14,7 +14,7 @@ namespace dunedaq::fdreadoutlibs::types {
    * 12[DAPHNE frames] x 472[Bytes] = 5664[Bytes]                                                                           
    * */
   const constexpr std::size_t kDAPHNEStreamNumFrames = 12;
-  const constexpr std::size_t kDAPHNEStreamFrameSize = 472;
+  const constexpr std::size_t kDAPHNEStreamFrameSize = sizeof(dunedaq::fddetdataformats::DAPHNEStreamFrame);
   const constexpr std::size_t kDAPHNEStreamSuperChunkSize = kDAPHNEStreamNumFrames * kDAPHNEStreamFrameSize; // for 12: 5664 
 
   struct DAPHNEStreamSuperChunkTypeAdapter {
@@ -47,10 +47,10 @@ namespace dunedaq::fdreadoutlibs::types {
     {
       uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)                                                         
       for (unsigned int i = 0; i < get_num_frames(); ++i) {
-	auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
-	df->daq_header.timestamp_1 = ts_next;
-	df->daq_header.timestamp_2 = ts_next >> 32;
-	ts_next += offset;
+        auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
+        df->daq_header.timestamp_1 = ts_next;
+        df->daq_header.timestamp_2 = ts_next >> 32;
+        ts_next += offset;
       }
     }
 
@@ -88,7 +88,7 @@ namespace dunedaq::fdreadoutlibs::types {
   };
 
   static_assert(sizeof(struct DAPHNEStreamSuperChunkTypeAdapter) == kDAPHNEStreamSuperChunkSize,
-		"Check your assumptions on DAPHNESuperChunkTypeAdapter");
+                "Check your assumptions on DAPHNESuperChunkTypeAdapter");
 
 
 } // namespace dunedaq::fdreadoutlibs::types
