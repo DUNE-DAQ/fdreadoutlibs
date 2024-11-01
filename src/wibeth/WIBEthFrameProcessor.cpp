@@ -346,8 +346,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
+  m_frame_counter++;
 
-  std::vector<trigger::TriggerPrimitiveTypeAdapter> tpas[3];
   for (auto tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
@@ -358,26 +358,29 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
     tpa.tp.algorithm = m_tp_algo;
-    tpas[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
+    m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  for (int i = 0; i < 3; i++) {
-    int new_tps = tpas[i].size();
-    if(new_tps == 0) continue;
-    
-    auto tpa_array = std::make_unique_for_overwrite<trigger::TriggerPrimitiveTypeAdapter[]>(new_tps);
-    std::move(tpas[i].begin(), tpas[i].end(), tpa_array.get());
+  if (m_frame_counter >= 100) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+    for (int i = 0; i < 3; i++) {
+      int new_tps = m_tpa_vectors[i].size();
+      if(new_tps == 0) continue;
+      
+      auto tpa_array = std::make_unique_for_overwrite<trigger::TriggerPrimitiveTypeAdapter[]>(new_tps);
+      std::move(m_tpa_vectors[i].begin(), m_tpa_vectors[i].end(), tpa_array.get());
 
-    trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair tpa_array_pair(std::move(tpa_array), new_tps);
+      trigger::TriggerPrimitiveTypeAdapter::TPAArrayPair tpa_array_pair(std::move(tpa_array), new_tps);
 
-    if(!m_tp_sink[i]->try_send(std::move(tpa_array_pair), iomanager::Sender::s_no_block)) {
-//      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
-      m_tps_send_failed++;
-    } else {
-      m_new_tps += new_tps;
-      nhits += new_tps;
+      if(!m_tp_sink[i]->try_send(std::move(tpa_array_pair), iomanager::Sender::s_no_block)) {
+  //      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
+        m_tps_send_failed++;
+      } else {
+        m_new_tps += new_tps;
+        nhits += new_tps;
+      }
     }
+    m_frame_counter = 0;
   }
 
   m_tpg_hits_count += nhits;
