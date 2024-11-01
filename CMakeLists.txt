@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(fdreadoutlibs VERSION 2.0.2)
+project(fdreadoutlibs VERSION 2.1.0)
 
 find_package(daq-cmake REQUIRED)
 
@@ -62,7 +62,6 @@ endif()
 daq_add_library(
   *.cpp
   wibeth/*.cpp
-  wibeth/tpg/*.cpp
   daphne/*.cpp
   tde/*.cpp
   LINK_LIBRARIES ${FDREADOUTLIBS_DEPENDENCIES}
@@ -76,13 +75,10 @@ daq_add_library(
 # Test Apps
 
 daq_add_application(tde_file_creator tde_file_creator.cxx TEST LINK_LIBRARIES fdreadoutlibs)
-#daq_add_application(wib2_test_bench wib2_test_bench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
-daq_add_application(wibeth_test_bench wibeth_test_bench.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 
 daq_add_unit_test(DAPHNEStreamSuperChunkTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
-daq_add_unit_test(WIBEthFrameExpansion_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDTypeAdaptersBuffers_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDReadoutRequestHandlers_test LINK_LIBRARIES fdreadoutlibs)
 
