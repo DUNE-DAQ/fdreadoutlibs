@@ -10,12 +10,17 @@
 
 #include "logging/Logging.hpp"
 
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Sender.hpp"
+
 #include "readoutlibs/FrameErrorRegistry.hpp"
 #include "readoutlibs/ReadoutIssues.hpp"
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
+#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
 
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
@@ -46,6 +51,7 @@ public:
 
   // Override config for pipeline setup
   void conf(const nlohmann::json& args) override;
+  void extract_tps(frameptr fp);
 
 protected:
   /**
@@ -66,7 +72,27 @@ protected:
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_no; // NOLINT(build/unsigned)
+  uint32_t m_slot_no;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+
+
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+
+
 private:
+  bool m_first_tp = true;
+  std::string m_tpg_algorithm;
+  std::atomic<int> m_tpg_hits_count{ 0 };
+  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
+
+  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
+
 };
 
 } // namespace fdreadoutlibs

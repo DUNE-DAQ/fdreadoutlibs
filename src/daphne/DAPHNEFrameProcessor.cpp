@@ -8,7 +8,11 @@
  */
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
+#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
 
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Sender.hpp"
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -16,6 +20,9 @@
 
 using dunedaq::readoutlibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::readoutlibs::logging::TLVL_FRAME_RECEIVED;
+
+
+//DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -27,6 +34,17 @@ DAPHNEFrameProcessor::conf(const nlohmann::json& args)
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
   TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(args);
+
+  auto config = args["RawDataProcessorConf"].get<readoutlibs::readoutconfig::RawDataProcessorConf>();
+
+  m_sourceid.id = config.source_id;
+  //m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
+  m_tpg_algorithm = config.tpg_algorithm;    
+//  auto dp = conf->get_module_configuration()->get_data_processor();
+//  m_channel_map = dunedaq::detchannelmaps::make_map(conf->get_channel_map());
+   m_channel_map = dunedaq::detchannelmaps::make_map(config.channel_map_name);
+
+  inherited::add_postprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
 }
 
 /**
@@ -76,6 +94,47 @@ void
 DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields
+}
+
+void
+DAPHNEFrameProcessor::extract_tps(frameptr fp)
+{
+  size_t nhits = 0;
+  if (!fp)
+    return;
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)fp); // NOLINT
+
+  // Check that the system is properly configured from the first hit.
+  if (m_first_tp) {
+//    if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
+//      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
+//    }
+    m_first_tp = false;
+  }
+
+  std::vector<trgdataformats::TriggerPrimitivePDS> tps;
+
+  for(size_t ii=0; ii<5; ii++) tps.push_back(wfptr->get_TP(ii));
+
+  for (auto tp : tps) {
+    // If this TP is on a masked channel, skip it -> We might add this in the future
+//    if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
+//      continue;
+    // Need to move into a type adapter.
+    fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tpa;
+    tpa.tp = tp;
+    tpa.tp.detid = m_det_id;  // Last missing piece.
+    tpa.tp.algorithm = m_tp_algo;
+    if(!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
+      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
+      m_tps_send_failed++;
+    } else {
+      m_new_tps++;
+      ++nhits;
+    }
+  }
+  m_tpg_hits_count += nhits;
+  return;
 }
 
 } // namespace fdreadoutlibs
