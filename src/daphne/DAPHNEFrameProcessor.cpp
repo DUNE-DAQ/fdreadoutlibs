@@ -97,7 +97,7 @@ DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 }
 
 void
-DAPHNEFrameProcessor::extract_tps(frameptr fp)
+DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 {
   size_t nhits = 0;
   if (!fp)

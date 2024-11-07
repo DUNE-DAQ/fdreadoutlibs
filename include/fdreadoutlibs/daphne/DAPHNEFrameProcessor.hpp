@@ -41,6 +41,7 @@ class DAPHNEFrameProcessor : public readoutlibs::TaskRawDataProcessorModel<types
 public:
   using inherited = readoutlibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>;
   using frameptr = types::DAPHNESuperChunkTypeAdapter*;
+  using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
@@ -51,7 +52,7 @@ public:
 
   // Override config for pipeline setup
   void conf(const nlohmann::json& args) override;
-  void extract_tps(frameptr fp);
+  void extract_tps(constframeptr fp);
 
 protected:
   /**
