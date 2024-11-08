@@ -348,7 +348,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter++;
 
-  for (auto tp : tps) {
+  for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
       continue;
