@@ -35,9 +35,9 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   ((uint64_t)width) ((uint64_t)channel))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  FailedToSendTP,
-                  "Failed to send TP with start time " << s_ts << " and channel number " << channel,
-                  ((dunedaq::daqdataformats::timestamp_t)s_ts) ((uint64_t)channel))
+                  FailedToSendTPVector,
+                  "Failed to send TP vector beginning with start time " << s_ts_begin << " and channel number " << channel_begin << ", ending with start time " << s_ts_end << " and channel number " << channel_end,
+                  ((dunedaq::daqdataformats::timestamp_t)s_ts_begin) ((uint64_t)channel_begin) ((dunedaq::daqdataformats::timestamp_t)s_ts_end) ((uint64_t)channel_end))
 
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
