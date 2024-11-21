@@ -23,7 +23,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
-
+DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, "TriggerPrimitiveVector")
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -78,8 +78,8 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   size_t idx = 0;
   for (auto output : conf->get_outputs()) {
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
-         m_tp_sink[idx++] = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
+         m_tp_sink[idx++] = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -346,8 +346,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
+  m_frame_counter++;
 
-  for (auto tp : tps) {
+  for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
       continue;
@@ -357,15 +358,31 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
     tpa.tp.algorithm = m_tp_algo;
+    m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
-    if(!m_tp_sink[m_channel_map->get_plane_from_offline_channel(tp.channel)]->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
-      ers::warning(FailedToSendTP(ERS_HERE, tp.time_start, tp.channel));
-      m_tps_send_failed++;
-    } else {
-      m_new_tps++;
-      ++nhits;
-    }
   }
+
+  if (m_frame_counter >= 100) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+    for (int i = 0; i < 3; i++) {
+      int new_tps = m_tpa_vectors[i].size();
+      if (new_tps == 0) {
+        continue;
+      }
+      const auto s_ts_begin = m_tpa_vectors[i].front().tp.time_start;
+      const auto channel_begin = m_tpa_vectors[i].front().tp.channel;
+      const auto s_ts_end = m_tpa_vectors[i].back().tp.time_start;
+      const auto channel_end = m_tpa_vectors[i].back().tp.channel;      
+      if (!m_tp_sink[i]->try_send(std::move(m_tpa_vectors[i]), iomanager::Sender::s_no_block)) {
+        ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+        m_tps_send_failed++;
+      } else {
+        m_new_tps += new_tps;
+        nhits += new_tps;
+      }
+    }
+    m_frame_counter = 0;
+  }
+
   m_tpg_hits_count += nhits;
   return;
 }

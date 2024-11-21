@@ -145,8 +145,9 @@ private:
   // Mapping from expanded AVX register position to offline channel number
   //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
   std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
 
-  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink[3];
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
   std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
 
   //std::thread m_add_hits_tphandler_thread;
@@ -157,6 +158,7 @@ private:
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
