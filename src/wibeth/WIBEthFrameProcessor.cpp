@@ -9,6 +9,7 @@
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
 #include "appmodel/ProcessingStep.hpp"
+#include "appmodel/TimeOverThresholdMinima.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -109,6 +110,13 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
+
+      // Set the minimum TP time over threshold.
+      auto conf_tot_minima = proc_conf->get_tot_minima();
+      std::vector<uint16_t> tot_minima{conf_tot_minima->get_tot_minimum_plane0(),
+                                       conf_tot_minima->get_tot_minimum_plane1(),
+                                       conf_tot_minima->get_tot_minimum_plane2()};
+      m_tp_generator->set_tot_minima(tot_minima);
 
       //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
