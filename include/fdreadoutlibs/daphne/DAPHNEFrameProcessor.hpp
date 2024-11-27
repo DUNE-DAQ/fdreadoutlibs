@@ -17,7 +17,7 @@
 #include "readoutlibs/ReadoutIssues.hpp"
 #include "readoutlibs/ReadoutLogging.hpp"
 #include "readoutlibs/models/TaskRawDataProcessorModel.hpp"
-#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/TriggerPrimitivePDSTypeAdapter.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "detchannelmaps/TPCChannelMap.hpp"
@@ -86,8 +86,8 @@ private:
   bool m_first_tp = true;
   std::string m_tpg_algorithm;
   std::atomic<int> m_tpg_hits_count{ 0 };
-  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitiveTypeAdapter>> m_tp_sink;  // Algorithm used to form a trigger primitive
-  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
+  std::shared_ptr<iomanager::SenderConcept<fdreadoutlibs::types::TriggerPrimitivePDSTypeAdapter>> m_tp_sink;  // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitivePDS::Algorithm m_tp_algo = trgdataformats::TriggerPrimitivePDS::Algorithm::kUnknown; 
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)

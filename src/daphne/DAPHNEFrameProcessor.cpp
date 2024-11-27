@@ -8,7 +8,7 @@
  */
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
-#include "fdreadoutlibs/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/TriggerPrimitivePDSTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
 
 #include "iomanager/IOManager.hpp"
@@ -121,7 +121,7 @@ DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 //    if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
 //      continue;
     // Need to move into a type adapter.
-    fdreadoutlibs::types::TriggerPrimitiveTypeAdapter tpa;
+    fdreadoutlibs::types::TriggerPrimitivePDSTypeAdapter tpa;
     tpa.tp = tp;
     tpa.tp.detid = m_det_id;  // Last missing piece.
     tpa.tp.algorithm = m_tp_algo;
