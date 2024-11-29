@@ -8,6 +8,16 @@
  */
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
+#include "confmodel/GeoId.hpp"
+
+
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/IterableQueueModel.hpp"
+#include "datahandlinglibs/utils/ReusableThread.hpp"
+
+#include  "datahandlinglibs/opmon/datahandling_info.pb.h"
 
 #include <atomic>
 #include <functional>
@@ -23,10 +33,35 @@ namespace fdreadoutlibs {
 void 
 DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
+  for (auto output : conf->get_outputs()) {
+    try {
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
+         m_tp_sink = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapterPDS>>(output->UID());
+      }
+    } catch (const ers::Issue& excpt) {
+      ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
+    }
+  }
+
+  auto geo_id = conf->get_geo_id();
+  if (geo_id != nullptr) {
+    m_det_id = geo_id->get_detector_id();
+    m_crate_id = geo_id->get_crate_id();
+    m_slot_id = geo_id->get_slot_id();
+    m_stream_id = geo_id->get_stream_id();
+  }
+  m_emulator_mode = conf->get_emulation_mode();
+
+
   datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
   TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(conf);
+  auto dp = conf->get_module_configuration()->get_data_processor();
+  auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
+  m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+  inherited::add_postprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+
 }
 
 /**
@@ -78,6 +113,45 @@ void
 DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields
+}
+
+void
+DAPHNEFrameProcessor::extract_tps(constframeptr fp)
+{
+  size_t nhits = 0;
+  if (!fp)
+    return;
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)fp); // NOLINT
+
+
+  std::vector<trgdataformats::TriggerPrimitivePDS> tps;
+  for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
+  {
+    auto& fr = wfptr[i]; 
+    for(size_t j=0; j<5;j++) if(fr.get_da(j)==1) {
+      dunedaq::trgdataformats::TriggerPrimitivePDS tp=fr.get_TP(j);
+      trigger::TriggerPrimitiveTypeAdapterPDS tpa;
+      tpa.tp = tp;
+      tpa.tp.detid = m_det_id;  // Last missing piece.
+      tpa.tp.algorithm = m_tp_algo;
+      m_tpa_vector.push_back(tpa);
+
+    }
+  }
+
+  int new_tps = m_tpa_vector.size();
+  const auto s_ts_begin = m_tpa_vector.front().tp.time_start;
+  const auto channel_begin = m_tpa_vector.front().tp.channel;
+  const auto s_ts_end = m_tpa_vector.back().tp.time_start;
+  const auto channel_end = m_tpa_vector.back().tp.channel;
+  if (!m_tp_sink->try_send(std::move(m_tpa_vector), iomanager::Sender::s_no_block)) {
+    ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+    m_tps_send_failed++;
+  } else {
+    m_new_tps += new_tps;
+    nhits += new_tps;
+  }
+  return;
 }
 
 } // namespace fdreadoutlibs

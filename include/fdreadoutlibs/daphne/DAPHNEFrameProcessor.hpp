@@ -8,14 +8,22 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEFRAMEPROCESSOR_HPP_
 
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Sender.hpp"
 #include "logging/Logging.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "appmodel/RawDataProcessor.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
+
+#include "trigger/TriggerPrimitiveTypeAdapterPDS.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
+
 
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
@@ -38,6 +46,7 @@ public:
   using frameptr = types::DAPHNESuperChunkTypeAdapter*;
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
+  using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
 
   // Constructor
   explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
@@ -46,6 +55,12 @@ public:
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
+  void extract_tps( constframeptr fp);
+
+    // Algorithm used to form a trigger primitive
+  dunedaq::trgdataformats::TriggerPrimitivePDS::Algorithm m_tp_algo = trgdataformats::TriggerPrimitivePDS::Algorithm::kUnknown; 
+
+
 
 protected:
   /**
@@ -65,8 +80,25 @@ protected:
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapterPDS>>> m_tp_sink;
+  std::vector<trigger::TriggerPrimitiveTypeAdapterPDS> m_tpa_vector;
 
 private:
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+  bool m_first_tp = true;
+  std::atomic<int> m_tpg_hits_count{ 0 };
+  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_frame_counter{ 0 };
+
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+  bool m_emulator_mode = false;
+
+
 };
 
 } // namespace fdreadoutlibs
