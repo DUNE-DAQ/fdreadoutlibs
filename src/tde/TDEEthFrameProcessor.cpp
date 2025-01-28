@@ -18,7 +18,7 @@
 #include "datahandlinglibs/models/IterableQueueModel.hpp"
 // #include "datahandlinglibs/readoutconfig/Nljs.hpp"
 //#include "datahandlinglibs/readoutinfo/InfoNljs.hpp"
-#include "utilities/ReusableThread.hpp"
+#include "datahandlinglibs/utils/ReusableThread.hpp"
 
 #include "fddetdataformats/TDEEthFrame.hpp"
 
