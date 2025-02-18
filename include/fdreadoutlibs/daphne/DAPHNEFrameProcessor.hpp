@@ -49,15 +49,16 @@ public:
   using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
 
   // Constructor
-  explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+  DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
     : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
   void extract_tps( constframeptr fp);
-
-    // Algorithm used to form a trigger primitive
+  void start(const nlohmann::json& args) override;
+  void stop(const nlohmann::json& args) override; 
+  // Algorithm used to form a trigger primitive
   dunedaq::trgdataformats::TriggerPrimitivePDS::Algorithm m_tp_algo = trgdataformats::TriggerPrimitivePDS::Algorithm::kUnknown; 
 
 

@@ -33,16 +33,18 @@ namespace fdreadoutlibs {
 void 
 DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  for (auto output : conf->get_outputs()) {
+/*  for (auto output : conf->get_outputs()) {
     try {
-      if (output->get_data_type() == "TriggerPrimitiveVector") {
+      if (output->get_data_type() == "TriggerPrimitivePDS") {
          m_tp_sink = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapterPDS>>(output->UID());
+         std::cout << " SINK INITIALIZAED!!!! " << std::endl;
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
     }
   }
-
+  */
+/*
   auto geo_id = conf->get_geo_id();
   if (geo_id != nullptr) {
     m_det_id = geo_id->get_detector_id();
@@ -52,18 +54,17 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   }
   m_emulator_mode = conf->get_emulation_mode();
 
+*/
 
-  datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
+  inherited::add_preprocess_task(
     std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
+ 
   TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(conf);
-  auto dp = conf->get_module_configuration()->get_data_processor();
-  auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
-  m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
-  inherited::add_postprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
-
+  std::cout << "======HI======\n\n" << std::endl;
+  inherited::add_postprocess_task(
+    std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+  inherited::conf(conf);
 }
-
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in DAPHNE frame
  * */
@@ -114,43 +115,55 @@ DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields
 }
-
+void DAPHNEFrameProcessor::start(const nlohmann::json& args)
+{
+  inherited::start(args);
+}
+void DAPHNEFrameProcessor::stop(const nlohmann::json& args)
+{
+  inherited::stop(args);
+}
 void
 DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 {
+
+
   size_t nhits = 0;
-  if (!fp)
+  if (!fp || fp==nullptr)
     return;
-  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)fp); // NOLINT
+  auto nonconstframeptr = const_cast<frameptr>(fp);
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
 
-
-  std::vector<trgdataformats::TriggerPrimitivePDS> tps;
+  std::vector<trigger::TriggerPrimitiveTypeAdapterPDS> ttpp;
   for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
   {
-    auto& fr = wfptr[i]; 
-    for(size_t j=0; j<5;j++) if(fr.get_da(j)==1) {
-      dunedaq::trgdataformats::TriggerPrimitivePDS tp=fr.get_TP(j);
-      trigger::TriggerPrimitiveTypeAdapterPDS tpa;
-      tpa.tp = tp;
-      tpa.tp.detid = m_det_id;  // Last missing piece.
-      tpa.tp.algorithm = m_tp_algo;
-      m_tpa_vector.push_back(tpa);
 
+    auto& fr = wfptr[i]; 
+    for(size_t j=0; j<5;j++)
+    {
+      if(fr.get_da(j)==1)
+      {
+        dunedaq::trgdataformats::TriggerPrimitivePDS tp=fr.get_TP(j);
+        trigger::TriggerPrimitiveTypeAdapterPDS tpa;
+        tpa.tp = tp;
+        tpa.tp.detid = m_det_id;  // Last missing piece.
+        tpa.tp.algorithm = m_tp_algo;
+        ttpp.push_back(tpa);
+      }
     }
   }
 
-  int new_tps = m_tpa_vector.size();
-  const auto s_ts_begin = m_tpa_vector.front().tp.time_start;
-  const auto channel_begin = m_tpa_vector.front().tp.channel;
-  const auto s_ts_end = m_tpa_vector.back().tp.time_start;
-  const auto channel_end = m_tpa_vector.back().tp.channel;
-  if (!m_tp_sink->try_send(std::move(m_tpa_vector), iomanager::Sender::s_no_block)) {
-    ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+  int new_tps = ttpp.size();
+/*  if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
+   std::cout << "sind failed " << std::endl;
+      	  //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
     m_tps_send_failed++;
   } else {
+	  std::cout << "send success" << std::endl;
     m_new_tps += new_tps;
     nhits += new_tps;
-  }
+  } 
+  */
   return;
 }
 
