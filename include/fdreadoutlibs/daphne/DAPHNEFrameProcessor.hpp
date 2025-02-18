@@ -14,9 +14,10 @@
 #include "datahandlinglibs/DataHandlingIssues.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
-
+#include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
 
@@ -38,14 +39,18 @@ public:
   using frameptr = types::DAPHNESuperChunkTypeAdapter*;
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
+  using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
 
   // Constructor
-  explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+  DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
     : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
+  void extract_tps( constframeptr fp);
+  void start(const nlohmann::json& args) override;
+  void stop(const nlohmann::json& args) override;
 
 protected:
   /**
@@ -65,6 +70,7 @@ protected:
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
+  dunedaq::trgdataformats::TriggerPrimitive get_TP( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
 
 private:
 };
