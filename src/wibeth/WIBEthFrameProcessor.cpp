@@ -120,20 +120,11 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       //m_tp_max_width = proc_conf->get_max_ticks_tot();
 
       const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
-      TPGAlgorithmClassifier tpg_algo_classifier;
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
       for (auto step : processing_steps) {
         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
-
-        // FIXME: Given that TPG is completely modular and nothing enforces an exact order, tracking the
-        // algorithm is difficult and hardly seems worth it since the configuration should express this.
-        //
-        // Need to find the algorithm.
-        tpg_algo_classifier.append_processing_step(step->class_name());
       }
-
-      m_tp_algo = tpg_algo_classifier.get_tpg_algorithm();
 
       // Setup post-processing pipeline
       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
@@ -364,7 +355,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    tpa.tp.algorithm = m_tp_algo;
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }

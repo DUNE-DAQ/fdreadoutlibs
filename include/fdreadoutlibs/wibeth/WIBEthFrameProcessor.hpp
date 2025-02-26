@@ -9,7 +9,6 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "fdreadoutlibs/TPGAlgorithmClassifier.hpp"
 
 // #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
@@ -123,9 +122,6 @@ private:
   uint32_t m_tp_max_width;
   std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
-
-  // Algorithm used to form a trigger primitive
-  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
