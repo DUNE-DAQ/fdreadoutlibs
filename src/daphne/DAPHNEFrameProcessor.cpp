@@ -178,9 +178,9 @@ dunedaq::trgdataformats::TriggerPrimitive DAPHNEFrameProcessor::get_TP(dunedaq::
   dunedaq::trgdataformats::TriggerPrimitive tp;
   tp.version = frame.version;
   tp.time_start = frame.get_timestamp()+64;
-  std::cout << "TIME START: " << (unsigned)tp.time_start << '\n';
+  //std::cout << "TIME START: " << (unsigned)tp.time_start << '\n';
   tp.time_peak = frame.get_timestamp()+64+frame.get_time_peak(i);
-  std::cout << "TIME PEAK: " << (unsigned)tp.time_peak << '\n';
+  //std::cout << "TIME PEAK: " << (unsigned)tp.time_peak << '\n';
   tp.time_over_threshold = frame.get_time_peak(i)+frame.get_time_pulse_ob(i);
   tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
   tp.adc_integral = frame.get_charge(i);
