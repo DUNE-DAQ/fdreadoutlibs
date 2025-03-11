@@ -43,7 +43,9 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  inherited::add_postprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+  
+  // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
 
   TLOG() << "Calling parent conf.";
   inherited::conf(conf);
@@ -91,7 +93,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
-  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)"; // NOLINT
+  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
 
   // Check timestamp
   // RS warning : not fixed rate!
@@ -101,8 +103,8 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 
   if (m_ts_error_ctr > 1000) {
     if (!m_problem_reported) {
-      TLOG() << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
-             << "Something is wrong with the FE source or with the configuration!";
+      std::cout << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
+             << "Something is wrong with the FE source or with the configuration!\n";
       m_problem_reported = true;
     }
   }
@@ -128,8 +130,12 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   if (!fp || fp==nullptr)
     return;
 
+  //std::cout << "wfptr timestamp: " << fp->get_timestamp() << '\n';
+
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
+
+  //std::cout << "wfptr timestamp: " << wfptr->get_timestamp() << '\n';
 
   //std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
   for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
@@ -140,6 +146,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       {
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = get_TP(wfptr[i],j);
+
 //        tpa.tp.detid = m_det_id;  // Missing piece.
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
         //ttpp.push_back(tpa);
@@ -177,9 +184,9 @@ dunedaq::trgdataformats::TriggerPrimitive DAPHNEFrameProcessor::get_TP(dunedaq::
 {
   dunedaq::trgdataformats::TriggerPrimitive tp;
   tp.version = frame.version;
-  tp.time_start = frame.get_timestamp()+64;
+  tp.time_start = frame.get_timestamp()+(uint64_t)64;
   //std::cout << "TIME START: " << (unsigned)tp.time_start << '\n';
-  tp.time_peak = frame.get_timestamp()+64+frame.get_time_peak(i);
+  tp.time_peak = frame.get_timestamp() + (uint64_t)64 + frame.get_time_peak(i);
   //std::cout << "TIME PEAK: " << (unsigned)tp.time_peak << '\n';
   tp.time_over_threshold = frame.get_time_peak(i)+frame.get_time_pulse_ob(i);
   tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
