@@ -181,10 +181,10 @@ dunedaq::trgdataformats::TriggerPrimitive DAPHNEFrameProcessor::get_TP(dunedaq::
   //std::cout << "TIME START: " << (unsigned)tp.time_start << '\n';
   tp.time_peak = frame.get_timestamp()+64+frame.get_time_peak(i);
   //std::cout << "TIME PEAK: " << (unsigned)tp.time_peak << '\n';
-  tp.time_over_threshold = frame.get_time_peak(i)+frame.get_time_pulse_ob(i);
+  tp.time_over_threshold = frame.get_timestamp()+frame.get_time_over_baseline(i);
   tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
-  tp.adc_integral = frame.get_charge(i);
-  tp.adc_peak = frame.get_max_peak(i);
+  tp.adc_integral = frame.get_adc_integral(i);
+  tp.adc_peak = frame.get_adc_peak(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;
   tp.type = dunedaq::trgdataformats::TriggerPrimitive::Type::kPDS;
   tp.algorithm = dunedaq::trgdataformats::TriggerPrimitive::Algorithm::kUnknown;
