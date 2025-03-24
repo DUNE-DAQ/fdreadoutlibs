@@ -9,7 +9,7 @@
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
 #include "appmodel/ProcessingStep.hpp"
-#include "appmodel/TimeOverThresholdMinima.hpp"
+#include "appmodel/SamplesOverThresholdMinima.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -110,12 +110,12 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
-      // Set the minimum TP time over threshold.
-      auto conf_tot_minima = proc_conf->get_tot_minima();
-      std::vector<uint16_t> tot_minima{conf_tot_minima->get_tot_minimum_plane0(),
-                                       conf_tot_minima->get_tot_minimum_plane1(),
-                                       conf_tot_minima->get_tot_minimum_plane2()};
-      m_tp_generator->set_tot_minima(tot_minima);
+      // Set the minimum TP samples over threshold.
+      auto conf_sot_minima = proc_conf->get_sot_minima();
+      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
+                                       conf_sot_minima->get_sot_minimum_plane1(),
+                                       conf_sot_minima->get_sot_minimum_plane2()};
+      m_tp_generator->set_sot_minima(sot_minima);
 
       const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
 

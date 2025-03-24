@@ -32,7 +32,7 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPTooLong,
-                  "TP with ToT " << width << " for channel " << channel,
+                  "TP with SOT " << width << " for channel " << channel,
                   ((uint64_t)width) ((uint64_t)channel))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
