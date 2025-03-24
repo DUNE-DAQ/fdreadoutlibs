@@ -117,8 +117,6 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
                                        conf_tot_minima->get_tot_minimum_plane2()};
       m_tp_generator->set_tot_minima(tot_minima);
 
-      //m_tp_max_width = proc_conf->get_max_ticks_tot();
-
       const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
