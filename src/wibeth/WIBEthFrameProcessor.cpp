@@ -9,7 +9,7 @@
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
 #include "appmodel/ProcessingStep.hpp"
-#include "appmodel/TimeOverThresholdMinima.hpp"
+#include "appmodel/SamplesOverThresholdMinima.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -110,35 +110,24 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
-      // Set the minimum TP time over threshold.
-      auto conf_tot_minima = proc_conf->get_tot_minima();
-      std::vector<uint16_t> tot_minima{conf_tot_minima->get_tot_minimum_plane0(),
-                                       conf_tot_minima->get_tot_minimum_plane1(),
-                                       conf_tot_minima->get_tot_minimum_plane2()};
-      m_tp_generator->set_tot_minima(tot_minima);
-
-      //m_tp_max_width = proc_conf->get_max_ticks_tot();
+      // Set the minimum TP samples over threshold.
+      auto conf_sot_minima = proc_conf->get_sot_minima();
+      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
+                                       conf_sot_minima->get_sot_minimum_plane1(),
+                                       conf_sot_minima->get_sot_minimum_plane2()};
+      m_tp_generator->set_sot_minima(sot_minima);
 
       const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
-      TPGAlgorithmClassifier tpg_algo_classifier;
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
       for (auto step : processing_steps) {
         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
-
-        // FIXME: Given that TPG is completely modular and nothing enforces an exact order, tracking the
-        // algorithm is difficult and hardly seems worth it since the configuration should express this.
-        //
-        // Need to find the algorithm.
-        tpg_algo_classifier.append_processing_step(step->class_name());
       }
-
-      m_tp_algo = tpg_algo_classifier.get_tpg_algorithm();
 
       // Setup post-processing pipeline
       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
       for (int chan = 0; chan < 64; chan++) {
-        int16_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
+        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
         int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
 
@@ -364,7 +353,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    tpa.tp.algorithm = m_tp_algo;
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
