@@ -9,7 +9,6 @@
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "fdreadoutlibs/TPGAlgorithmClassifier.hpp"
 
 // #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
@@ -25,6 +24,7 @@
 #include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
 #include "detchannelmaps/TPCChannelMap.hpp"
+#include "trgdataformats/Types.hpp"
 
 //#include "tpg/ProcessingInfo.hpp"
 //#include "tpg/RegisterToChannelNumber.hpp"
@@ -124,9 +124,6 @@ private:
   std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
 
-  // Algorithm used to form a trigger primitive
-  dunedaq::trgdataformats::TriggerPrimitive::Algorithm m_tp_algo = trgdataformats::TriggerPrimitive::Algorithm::kUnknown; 
-
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
   size_t m_num_msg = 0;
@@ -144,7 +141,7 @@ private:
 
   // Mapping from expanded AVX register position to offline channel number
   //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
-  std::vector<std::pair<int16_t, int16_t>> m_channel_plane_numbers;
+  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
   std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
