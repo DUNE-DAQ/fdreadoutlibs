@@ -7,6 +7,7 @@
  * received with this code.
  */
 #include "fddetdataformats/DAPHNEFrame.hpp"
+#include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
 
 #include <atomic>
@@ -17,18 +18,59 @@
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
 
+DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+
 namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
 DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
-  datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::add_preprocess_task(
-    std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  // m_tasklist.push_back( std::bind(&DAPHNEFrameProcessor::frame_error_check, this, std::placeholders::_1) );
-  TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>::conf(conf);
+  TLOG() << "Looking for TP sink...";
+
+  for (auto output : conf->get_outputs()) {
+    TLOG() << "On outputs...";
+    try {
+      if (output->get_data_type() == "TriggerPrimitive") {
+         TLOG() << "Found TP sink.";
+         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+         TLOG() << " SINK INITIALIZAED for TriggerPrimitives with UID : " << output->UID();
+      }
+    } catch (const ers::Issue& excpt) {
+      ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
+    }
+  }
+  
+  TLOG() << "Registering processing tasks...";
+  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
+  
+  // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+
+  TLOG() << "Calling parent conf.";
+  inherited::conf(conf);
 }
 
+void DAPHNEFrameProcessor::start(const nlohmann::json& args)
+{
+  // Reset timestamp check
+  m_previous_ts = 0;
+  m_current_ts = 0;
+  m_first_ts_missmatch = true;
+  m_ts_error_ctr = 0;
+
+  // Reset stats
+  m_t0 = std::chrono::high_resolution_clock::now();
+  m_new_hits = 0;
+  m_new_tps = 0;
+  //m_tpg_hits_count.exchange(0);
+
+  inherited::start(args);
+}
+void DAPHNEFrameProcessor::stop(const nlohmann::json& args)
+{
+  inherited::stop(args);
+}
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in DAPHNE frame
  * */
@@ -51,7 +93,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
-  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)"; // NOLINT
+  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
 
   // Check timestamp
   // RS warning : not fixed rate!
@@ -61,8 +103,8 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 
   if (m_ts_error_ctr > 1000) {
     if (!m_problem_reported) {
-      TLOG() << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
-             << "Something is wrong with the FE source or with the configuration!";
+      std::cout << "*** Data Integrity ERROR *** Timestamp continuity is completely broken! "
+             << "Something is wrong with the FE source or with the configuration!\n";
       m_problem_reported = true;
     }
   }
@@ -78,6 +120,84 @@ void
 DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields
+}
+
+
+void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
+{
+
+//  size_t nhits = 0;
+  if (!fp || fp==nullptr)
+    return;
+
+  //std::cout << "wfptr timestamp: " << fp->get_timestamp() << '\n';
+
+  auto nonconstframeptr = const_cast<frameptr>(fp);
+  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
+
+  //std::cout << "wfptr timestamp: " << wfptr->get_timestamp() << '\n';
+
+  //std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
+  for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
+  {
+    for(size_t j=0; j<5;j++)
+    {
+      if(wfptr[i].get_da(j)==1)
+      {
+        trigger::TriggerPrimitiveTypeAdapter tpa;
+        tpa.tp = get_TP(wfptr[i],j);
+
+//        tpa.tp.detid = m_det_id;  // Missing piece.
+//        tpa.tp.algorithm = m_tp_algo; // to be filled
+        //ttpp.push_back(tpa);
+
+        if (!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
+          //std::cout << "sind failed " << std::endl;
+          //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+          m_tps_send_failed++;
+        } else {
+          //std::cout << "send success" << std::endl;
+          m_new_tps++;
+          m_new_hits++;
+        }
+
+      }
+    }
+  }
+
+  /*
+  int new_tps = ttpp.size();
+  if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
+   //std::cout << "sind failed " << std::endl;
+   //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+    m_tps_send_failed++;
+  } else {
+	  //std::cout << "send success" << std::endl;
+    m_new_tps += new_tps;
+    nhits += new_tps;
+  }
+  */
+  return;
+}
+
+dunedaq::trgdataformats::TriggerPrimitive DAPHNEFrameProcessor::get_TP(dunedaq::fddetdataformats::DAPHNEFrame &frame, int i)
+{
+  dunedaq::trgdataformats::TriggerPrimitive tp;
+  tp.version = frame.version;
+  tp.time_start = frame.get_timestamp()+frame.get_time_start(i);
+  tp.samples_to_peak = frame.get_time_peak(i);
+  tp.samples_over_threshold = frame.get_time_over_baseline(i);
+  tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
+  tp.adc_integral = frame.get_adc_integral(i);
+  tp.adc_peak = frame.get_adc_peak(i);
+  tp.detid = dunedaq::trgdataformats::INVALID_DETID;
+  return tp;
+}
+
+
+void
+DAPHNEFrameProcessor::generate_opmon_data()
+{
 }
 
 } // namespace fdreadoutlibs
