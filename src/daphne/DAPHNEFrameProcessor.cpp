@@ -31,9 +31,9 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   for (auto output : conf->get_outputs()) {
     TLOG() << "On outputs...";
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
          TLOG() << "Found TP sink.";
-         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
+         m_tp_sink = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
          TLOG() << " SINK INITIALIZAED for TriggerPrimitives with UID : " << output->UID();
       }
     } catch (const ers::Issue& excpt) {
@@ -137,46 +137,36 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 
   //std::cout << "wfptr timestamp: " << wfptr->get_timestamp() << '\n';
 
-  //std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
   for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
   {
+    trigger::TriggerPrimitiveTypeAdapter tpa;
+
     for(size_t j=0; j<5;j++)
     {
       if(wfptr[i].get_da(j)==1)
       {
-        trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = get_TP(wfptr[i],j);
-
 //        tpa.tp.detid = m_det_id;  // Missing piece.
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
-        //ttpp.push_back(tpa);
-
-        if (!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
-          //std::cout << "sind failed " << std::endl;
-          //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
-          m_tps_send_failed++;
-        } else {
-          //std::cout << "send success" << std::endl;
-          m_new_tps++;
-          m_new_hits++;
-        }
-
+        ttpp.push_back(tpa);
       }
     }
   }
-
-  /*
-  int new_tps = ttpp.size();
+  const auto s_ts_begin = ttpp.front().tp.time_start;
+  const auto channel_begin = ttpp.front().tp.channel;
+  const auto s_ts_end = ttpp.back().tp.time_start;
+  const auto channel_end = ttpp.back().tp.channel;      
   if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
-   //std::cout << "sind failed " << std::endl;
-   //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+    //std::cout << "sind failed " << std::endl;
+//    ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
     m_tps_send_failed++;
   } else {
-	  //std::cout << "send success" << std::endl;
-    m_new_tps += new_tps;
-    nhits += new_tps;
+  //std::cout << "send success" << std::endl;
+    m_new_tps++;
+    m_new_hits++;
   }
-  */
+
   return;
 }
 
