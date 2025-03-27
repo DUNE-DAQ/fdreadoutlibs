@@ -82,7 +82,7 @@ protected:
 
 private:
 
-  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)

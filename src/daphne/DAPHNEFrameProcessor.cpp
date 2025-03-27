@@ -19,6 +19,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
 
 DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
+DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, "TriggerPrimitiveVector")
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -29,12 +30,12 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   TLOG() << "Looking for TP sink...";
 
   for (auto output : conf->get_outputs()) {
-    TLOG() << "On outputs...";
+    TLOG() << "On outputs... (" << output->UID() << "," << output->get_data_type() << ")";
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
          TLOG() << "Found TP sink.";
-         m_tp_sink = get_iom_sender<trigger::TriggerPrimitiveTypeAdapter>(output->UID());
-         TLOG() << " SINK INITIALIZAED for TriggerPrimitives with UID : " << output->UID();
+         m_tp_sink = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
+         TLOG() << " SINK INITIALIZED for TriggerPrimitives with UID : " << output->UID();
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
@@ -151,7 +152,11 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
         //ttpp.push_back(tpa);
 
-        if (!m_tp_sink->try_send(std::move(tpa), iomanager::Sender::s_no_block)) {
+        // 27-Mar-2025, KAB: this local vector is a temporary change to get things working!
+        // I imagine that there can/should be better grouping of TPs into a vector.
+        std::vector<trigger::TriggerPrimitiveTypeAdapter> tptav;
+        tptav.push_back(tpa);
+        if (!m_tp_sink->try_send(std::move(tptav), iomanager::Sender::s_no_block)) {
           //std::cout << "sind failed " << std::endl;
           //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
           m_tps_send_failed++;
