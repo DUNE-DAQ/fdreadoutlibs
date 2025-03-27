@@ -138,7 +138,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 
   //std::cout << "wfptr timestamp: " << wfptr->get_timestamp() << '\n';
 
-  //std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
   for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
   {
     for(size_t j=0; j<5;j++)
@@ -150,38 +150,24 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 
 //        tpa.tp.detid = m_det_id;  // Missing piece.
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
-        //ttpp.push_back(tpa);
-
-        // 27-Mar-2025, KAB: this local vector is a temporary change to get things working!
-        // I imagine that there can/should be better grouping of TPs into a vector.
-        std::vector<trigger::TriggerPrimitiveTypeAdapter> tptav;
-        tptav.push_back(tpa);
-        if (!m_tp_sink->try_send(std::move(tptav), iomanager::Sender::s_no_block)) {
-          //std::cout << "sind failed " << std::endl;
-          //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
-          m_tps_send_failed++;
-        } else {
-          //std::cout << "send success" << std::endl;
-          m_new_tps++;
-          m_new_hits++;
-        }
-
+        ttpp.push_back(tpa);
       }
     }
   }
 
-  /*
   int new_tps = ttpp.size();
-  if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
-   //std::cout << "sind failed " << std::endl;
-   //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
-    m_tps_send_failed++;
-  } else {
-	  //std::cout << "send success" << std::endl;
-    m_new_tps += new_tps;
-    nhits += new_tps;
+  if (new_tps > 0) {
+    if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
+      //std::cout << "sind failed " << std::endl;
+      //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+      m_tps_send_failed++;
+    } else {
+      //std::cout << "send success" << std::endl;
+      m_new_tps += new_tps;
+      m_new_hits += new_tps;
+    }
   }
-  */
+
   return;
 }
 
