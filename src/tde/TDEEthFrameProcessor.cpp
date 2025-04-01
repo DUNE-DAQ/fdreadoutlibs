@@ -116,7 +116,7 @@ void
 TDEEthFrameProcessor::generate_opmon_data()
 {
 
-  TLOG() << "Generating opmon data";
+  TLOG_DEBUG(7) << "Generating opmon data";
 
   datahandlinglibs::opmon::FixedRateDataProcessorInfo info;
 
@@ -156,7 +156,7 @@ TDEEthFrameProcessor::sequence_check(frameptr fp)
   // Acquire timestamp
   auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::TDEEthFrame*>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
-  TLOG() << "Checking SeqID" << m_current_seq_id;
+  // TLOG() << "Checking SeqID" << m_current_seq_id;
 
   // Check sequence id
   // Calculate the next sequence id (12 bits)
