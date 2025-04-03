@@ -83,10 +83,12 @@ protected:
 
   bool m_first_ts_missmatch = true;
   bool m_ts_problem_reported = false;
+  bool m_ts_error_state = false;
   std::atomic<uint64_t> m_ts_error_ctr{ 0 };
 
   bool m_first_seq_id_mismatch = true;
   bool m_seq_id_problem_reported = false;
+  bool m_seq_id_error_state = false;
   std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
   std::atomic<int16_t> m_seq_id_min_jump{ 0 };
   std::atomic<int16_t> m_seq_id_max_jump{ 0 };
