@@ -160,6 +160,8 @@ WIBEthFrameProcessor::generate_opmon_data()
    
    publish(std::move(info));
 
+   m_error_registry->log_registered_errors();
+
    if (m_post_processing_enabled) {
      auto now = std::chrono::high_resolution_clock::now();
      int new_hits = m_tpg_hits_count.exchange(0);
