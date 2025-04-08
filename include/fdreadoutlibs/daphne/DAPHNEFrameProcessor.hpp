@@ -78,7 +78,7 @@ protected:
   std::atomic<int> m_ts_error_ctr{ 0 };
 
   void extract_tps( constframeptr fp);
-  dunedaq::trgdataformats::TriggerPrimitive get_TP( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
+  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
 
 private:
 

@@ -131,24 +131,20 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   if (!fp || fp==nullptr)
     return;
 
-  //std::cout << "wfptr timestamp: " << fp->get_timestamp() << '\n';
-
   auto nonconstframeptr = const_cast<frameptr>(fp);
-  auto wfptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
-
-  //std::cout << "wfptr timestamp: " << wfptr->get_timestamp() << '\n';
+  auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
 
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
-  for (size_t i=0; i<dunedaq::fdreadoutlibs::types::kDAPHNENumFrames;i++)
+  for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
-    for(size_t j=0; j<5;j++)
+    for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
-      if(wfptr[i].get_da(j)==1)
+      if(df_ptr[i].peaks_data.is_found(j))
       {
         trigger::TriggerPrimitiveTypeAdapter tpa;
-        tpa.tp = get_TP(wfptr[i],j);
+        tpa.tp = peak_to_tp(df_ptr[i],j);
 
-//        tpa.tp.detid = m_det_id;  // Missing piece.
+        tpa.tp.detid = df_ptr->daq_header.det_id;
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
         ttpp.push_back(tpa);
       }
@@ -158,11 +154,9 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   int new_tps = ttpp.size();
   if (new_tps > 0) {
     if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
-      //std::cout << "sind failed " << std::endl;
       //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
       m_tps_send_failed++;
     } else {
-      //std::cout << "send success" << std::endl;
       m_new_tps += new_tps;
       m_new_hits += new_tps;
     }
@@ -171,16 +165,20 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   return;
 }
 
-dunedaq::trgdataformats::TriggerPrimitive DAPHNEFrameProcessor::get_TP(dunedaq::fddetdataformats::DAPHNEFrame &frame, int i)
+dunedaq::trgdataformats::TriggerPrimitive 
+DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, int i)
 {
   dunedaq::trgdataformats::TriggerPrimitive tp;
+  // TODO: add check on peak presence
   tp.version = frame.version;
-  tp.time_start = frame.get_timestamp()+frame.get_time_start(i);
-  tp.samples_to_peak = frame.get_time_peak(i);
-  tp.samples_over_threshold = frame.get_time_over_baseline(i);
+  tp.time_start = frame.get_timestamp()+frame.peaks_data.get_sample_start(i);
+  tp.samples_to_peak = frame.peaks_data.get_sample_max(i);
+  tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
+  // FIXME : hard-coded channel map
+  // WARNING: slot ids in DAPHNEs are all 0!
   tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
-  tp.adc_integral = frame.get_adc_integral(i);
-  tp.adc_peak = frame.get_adc_peak(i);
+  tp.adc_integral = frame.peaks_data.get_adc_integral(i);
+  tp.adc_peak = frame.peaks_data.get_adc_max(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;
   return tp;
 }
