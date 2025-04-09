@@ -45,8 +45,10 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   
-  // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
-  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+  if (m_post_processing_enabled) { 
+    // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+    inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+  }
 
   TLOG() << "Calling parent conf.";
   inherited::conf(conf);
