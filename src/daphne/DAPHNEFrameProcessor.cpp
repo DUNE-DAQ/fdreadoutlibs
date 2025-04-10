@@ -46,6 +46,9 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   
   if (m_post_processing_enabled) { 
+
+    m_channel_map = dunedaq::detchannelmaps::make_pds_map("DummyHDPDSChannelMap");
+
     // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
     inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
   }
@@ -206,7 +209,14 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
   tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
   // FIXME : hard-coded channel map
   // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
+  // tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
+  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(
+    frame.daq_header.det_id,
+    frame.daq_header.crate_id,
+    frame.daq_header.slot_id,
+    frame.daq_header.link_id,
+    frame.get_channel()
+  );
   tp.adc_integral = frame.peaks_data.get_adc_integral(i);
   tp.adc_peak = frame.peaks_data.get_adc_max(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;

@@ -17,6 +17,8 @@
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 
+#include "detchannelmaps/PDSChannelMap.hpp"
+
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
@@ -94,6 +96,8 @@ protected:
   dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
 
 private:
+
+  std::shared_ptr<detchannelmaps::PDSChannelMap> m_channel_map;
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
