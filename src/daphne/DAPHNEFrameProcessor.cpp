@@ -187,8 +187,10 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
 
 
 void
-DAPHNEFrameProcessor::generate_opmon_data()
-{
+DAPHNEFrameProcessor::generate_opmon_data() {
+
+  inherited::generate_opmon_data();
+
 }
 
 } // namespace fdreadoutlibs
