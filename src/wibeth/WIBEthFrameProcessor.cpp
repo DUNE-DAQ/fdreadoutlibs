@@ -9,7 +9,7 @@
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
 #include "appmodel/ProcessingStep.hpp"
-#include "appmodel/TimeOverThresholdMinima.hpp"
+#include "appmodel/SamplesOverThresholdMinima.hpp"
 
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
@@ -47,10 +47,12 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   m_current_ts = 0;
   m_first_ts_missmatch = true;
   m_ts_problem_reported = false;
+  m_ts_error_state = false;
   m_ts_error_ctr = 0;
 
   m_first_seq_id_mismatch = true;
   m_seq_id_problem_reported = false;
+  m_seq_id_error_state = false;
   m_seq_id_error_ctr = 0;
 
 
@@ -110,35 +112,24 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
-      // Set the minimum TP time over threshold.
-      auto conf_tot_minima = proc_conf->get_tot_minima();
-      std::vector<uint16_t> tot_minima{conf_tot_minima->get_tot_minimum_plane0(),
-                                       conf_tot_minima->get_tot_minimum_plane1(),
-                                       conf_tot_minima->get_tot_minimum_plane2()};
-      m_tp_generator->set_tot_minima(tot_minima);
-
-      //m_tp_max_width = proc_conf->get_max_ticks_tot();
+      // Set the minimum TP samples over threshold.
+      auto conf_sot_minima = proc_conf->get_sot_minima();
+      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
+                                       conf_sot_minima->get_sot_minimum_plane1(),
+                                       conf_sot_minima->get_sot_minimum_plane2()};
+      m_tp_generator->set_sot_minima(sot_minima);
 
       const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
-      TPGAlgorithmClassifier tpg_algo_classifier;
 
       std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
       for (auto step : processing_steps) {
         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
-
-        // FIXME: Given that TPG is completely modular and nothing enforces an exact order, tracking the
-        // algorithm is difficult and hardly seems worth it since the configuration should express this.
-        //
-        // Need to find the algorithm.
-        tpg_algo_classifier.append_processing_step(step->class_name());
       }
-
-      m_tp_algo = tpg_algo_classifier.get_tpg_algorithm();
 
       // Setup post-processing pipeline
       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
       for (int chan = 0; chan < 64; chan++) {
-        int16_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
+        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
         int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
 
@@ -168,6 +159,8 @@ WIBEthFrameProcessor::generate_opmon_data()
    info.set_num_ts_errors(m_ts_error_ctr.load());
    
    publish(std::move(info));
+
+   m_error_registry->log_registered_errors();
 
    if (m_post_processing_enabled) {
      auto now = std::chrono::high_resolution_clock::now();
@@ -254,18 +247,23 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
     delta_seq_id += 0x1000;
   }
 
-  if (delta_seq_id != 0) {
+  if (delta_seq_id == 0) {
+    m_seq_id_error_state = false;
+  } else {
     // uint16_t delta_seq_id = (m_current_seq_id-expected_seq_id);
     ++m_seq_id_error_ctr;
     m_seq_id_max_jump = std::max(delta_seq_id, m_seq_id_max_jump.load());
     m_seq_id_min_jump = std::min(delta_seq_id, m_seq_id_min_jump.load());
 
-    m_error_registry->add_error("SEQUENCE_ID_JUMP", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
     if (m_first_seq_id_mismatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISSMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
       m_first_seq_id_mismatch = false;
-    }
-
+    } else {
+      if (!m_seq_id_error_state) {
+        m_error_registry->add_error("Sequence ID jump", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
+        m_seq_id_error_state = true;
+      }
+    }    
   }
 
   if (m_seq_id_error_ctr > 1000) {
@@ -311,13 +309,19 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
 
   // Check timestamp
   if (m_previous_ts > 0 &&
-      m_current_ts - m_previous_ts != wibeth_frame_tick_difference) {
+      m_current_ts - m_previous_ts != wibeth_frame_tick_difference) [[unlikely]] {
     ++m_ts_error_ctr;
-    m_error_registry->add_error("MISSING_FRAMES", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
     if (m_first_ts_missmatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
       m_first_ts_missmatch = false;
+    } else {
+      if (!m_ts_error_state) {
+        m_error_registry->add_error("Timestamp jump", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
+        m_ts_error_state = true;
+      }
     }
+  } else {
+    m_ts_error_state = false;
   }
 
   if (m_ts_error_ctr > 1000) {
@@ -364,7 +368,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    tpa.tp.algorithm = m_tp_algo;
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
