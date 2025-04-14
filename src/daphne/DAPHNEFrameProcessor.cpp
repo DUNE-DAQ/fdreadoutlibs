@@ -198,8 +198,7 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
 
 
 void
-DAPHNEFrameProcessor::generate_opmon_data()
-{
+DAPHNEFrameProcessor::generate_opmon_data() {
 
   //right now, just fill some basic tp info...
   if (m_post_processing_enabled) {
@@ -224,6 +223,8 @@ DAPHNEFrameProcessor::generate_opmon_data()
     m_t0 = now;
 
   }
+
+ inherited::generate_opmon_data();
   
 }
   
