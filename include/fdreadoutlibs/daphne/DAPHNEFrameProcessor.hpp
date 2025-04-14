@@ -40,6 +40,11 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   "Ignoring PDS Peak with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe << ", ipeak=" << ipeak,
                   ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe) ((size_t)ipeak))
 
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSUnphysicalFrameTimestamp,
+                  "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))
+                  
   
 namespace fdreadoutlibs {
 

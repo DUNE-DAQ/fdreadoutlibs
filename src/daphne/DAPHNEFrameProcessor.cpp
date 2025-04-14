@@ -81,7 +81,7 @@ void
 DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 {
   // Let Source Emulator deal with this
-  /*
+/*
   // If EMU data, emulate perfectly incrementing timestamp
   if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
     // RS warning : not fixed rate!
@@ -93,6 +93,21 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
     }
   }*/
 
+  // FIXME: This is a temporary fix to avoid frames with unphysical timestamp set to the far future to interfere with 
+  // the operations of the LB.
+  // These frames are effectively "corrupted" or "invalid frames" and hould be handled as such.
+
+
+  for (size_t i=0; i<types::kDAPHNENumFrames; i++){
+    auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
+
+    if(df_ptr[i].get_timestamp() > 0xFFFFFFFFFFFF0000 || df_ptr[i].get_timestamp() < 0xFFFF){
+      ers::warning(PDSUnphysicalFrameTimestamp(ERS_HERE, df_ptr[i].get_timestamp(), df_ptr[i].get_channel(), i));
+      // Force the TS to 0
+      df_ptr[i].daq_header.timestamp_1 = df_ptr[i].daq_header.timestamp_2 = 0;
+    }
+  }
+
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
@@ -103,6 +118,8 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   // if (m_current_ts - m_previous_ts != ???) {
   //  ++m_ts_error_ctr;
   //}
+
+
 
   if (m_ts_error_ctr > 1000) {
     if (!m_problem_reported) {
@@ -146,12 +163,12 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);
 
-	//check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
-	if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
-	  ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));
-	  continue;
-	}
-	
+        //check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
+        if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
+          ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));
+          continue;
+        }
+        
         tpa.tp.detid = df_ptr->daq_header.det_id;
         ttpp.push_back(tpa);
       }
