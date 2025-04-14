@@ -97,6 +97,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
+  //TLOG() << fp->daq_header.version << " " << fp->daq_header.det_id << " " << fp->daq_header.crate_id << " " << fp->daq_header.slot_id << " " << fp->daq_header.stream_id;
 
   // Check timestamp
   // RS warning : not fixed rate!
@@ -146,6 +147,12 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);
 
+	//check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
+	if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
+	  ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));
+	  continue;
+	}
+	
         tpa.tp.detid = df_ptr->daq_header.det_id;
 //        tpa.tp.algorithm = m_tp_algo; // to be filled
         ttpp.push_back(tpa);

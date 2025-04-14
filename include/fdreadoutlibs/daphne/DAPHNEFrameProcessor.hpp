@@ -19,6 +19,7 @@
 
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
@@ -33,6 +34,13 @@
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
 namespace dunedaq {
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSPeakIgnored,
+                  "Ignoring PDS Peak with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe << ", ipeak=" << ipeak,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe) ((size_t)ipeak))
+
+  
 namespace fdreadoutlibs {
 
 class DAPHNEFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>
