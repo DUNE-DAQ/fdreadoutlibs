@@ -220,6 +220,9 @@ DAPHNEFrameProcessor::generate_opmon_data()
     tp_info.set_num_tps_send_failed(new_tps_send_failed);
     
     publish(std::move(tp_info));
+
+    m_t0 = now;
+
   }
   
 }
