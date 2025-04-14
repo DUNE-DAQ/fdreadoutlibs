@@ -47,10 +47,12 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   m_current_ts = 0;
   m_first_ts_missmatch = true;
   m_ts_problem_reported = false;
+  m_ts_error_state = false;
   m_ts_error_ctr = 0;
 
   m_first_seq_id_mismatch = true;
   m_seq_id_problem_reported = false;
+  m_seq_id_error_state = false;
   m_seq_id_error_ctr = 0;
 
 
@@ -158,6 +160,8 @@ WIBEthFrameProcessor::generate_opmon_data()
    
    publish(std::move(info));
 
+   m_error_registry->log_registered_errors();
+
    if (m_post_processing_enabled) {
      auto now = std::chrono::high_resolution_clock::now();
      int new_hits = m_tpg_hits_count.exchange(0);
@@ -243,18 +247,23 @@ WIBEthFrameProcessor::sequence_check(frameptr fp)
     delta_seq_id += 0x1000;
   }
 
-  if (delta_seq_id != 0) {
+  if (delta_seq_id == 0) {
+    m_seq_id_error_state = false;
+  } else {
     // uint16_t delta_seq_id = (m_current_seq_id-expected_seq_id);
     ++m_seq_id_error_ctr;
     m_seq_id_max_jump = std::max(delta_seq_id, m_seq_id_max_jump.load());
     m_seq_id_min_jump = std::min(delta_seq_id, m_seq_id_min_jump.load());
 
-    m_error_registry->add_error("SEQUENCE_ID_JUMP", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
     if (m_first_seq_id_mismatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISSMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First sequence id MISMATCH! -> | previous: " << std::to_string(m_previous_seq_id) << " current: " + std::to_string(m_current_seq_id);
       m_first_seq_id_mismatch = false;
-    }
-
+    } else {
+      if (!m_seq_id_error_state) {
+        m_error_registry->add_error("Sequence ID jump", datahandlinglibs::FrameErrorRegistry::ErrorInterval(expected_seq_id, m_current_seq_id));
+        m_seq_id_error_state = true;
+      }
+    }    
   }
 
   if (m_seq_id_error_ctr > 1000) {
@@ -300,13 +309,19 @@ WIBEthFrameProcessor::timestamp_check(frameptr fp)
 
   // Check timestamp
   if (m_previous_ts > 0 &&
-      m_current_ts - m_previous_ts != wibeth_frame_tick_difference) {
+      m_current_ts - m_previous_ts != wibeth_frame_tick_difference) [[unlikely]] {
     ++m_ts_error_ctr;
-    m_error_registry->add_error("MISSING_FRAMES", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
     if (m_first_ts_missmatch) { // log once
-      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISSMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
+      TLOG_DEBUG(TLVL_BOOKKEEPING) << "First timestamp MISMATCH! -> | previous: " << std::to_string(m_previous_ts) << " current: " + std::to_string(m_current_ts);
       m_first_ts_missmatch = false;
+    } else {
+      if (!m_ts_error_state) {
+        m_error_registry->add_error("Timestamp jump", datahandlinglibs::FrameErrorRegistry::ErrorInterval(m_previous_ts + wibeth_frame_tick_difference, m_current_ts));
+        m_ts_error_state = true;
+      }
     }
+  } else {
+    m_ts_error_state = false;
   }
 
   if (m_ts_error_ctr > 1000) {
