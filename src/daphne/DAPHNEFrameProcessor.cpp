@@ -97,7 +97,6 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
-  //TLOG() << fp->daq_header.version << " " << fp->daq_header.det_id << " " << fp->daq_header.crate_id << " " << fp->daq_header.slot_id << " " << fp->daq_header.stream_id;
 
   // Check timestamp
   // RS warning : not fixed rate!
@@ -154,7 +153,6 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 	}
 	
         tpa.tp.detid = df_ptr->daq_header.det_id;
-//        tpa.tp.algorithm = m_tp_algo; // to be filled
         ttpp.push_back(tpa);
       }
     }
@@ -162,9 +160,15 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 
   int new_tps = ttpp.size();
   if (new_tps > 0) {
+
+    const auto s_ts_begin = ttpp.front().tp.time_start;
+    const auto channel_begin = ttpp.front().tp.channel;
+    const auto s_ts_end = ttpp.back().tp.time_start;
+    const auto channel_end = ttpp.back().tp.channel;      
+    
     if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
-      //ers::warning(FailedToSendTP(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
-      m_tps_send_failed++;
+      ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+      m_tps_send_failed += new_tps;
     } else {
       m_new_tps += new_tps;
       m_new_hits += new_tps;
@@ -196,7 +200,29 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
 void
 DAPHNEFrameProcessor::generate_opmon_data()
 {
-}
 
+  //right now, just fill some basic tp info...
+  if (m_post_processing_enabled) {
+    auto now = std::chrono::high_resolution_clock::now();
+    int new_hits = m_new_hits.exchange(0);
+    int new_tps = m_new_tps.exchange(0);
+    int new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
+    int new_tps_send_failed = m_tps_send_failed.exchange(0);
+    double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
+    
+    datahandlinglibs::opmon::HitFindingInfo tp_info;
+    tp_info.set_rate_tp_hits(new_hits / seconds / 1000.);
+    
+    tp_info.set_num_tps_sent(new_tps);
+    tp_info.set_num_tps_suppressed_too_long(new_tps_suppressed_too_long);
+    tp_info.set_num_tps_send_failed(new_tps_send_failed);
+    
+    publish(std::move(tp_info));
+  }
+  
+}
+  
 } // namespace fdreadoutlibs
 } // namespace dunedaq
