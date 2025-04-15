@@ -200,7 +200,6 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
 {
   dunedaq::trgdataformats::TriggerPrimitive tp;
   // TODO: add check on peak presence
-  tp.version = frame.version;
   tp.time_start = frame.get_timestamp()+frame.peaks_data.get_sample_start(i);
   tp.samples_to_peak = frame.peaks_data.get_sample_max(i);
   tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
