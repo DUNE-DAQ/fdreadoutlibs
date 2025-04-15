@@ -13,10 +13,16 @@
 #include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
+
+#include "iomanager/IOManager.hpp"
+#include "iomanager/Sender.hpp"
+
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
-
+#include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
 
@@ -28,6 +34,18 @@
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
 namespace dunedaq {
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSPeakIgnored,
+                  "Ignoring PDS Peak with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe << ", ipeak=" << ipeak,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe) ((size_t)ipeak))
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSUnphysicalFrameTimestamp,
+                  "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))
+                  
+  
 namespace fdreadoutlibs {
 
 class DAPHNEFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>
@@ -38,6 +56,7 @@ public:
   using frameptr = types::DAPHNESuperChunkTypeAdapter*;
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
+  using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
 
   // Constructor
   explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
@@ -47,7 +66,12 @@ public:
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
 
+  void start(const nlohmann::json& args) override;
+  void stop(const nlohmann::json& args) override;
+
 protected:
+  virtual void generate_opmon_data() override;
+
   /**
    * Pipeline Stage 1.: Check proper timestamp increments in DAPHNE frame
    * */
@@ -66,7 +90,21 @@ protected:
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
+  void extract_tps( constframeptr fp);
+  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
+
 private:
+
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
+
+  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_frame_counter{ 0 };
+
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
+
 };
 
 } // namespace fdreadoutlibs
