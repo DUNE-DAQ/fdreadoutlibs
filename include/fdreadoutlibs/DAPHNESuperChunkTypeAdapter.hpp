@@ -48,7 +48,7 @@ struct DAPHNESuperChunkTypeAdapter
     frame->daq_header.timestamp_2 = ts >> 32;
   }
 
-  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = 25) // NOLINT(build/unsigned)
+  void fake_timestamps(uint64_t first_timestamp, uint64_t offset = expected_tick_difference) // NOLINT(build/unsigned)
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < get_num_frames(); ++i) {
@@ -94,7 +94,7 @@ struct DAPHNESuperChunkTypeAdapter
 
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
-  static const constexpr uint64_t expected_tick_difference = 16; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = 1024; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct DAPHNESuperChunkTypeAdapter) == kDAPHNESuperChunkSize,
