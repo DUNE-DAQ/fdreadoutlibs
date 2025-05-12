@@ -10,6 +10,8 @@
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
 
+
+
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -42,6 +44,22 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     }
   }
   
+  // RMA
+  auto dp = conf->get_module_configuration()->get_data_processor();
+  auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();//DOES THIS EVEN WORK
+  intg_thr_at_ch = proc_conf->get_intg_minima();//this returns a vector of thresholds. 
+  
+
+// Original block from WIBEthFrameProcessor.cpp
+/*
+  auto conf_sot_minima = proc_conf->get_sot_minima();
+      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
+                                       conf_sot_minima->get_sot_minimum_plane1(),
+                                       conf_sot_minima->get_sot_minimum_plane2()};
+      m_tp_generator->set_sot_minima(sot_minima);
+*/
+  
+
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
   
@@ -158,11 +176,14 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   {
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
+      
+      
       if(df_ptr[i].peaks_data.is_found(j))
       {
+        if (df_ptr[i].peaks_data.get_adc_integral(i) < intg_thr_at_ch.at(df_ptr[i].daq_header.slot_id*100+frame.get_channel())) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
-        tpa.tp = peak_to_tp(df_ptr[i],j);
-
+        tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
+         
         //check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
         if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
           ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));

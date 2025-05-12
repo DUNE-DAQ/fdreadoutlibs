@@ -25,6 +25,8 @@
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
+#include "appmodel/TPCRawDataProcessor.hpp"
+
 
 #include <atomic>
 #include <functional>
@@ -94,6 +96,9 @@ protected:
   dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
 
 private:
+
+  std::set<unsigned int> m_channel_mask_set; 
+  std::vector<unsigned int> intg_thr_at_ch;  
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
