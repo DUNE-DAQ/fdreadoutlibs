@@ -180,7 +180,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       
       if(df_ptr[i].peaks_data.is_found(j))
       {
-        if (df_ptr[i].peaks_data.get_adc_integral(i) < intg_thr_at_ch.at(df_ptr[i].daq_header.slot_id*100+frame.get_channel())) continue;
+        if (df_ptr[i].peaks_data.get_adc_integral(i) < intg_thr_at_ch.at(df_ptr[i].daq_header.slot_id*100+df_ptr[i].get_channel())) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
          

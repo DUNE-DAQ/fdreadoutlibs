@@ -26,6 +26,7 @@
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
 #include "appmodel/TPCRawDataProcessor.hpp"
+#include "appmodel/PDSRawDataProcessor.hpp"
 
 
 #include <atomic>
