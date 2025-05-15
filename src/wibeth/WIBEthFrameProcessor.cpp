@@ -130,7 +130,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       m_channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
       for (int chan = 0; chan < 64; chan++) {
         trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
-        int16_t plane = m_channel_map->get_tpc_plane_from_offline_channel(off_channel);
+        int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
 
         // This processor only needs to handle some (maybe 0) of the masked channels.
@@ -368,7 +368,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    m_tpa_vectors[m_channel_map->get_tpc_plane_from_offline_channel(tp.channel)].push_back(tpa);
+    m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
 

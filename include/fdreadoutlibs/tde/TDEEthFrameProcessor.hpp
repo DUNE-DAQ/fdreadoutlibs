@@ -8,6 +8,8 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETH_TDEETHFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETH_TDEETHFRAMEPROCESSOR_HPP_
 
+#include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
+
 // #include "appfwk/DAQModuleHelper.hpp"
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
@@ -15,11 +17,19 @@
 
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
-#include "fdreadoutlibs/FDReadoutIssues.hpp"
-#include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
 
+#include "appmodel/DataHandlerModule.hpp"
+#include "confmodel/Connection.hpp"
 #include "daqdataformats/Types.hpp"
+#include "detchannelmaps/TPCChannelMap.hpp"
+#include "trgdataformats/Types.hpp"
+
+//#include "tpg/ProcessingInfo.hpp"
+//#include "tpg/RegisterToChannelNumber.hpp"
+
+#include "tpglibs/TPGenerator.hpp"
 
 #include <atomic>
 #include <bitset>
@@ -101,14 +111,55 @@ protected:
 
   void timestamp_check(frameptr fp);
 
+  /**
+   * Pipeline Stage 2.: Do software TPG
+   * */
+  
+  void find_hits(constframeptr fp);
+
 private:
+
+  bool m_first_hit = true;
+  std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
+  std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
+  uint32_t m_tp_max_width;
+  std::set<unsigned int> m_channel_mask_set;
+  uint16_t m_tpg_threshold_selected;
+
+  std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
+
+  size_t m_num_msg = 0;
+  size_t m_num_push_fail = 0;
+
+  std::atomic<int> m_tpg_hits_count{ 0 };
+
   uint32_t m_det_id; // NOLINT(build/unsigned)
   uint32_t m_crate_id; // NOLINT(build/unsigned)
   uint32_t m_slot_id;  // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
   bool m_emulator_mode = false;
 
-  std::shared_ptr<iomanager::SenderConcept<trigger::TriggerPrimitiveTypeAdapter>> m_tp_sink;
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
+
+  // Mapping from expanded AVX register position to offline channel number
+  //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
+
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
+  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::TDEEthFrame>> m_err_frame_sink;
+
+  //std::thread m_add_hits_tphandler_thread;
+
+  daqdataformats::SourceID m_sourceid;
+
+  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
+  std::atomic<uint64_t> m_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_frame_counter{ 0 };
+
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 
 };
 
