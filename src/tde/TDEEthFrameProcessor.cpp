@@ -43,7 +43,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
 // THIS SHOULDN'T BE HERE!!!!! But it is necessary.....
 DUNE_DAQ_TYPESTRING(dunedaq::trigger::TriggerPrimitiveTypeAdapter, "TriggerPrimitive")
-
+DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, "TriggerPrimitiveVector")
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -86,7 +86,7 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   size_t idx = 0;
   for (auto output : conf->get_outputs()) {
     try {
-      if (output->get_data_type() == "TriggerPrimitive") {
+      if (output->get_data_type() == "TriggerPrimitiveVector") {
          m_tp_sink[idx++] = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
       }
     } catch (const ers::Issue& excpt) {
