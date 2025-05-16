@@ -5,8 +5,8 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETH_TDEETHFRAMEPROCESSOR_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETH_TDEETHFRAMEPROCESSOR_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETHFRAMEPROCESSOR_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETHFRAMEPROCESSOR_HPP_
 
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 
@@ -31,6 +31,7 @@
 
 #include "tpglibs/TPGenerator.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <bitset>
 #include <functional>
@@ -55,21 +56,17 @@ public:
   using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::TDEEthTypeAdapter>;
   using frameptr = types::TDEEthTypeAdapter*;
   using constframeptr = const types::TDEEthTypeAdapter*;
-  using tdeframeptr = dunedaq::fddetdataformats::TDEEthFrame*;
+  using wibframeptr = dunedaq::fddetdataformats::TDEEthFrame*;
+  // Channel map function type
+  //typedef int (*chan_map_fn_t)(int);
 
-  explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled);
-
-  ~TDEEthFrameProcessor();
+  explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
   void start(const nlohmann::json& args) override;
 
   void stop(const nlohmann::json& args) override;
 
-  // void init(const nlohmann::json& args) override;
-
   void conf(const appmodel::DataHandlerModule* conf) override;
-
-  //void get_info(opmonlib::InfoCollector& ci, int level) override;
 
 protected:
   virtual void generate_opmon_data() override;
@@ -86,10 +83,12 @@ protected:
 
   bool m_first_ts_missmatch = true;
   bool m_ts_problem_reported = false;
+  bool m_ts_error_state = false;
   std::atomic<uint64_t> m_ts_error_ctr{ 0 };
 
   bool m_first_seq_id_mismatch = true;
   bool m_seq_id_problem_reported = false;
+  bool m_seq_id_error_state = false;
   std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
   std::atomic<int16_t> m_seq_id_min_jump{ 0 };
   std::atomic<int16_t> m_seq_id_max_jump{ 0 };
@@ -114,11 +113,12 @@ protected:
   /**
    * Pipeline Stage 2.: Do software TPG
    * */
-  
+
   void find_hits(constframeptr fp);
+  //void find_hits(constframeptr fp);
+
 
 private:
-
   bool m_first_hit = true;
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
@@ -160,10 +160,9 @@ private:
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
-
 };
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETH_TDEETHFRAMEPROCESSOR_HPP_
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETHFRAMEPROCESSOR_HPP_
