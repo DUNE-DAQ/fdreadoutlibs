@@ -66,6 +66,8 @@ public:
     : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
+ 
+
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
 
@@ -110,6 +112,13 @@ private:
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
+  static const inline std::map<int,int> pds_ch {
+    {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7},
+    {10, 8}, {11, 9}, {12, 10}, {13, 11}, {14, 12}, {15, 13}, {16, 14}, {17, 15},
+    {20, 16}, {21, 17}, {22, 18}, {23, 19}, {24, 20}, {25, 21}, {26, 22}, {27, 23},
+    {30, 24}, {31, 25}, {32, 26}, {33, 27}, {34, 28}, {35, 29}, {36, 30}, {37, 31},
+    {40, 32}, {41, 33}, {42, 34}, {43, 35}, {44, 36}, {45, 37}, {46, 38}, {47, 39}
+  };  
 
 };
 
