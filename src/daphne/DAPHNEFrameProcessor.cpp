@@ -52,7 +52,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   auto dp = conf->get_module_configuration()->get_data_processor();
   auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();//DOES THIS EVEN WORK
   intg_thr_at_ch = proc_conf->get_intg_minima();//this returns a vector of thresholds. 
-  TLOG()<< "Threshold at last channel " << intg_thr_at_ch.at(pds_ch.at(47)) << std::endl;//expectation is 56
+  TLOG()<< "Threshold at last channel " << intg_thr_at_ch.at(get_pds_ch(47)) << std::endl;//expectation is 56
 
 // Original block from WIBEthFrameProcessor.cpp
 /*
@@ -179,7 +179,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   // static_cast<int>(frame.get_channel())  
   // TLOG()<< " Channel RMA " << static_cast<int>(df_ptr[0].get_channel()) << std::endl;
   // TLOG()<< "adc integral " << df_ptr[0].peaks_data.get_adc_integral(0)<< std::endl;
-  // TLOG()<< "channel mapping " << pds_ch.at(static_cast<int>(df_ptr[0].get_channel())) << std::endl;
+  // TLOG()<< "channel mapping " << get_pds_ch.at(static_cast<int>(df_ptr[0].get_channel())) << std::endl;
   
   for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
@@ -187,7 +187,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
     {
       if(df_ptr[i].peaks_data.is_found(j))
       {
-        int ch = pds_ch.at(static_cast<int>(df_ptr[i].get_channel()));
+        int ch = get_pds_ch(static_cast<int>(df_ptr[i].get_channel()));
         if (df_ptr[i].peaks_data.get_adc_integral(j) < intg_thr_at_ch.at(ch)) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
@@ -273,6 +273,10 @@ DAPHNEFrameProcessor::generate_opmon_data() {
  inherited::generate_opmon_data();
   
 }
-  
+
+int DAPHNEFrameProcessor::get_pds_ch(int ch){
+  return 8*(ch/10) + (47%10);
+}
+
 } // namespace fdreadoutlibs
 } // namespace dunedaq
