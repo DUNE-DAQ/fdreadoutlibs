@@ -27,6 +27,7 @@
 
 #include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
+#include "appmodel/PDSChannelThreshold.hpp"
 
 
 #include <atomic>

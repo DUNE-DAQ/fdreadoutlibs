@@ -51,8 +51,20 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
   auto dp = conf->get_module_configuration()->get_data_processor();
   auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();//DOES THIS EVEN WORK
+
+
   intg_thr_at_ch = proc_conf->get_intg_minima();//this returns a vector of thresholds. 
-  TLOG()<< "Threshold at last channel " << intg_thr_at_ch.at(get_pds_ch(47)) << std::endl;//expectation is 56
+
+  if (proc_conf->GetCustomChannelNumber() >0){
+    for (size_t i = 0; i < proc_conf->GetCustomChannelNumber(); i++) {
+      const auto& custom_channel = proc_conf->GetCustomChannel(i);
+      uint32_t channel_id = custom_channel.get_channel_id();
+      uint32_t threshold_value = custom_channel.get_threshold();
+      intg_thr_at_ch.at(channel_id) = threshold_value;
+    }
+  }
+
+  TLOG()<< "RMA Threshold at last channel " << intg_thr_at_ch.at(33) << std::endl;//expectation is 56
 
 // Original block from WIBEthFrameProcessor.cpp
 /*
