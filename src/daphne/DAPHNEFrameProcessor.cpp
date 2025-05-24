@@ -54,7 +54,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
 
   intg_thr_at_ch = proc_conf->get_intg_minima();//this returns a vector of thresholds. 
-
+  masked_channels = proc_conf->get_pds_masked_channels();
   if (proc_conf->GetCustomChannelNumber() >0){
     for (size_t i = 0; i < proc_conf->GetCustomChannelNumber(); i++) {
       const auto& custom_channel = proc_conf->GetCustomChannel(i);
@@ -64,7 +64,8 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     }
   }
 
-  TLOG()<< "RMA Threshold at last channel " << intg_thr_at_ch.at(33) << std::endl;//expectation is 56
+
+  // TLOG()<< "RMA Threshold at last channel " << intg_thr_at_ch.at(33) << std::endl;//expectation is 56
 
 // Original block from WIBEthFrameProcessor.cpp
 /*
@@ -186,7 +187,6 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
-
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
   // static_cast<int>(frame.get_channel())  
   // TLOG()<< " Channel RMA " << static_cast<int>(df_ptr[0].get_channel()) << std::endl;
@@ -200,6 +200,9 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       if(df_ptr[i].peaks_data.is_found(j))
       {
         int ch = get_pds_ch(static_cast<int>(df_ptr[i].get_channel()));
+        if (is_masked(ch)) continue;
+        if (ch == 31) TLOG() << "RMA:: Masking does not work " << ch << std::endl;
+        TLOG() << "RMA:: Masking does not work " << ch << std::endl;
         if (df_ptr[i].peaks_data.get_adc_integral(j) < intg_thr_at_ch.at(ch)) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
@@ -288,6 +291,11 @@ DAPHNEFrameProcessor::generate_opmon_data() {
 
 int DAPHNEFrameProcessor::get_pds_ch(int ch){
   return 8*(ch/10) + (47%10);
+}
+
+bool DAPHNEFrameProcessor::is_masked(int channel_id) const {
+  return std::find(masked_channels.begin(), masked_channels.end(), channel_id) 
+         != masked_channels.end();
 }
 
 } // namespace fdreadoutlibs

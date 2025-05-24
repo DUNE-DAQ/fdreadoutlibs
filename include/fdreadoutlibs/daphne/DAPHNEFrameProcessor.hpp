@@ -99,10 +99,12 @@ protected:
   void extract_tps( constframeptr fp);
   dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
   int get_pds_ch(int ch);// converts the PDS real mapping (0->7 10 -> 17 ... 40 -> 47) to a continuous array from 0 to 39 
+  bool is_masked(int channel_id) const;
 private:
 
-  std::set<unsigned int> m_channel_mask_set; 
-  std::vector<unsigned int> intg_thr_at_ch;  
+
+  std::vector<uint32_t> masked_channels; 
+  std::vector<uint32_t> intg_thr_at_ch;  
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
