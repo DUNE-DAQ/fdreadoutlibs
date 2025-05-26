@@ -360,7 +360,8 @@
    m_frame_counter++;
  
    for (const auto& tp : tps) {
-     // If this TP is on a masked channel, skip it.
+     // I
+     // f this TP is on a masked channel, skip it.
      if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
        continue;
      // Need to move into a type adapter.

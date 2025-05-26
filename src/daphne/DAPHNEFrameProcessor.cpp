@@ -54,7 +54,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
 
   intg_thr_at_ch = proc_conf->get_intg_minima();//this returns a vector of thresholds. 
-  masked_channels = proc_conf->get_pds_masked_channels();
+
   if (proc_conf->GetCustomChannelNumber() >0){
     for (size_t i = 0; i < proc_conf->GetCustomChannelNumber(); i++) {
       const auto& custom_channel = proc_conf->GetCustomChannel(i);
@@ -64,18 +64,14 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     }
   }
 
+  masked_channels = proc_conf->get_pds_masked_channels();
+  mask = 0;
 
-  // TLOG()<< "RMA Threshold at last channel " << intg_thr_at_ch.at(33) << std::endl;//expectation is 56
+  for (int channel : masked_channels) {
+      if (channel < 0 || channel > 39) { TLOG() << "PDS channel higher than 39" << std::endl; }
+      mask |= 1ULL << channel; // Convert to 0-based bit position
+  }
 
-// Original block from WIBEthFrameProcessor.cpp
-/*
-  auto conf_sot_minima = proc_conf->get_sot_minima();
-      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
-                                       conf_sot_minima->get_sot_minimum_plane1(),
-                                       conf_sot_minima->get_sot_minimum_plane2()};
-      m_tp_generator->set_sot_minima(sot_minima);
-*/
-  
 
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
@@ -188,10 +184,6 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
-  // static_cast<int>(frame.get_channel())  
-  // TLOG()<< " Channel RMA " << static_cast<int>(df_ptr[0].get_channel()) << std::endl;
-  // TLOG()<< "adc integral " << df_ptr[0].peaks_data.get_adc_integral(0)<< std::endl;
-  // TLOG()<< "channel mapping " << get_pds_ch.at(static_cast<int>(df_ptr[0].get_channel())) << std::endl;
   
   for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
@@ -201,8 +193,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       {
         int ch = get_pds_ch(static_cast<int>(df_ptr[i].get_channel()));
         if (is_masked(ch)) continue;
-        if (ch == 31) TLOG() << "RMA:: Masking does not work " << ch << std::endl;
-        TLOG() << "RMA:: Masking does not work " << ch << std::endl;
+        
         if (df_ptr[i].peaks_data.get_adc_integral(j) < intg_thr_at_ch.at(ch)) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
@@ -294,9 +285,10 @@ int DAPHNEFrameProcessor::get_pds_ch(int ch){
 }
 
 bool DAPHNEFrameProcessor::is_masked(int channel_id) const {
-  return std::find(masked_channels.begin(), masked_channels.end(), channel_id) 
-         != masked_channels.end();
+  return (mask & (1ULL << (channel_id))) != 0;
 }
+
+
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
