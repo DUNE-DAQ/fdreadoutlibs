@@ -127,9 +127,9 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       }
 
       // Setup post-processing pipeline
-      m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+      m_channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
       for (int chan = 0; chan < 64; chan++) {
-        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
+        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
         int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
 
