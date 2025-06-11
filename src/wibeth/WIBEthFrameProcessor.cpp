@@ -88,8 +88,8 @@
      }
    }
  
-   m_sourceid.id = conf->get_source_id();
-   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
+   m_sourceid.id = conf->get_source_id();// This return the source_id of a DataHandlerModule (class from Appmodel)
+   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;// This I have no idea what it does. 
    auto geo_id = conf->get_geo_id();
    if (geo_id != nullptr) {
      m_det_id = geo_id->get_detector_id();
@@ -123,7 +123,7 @@
  
        std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
        for (auto step : processing_steps) {
-         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
+         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));//I need a bit more insight on what this to_json is exactl doing
        }
  
        // Setup post-processing pipeline

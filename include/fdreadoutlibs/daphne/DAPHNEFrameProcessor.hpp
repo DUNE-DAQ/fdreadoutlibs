@@ -28,6 +28,8 @@
 #include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
 #include "appmodel/PDSChannelThreshold.hpp"
+#include "appmodel/PDSDaphneV2Board.hpp"
+
 
 
 #include <atomic>
@@ -102,9 +104,12 @@ protected:
   bool is_masked(int channel_id) const;
 
 private:
-  std::vector<uint32_t> masked_channels; 
-  uint64_t mask = 0;
-  std::vector<uint32_t> intg_thr_at_ch;  
+  std::vector<uint32_t> m_masked_channels; 
+  std::vector<bool> m_mask = std::vector<bool>(40, false);
+  std::vector<uint32_t> m_intg_thr_at_ch = std::vector<uint32_t>(40, 0);
+  uint32_t m_boards = 0;
+  uint32_t m_custom_channels = 0;
+
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
