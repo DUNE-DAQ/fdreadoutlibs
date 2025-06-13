@@ -109,6 +109,7 @@ private:
   std::vector<uint32_t> m_intg_thr_at_ch = std::vector<uint32_t>(40, 0);
   uint32_t m_boards = 0;
   uint32_t m_custom_channels = 0;
+  uint32_t m_def_adc_intg_thresh = 0;
   
 
 

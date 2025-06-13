@@ -73,24 +73,20 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     m_intg_thr_at_ch = std::vector<uint32_t>(40, 0);
     TLOG() << "There is no daphne board defined in the configuration";
   } 
-
-  for (size_t i(0); i < m_boards; i++){                     
-    std::fill(m_intg_thr_at_ch.begin() + i*40, m_intg_thr_at_ch.begin() + (i+1)* 40, proc_conf->GetBoard(i).get_def_adc_thresh());
-  }  
-
+ 
+  // for (size_t i(0); i < m_boards; i++){                     
+  //   std::fill(m_intg_thr_at_ch.begin() + i*40, m_intg_thr_at_ch.begin() + (i+1)* 40, proc_conf->GetBoard(i).get_def_adc_thresh());   
+  // }  
+  m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
   for (size_t i(0); i < m_boards; i++){                      
     const dunedaq::appmodel::PDSDaphneV2Board* board = proc_conf->get_daphne_v2_board().at(i);
     int board_id = board->get_board_id();
     std::vector<uint32_t> temp_masks = board->get_pds_masked_channels(); 
     for (size_t j(0); j<temp_masks.size(); j++){
       m_mask.at(board_id*40+temp_masks.at(j)) = true; 
-      TLOG() << "RMA channe " << board_id*40+temp_masks.at(j) << " masked ";
+      TLOG() << "RMA channel " << board_id*40+temp_masks.at(j) << " masked ";
     }
   }
-
-
-
-
 
   if (m_custom_channels >0){
     for (size_t i = 0; i < m_custom_channels; i++) {
@@ -227,7 +223,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
         int ch = get_pds_ch(static_cast<int>(df_ptr[i].daq_header.slot_id*100 + df_ptr[i].get_channel()));
         if (is_masked(ch)) continue;
         if (ch == 315) TLOG()<< "Channel 315 not well masked " << ch << std::endl;
-        if (df_ptr[i].peaks_data.get_adc_integral(j) < m_intg_thr_at_ch.at(ch)) continue;
+        if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
          
