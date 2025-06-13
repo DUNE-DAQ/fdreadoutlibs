@@ -57,7 +57,8 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
   if (proc_conf == nullptr) TLOG()<< "RMA proc_conf is null" << std::endl;
   TLOG() << "RMA 3" << std::endl;
-  m_boards = proc_conf->get_daphne_v2_board().size(); 
+  // m_boards = proc_conf->get_daphne_v2_board().size(); 
+  m_boards = 20;
   TLOG() << "RMA 4" << std::endl;
 
   m_custom_channels = proc_conf->get_channels_with_threshold().size();
@@ -73,11 +74,11 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     TLOG() << "There is no daphne board defined in the configuration";
   } 
 
-  for (size_t i(0); i < m_boards; i++){                       
+  for (size_t i(0); i < 2; i++){      // RMA: here i < 2 is hardcoded.                  
     std::fill(m_intg_thr_at_ch.begin() + i*40, m_intg_thr_at_ch.begin() + (i+1)* 40, proc_conf->GetBoard(i).get_def_adc_thresh());
   }  
 
-  for (size_t i(0); i < m_boards; i++){                       
+  for (size_t i(0); i < 2; i++){            //RMA: here i < 2 is hardcoded as well.             
     const dunedaq::appmodel::PDSDaphneV2Board* board = proc_conf->get_daphne_v2_board().at(i);
     int board_id = board->get_board_id();
     std::vector<uint32_t> temp_masks = board->get_pds_masked_channels(); 
@@ -204,10 +205,9 @@ DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 
 void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 {
-  TLOG()<< "RMA extract_tps started" << types::kDAPHNENumFrames << std::endl;
+
   //  size_t nhits = 0;
   if (!fp || fp==nullptr){
-    TLOG()<< " RMA the frame is a null pointer " <<  std::endl;
     return;
   }
     
@@ -215,16 +215,17 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
-  
+
   for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
       if(df_ptr[i].peaks_data.is_found(j))
       {
+
         int ch = get_pds_ch(static_cast<int>(df_ptr[i].daq_header.slot_id*100 + df_ptr[i].get_channel()));
         if (is_masked(ch)) continue;
-        TLOG()<< "RMA channel " << ch << std::endl;
+        if (ch == 31) TLOG()<< "RMA channel " << ch << std::endl;
         if (df_ptr[i].peaks_data.get_adc_integral(j) < m_intg_thr_at_ch.at(ch)) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
