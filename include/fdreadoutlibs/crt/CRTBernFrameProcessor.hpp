@@ -18,7 +18,16 @@ namespace fdreadoutlibs {
 class CRTBernFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::CRTBernTypeAdapter>
 {
 public:
-    CRTBernFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
+    explicit CRTBernFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+            : datahandlinglibs::TaskRawDataProcessorModel<types::CRTBernTypeAdapter>(error_registry, post_processing_enabled)
+    {}
+
+    void conf(const appmodel::DataHandlerModule* conf) override;
+
+protected:
+    using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
+
+    void timestamp_check(types::CRTBernTypeAdapter* fp);
 };
 
 } // namespace fdreadoutlibs

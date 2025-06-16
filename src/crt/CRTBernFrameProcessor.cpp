@@ -11,10 +11,21 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-CRTBernFrameProcessor::CRTBernFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled)
-  : TaskRawDataProcessorModel<types::CRTBernTypeAdapter>(error_registry, processing_enabled)
-{
-}
-    
+    void CRTBernFrameProcessor::conf(const appmodel::DataHandlerModule* /*conf*/)
+    {
+        TLOG() << "Registering processing tasks...";
+        datahandlinglibs::TaskRawDataProcessorModel<types::CRTBernTypeAdapter>::add_preprocess_task(std::bind(&CRTBernFrameProcessor::timestamp_check, this, std::placeholders::_1));
+    }
+
+    void CRTBernFrameProcessor::timestamp_check(types::CRTBernTypeAdapter* fp)
+    {
+        static const uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
+        auto current_ts = fp->get_timestamp();
+        TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received CRTBern frame timestamp value of " << current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
+
+        if(current_ts > m_last_processed_daq_ts) m_last_processed_daq_ts = current_ts;
+    }
+
+
 } // namespace fdreadoutlibs
 } // namespace dunedaq    

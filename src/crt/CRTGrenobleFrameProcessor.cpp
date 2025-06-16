@@ -11,10 +11,20 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-CRTGrenobleFrameProcessor::CRTGrenobleFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled)
-  : TaskRawDataProcessorModel<types::CRTGrenobleTypeAdapter>(error_registry, processing_enabled)
-{
-}
+    void CRTGrenobleFrameProcessor::conf(const appmodel::DataHandlerModule* /*conf*/)
+    {
+        TLOG() << "Registering processing tasks...";
+        datahandlinglibs::TaskRawDataProcessorModel<types::CRTGrenobleTypeAdapter>::add_preprocess_task(std::bind(&CRTGrenobleFrameProcessor::timestamp_check, this, std::placeholders::_1));
+    }
+
+    void CRTGrenobleFrameProcessor::timestamp_check(types::CRTGrenobleTypeAdapter* fp)
+    {
+        static const uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
+        auto current_ts = fp->get_timestamp();
+        TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received CRTGrenoble frame timestamp value of " << current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
+
+        if(current_ts > m_last_processed_daq_ts) m_last_processed_daq_ts = current_ts;
+    }
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq    
