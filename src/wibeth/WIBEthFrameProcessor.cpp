@@ -7,6 +7,8 @@
  */
  #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
  #include "confmodel/GeoId.hpp"
+ #include "appmodel/RawDataProcessor.hpp"
+ #include "appmodel/PDSRawDataProcessor.hpp"
  #include "appmodel/TPCRawDataProcessor.hpp"
  #include "appmodel/ProcessingStep.hpp"
  #include "appmodel/SamplesOverThresholdMinima.hpp"
@@ -88,8 +90,8 @@
      }
    }
  
-   m_sourceid.id = conf->get_source_id();// This return the source_id of a DataHandlerModule (class from Appmodel)
-   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;// This I have no idea what it does. 
+   m_sourceid.id = conf->get_source_id();
+   m_sourceid.subsystem = types::DUNEWIBEthTypeAdapter::subsystem;
    auto geo_id = conf->get_geo_id();
    if (geo_id != nullptr) {
      m_det_id = geo_id->get_detector_id();
@@ -97,6 +99,7 @@
      m_slot_id = geo_id->get_slot_id();
      m_stream_id = geo_id->get_stream_id();
    }
+
    m_emulator_mode = conf->get_emulation_mode();
  
    // Setup pre-processing pipeline
@@ -113,6 +116,7 @@
        m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
  
        // Set the minimum TP samples over threshold.
+
        auto conf_sot_minima = proc_conf->get_sot_minima();
        std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
                                         conf_sot_minima->get_sot_minimum_plane1(),
@@ -123,16 +127,16 @@
  
        std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
        for (auto step : processing_steps) {
-         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));//I need a bit more insight on what this to_json is exactl doing
+         m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
        }
  
        // Setup post-processing pipeline
-       m_channel_map = dunedaq::detchannelmaps::make_map(proc_conf->get_channel_map());
+       m_channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
        for (int chan = 0; chan < 64; chan++) {
-         trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_crate_slot_stream_chan(m_crate_id, m_slot_id, m_stream_id, chan);
+         trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
          int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
          m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
- 
+        
          // This processor only needs to handle some (maybe 0) of the masked channels.
          // Only get those relevant channels for the later check.
          if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
@@ -360,8 +364,7 @@
    m_frame_counter++;
  
    for (const auto& tp : tps) {
-     // I
-     // f this TP is on a masked channel, skip it.
+     // If this TP is on a masked channel, skip it.
      if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
        continue;
      // Need to move into a type adapter.

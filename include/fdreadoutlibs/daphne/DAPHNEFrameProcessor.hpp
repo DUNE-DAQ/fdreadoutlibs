@@ -30,7 +30,11 @@
 #include "appmodel/PDSChannelThreshold.hpp"
 #include "appmodel/PDSDaphneV2Board.hpp"
 
+#include "detchannelmaps/PDSChannelMap.hpp"
 
+
+#include "appmodel/DataHandlerModule.hpp"
+#include "confmodel/Connection.hpp"
 
 #include <atomic>
 #include <functional>
@@ -104,12 +108,23 @@ protected:
   bool is_masked(int channel_id) const;
 
 private:
-  std::vector<uint32_t> m_masked_channels; 
-  std::vector<bool> m_mask = std::vector<bool>(40, false);
-  std::vector<uint32_t> m_intg_thr_at_ch = std::vector<uint32_t>(40, 0);
-  uint32_t m_boards = 0;
-  uint32_t m_custom_channels = 0;
+
+  //PDSChannelMap
+  std::shared_ptr<detchannelmaps::PDSChannelMap> m_channel_map;
+  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
+
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+
+  std::set<unsigned int> m_channel_mask_set;
   uint32_t m_def_adc_intg_thresh = 0;
+  std::vector<bool> m_mask = std::vector<bool>(40, false);
+
+
+ 
+  
   
 
 

@@ -10,7 +10,7 @@
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
 
-
+ #include "confmodel/GeoId.hpp"
 
 #include <atomic>
 #include <functional>
@@ -42,71 +42,44 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
          m_tp_sink = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
          TLOG() << " SINK INITIALIZED for TriggerPrimitives with UID : " << output->UID();
       }
-      TLOG() << "RMA -1" << std::endl;      
     } catch (const ers::Issue& excpt) {
-      TLOG() << "RMA -11" << std::endl;      
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
-      TLOG() << "RMA -111" << std::endl;      
     }
   }
 
-  TLOG() << "RMA 1" << std::endl;
+
   auto dp = conf->get_module_configuration()->get_data_processor();
-  if (dp == nullptr) TLOG()<< "RMA dp is null" << std::endl;
-  TLOG() << "RMA 2" << std::endl;
   auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
-  if (proc_conf == nullptr) TLOG()<< "RMA proc_conf is null" << std::endl;
-  TLOG() << "RMA 3" << std::endl;
-  m_boards = proc_conf->get_daphne_v2_board().size(); 
-  // m_boards = 20;
-  TLOG() << "RMA 4" << std::endl;
-
-  m_custom_channels = proc_conf->get_channels_with_threshold().size();
-  TLOG() << "RMA 5" << std::endl;
-
-  TLOG() << "RMA m_boards " << m_boards <<std::endl;
-  if(m_boards !=0){
-    m_mask = std::vector<bool>(m_boards * 40, false);
-    m_intg_thr_at_ch = std::vector<uint32_t>(m_boards * 40, 0);
-  } else{
-    m_mask = std::vector<bool>(40, false); 
-    m_intg_thr_at_ch = std::vector<uint32_t>(40, 0);
-    TLOG() << "There is no daphne board defined in the configuration";
-  } 
- 
-  // for (size_t i(0); i < m_boards; i++){                     
-  //   std::fill(m_intg_thr_at_ch.begin() + i*40, m_intg_thr_at_ch.begin() + (i+1)* 40, proc_conf->GetBoard(i).get_def_adc_thresh());   
-  // }  
   m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
-  for (size_t i(0); i < m_boards; i++){                      
-    const dunedaq::appmodel::PDSDaphneV2Board* board = proc_conf->get_daphne_v2_board().at(i);
-    int board_id = board->get_board_id();
-    std::vector<uint32_t> temp_masks = board->get_pds_masked_channels(); 
-    for (size_t j(0); j<temp_masks.size(); j++){
-      m_mask.at(board_id*40+temp_masks.at(j)) = true; 
-      TLOG() << "RMA channel " << board_id*40+temp_masks.at(j) << " masked ";
-    }
+
+  TLOG() << "RMA 1"; 
+  auto geo_id = conf->get_geo_id();
+  if (geo_id != nullptr) {
+    m_det_id = geo_id->get_detector_id();
+    m_crate_id = geo_id->get_crate_id();
+    m_slot_id = geo_id->get_slot_id();
+    m_stream_id = geo_id->get_stream_id();
   }
 
-  if (m_custom_channels >0){
-    for (size_t i = 0; i < m_custom_channels; i++) {
-      const auto* custom_channel = proc_conf->get_channels_with_threshold().at(i);
-      uint32_t channel_id = custom_channel->get_board_id()*40 + custom_channel->get_channel_id();
-      uint32_t threshold_value =  custom_channel->get_threshold();
-      m_intg_thr_at_ch.at(channel_id) = threshold_value;
-    }
-  }  
+  TLOG() << "RMA 2";
+  m_channel_map = dunedaq::detchannelmaps::make_pds_map(proc_conf->get_channel_map());
+  const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
+  TLOG() << "RMA 3";
+  for (int chan = 0; chan < 48; chan++) {// 40 physical PDS channel 8 not. 0->7 contain light info, 8,9, additional info. 10-17 light, 18,19 not etc...  
+    trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
+    if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
+      m_channel_mask_set.insert(off_channel);//m_channel_mask will be a vector fille with random chanel which need to be masked.
+  }
+
 
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  
+  TLOG() << "RMA 4";  
   if (m_post_processing_enabled) { 
-    TLOG() << "RMA m_post_porcessigng_enabled";
     // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
     inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
-    TLOG() << "RMA m_post_porcessigng_enabled  after";
   }
-
+  TLOG() << "RMA 5";
   TLOG() << "Calling parent conf.";
   inherited::conf(conf);
 }
@@ -170,13 +143,6 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
 
-  // Check timestamp
-  // RS warning : not fixed rate!
-  // if (m_current_ts - m_previous_ts != ???) {
-  //  ++m_ts_error_ctr;
-  //}
-
-
 
   if (m_ts_error_ctr > 1000) {
     if (!m_problem_reported) {
@@ -202,7 +168,7 @@ DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 
 void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 {
-
+  TLOG() << "RMA extract tps";
   //  size_t nhits = 0;
   if (!fp || fp==nullptr){
     return;
@@ -220,13 +186,13 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       if(df_ptr[i].peaks_data.is_found(j))
       {
 
-        int ch = get_pds_ch(static_cast<int>(df_ptr[i].daq_header.slot_id*100 + df_ptr[i].get_channel()));
-        if (is_masked(ch)) continue;
-        if (ch == 315) TLOG()<< "Channel 315 not well masked " << ch << std::endl;
+        int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id,m_crate_id, df_ptr[i].daq_header.slot_id, m_stream_id, df_ptr[i].get_channel());
+        // if (is_masked(ch)) continue;
+        //the following is not really efficient. A proper masking should be done. 
+        if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), ch)) continue;
         if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
         trigger::TriggerPrimitiveTypeAdapter tpa;
         tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
-         
         //check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
         if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
           ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));
@@ -269,8 +235,7 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
   tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
   // FIXME : hard-coded channel map
   // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
-  // TLOG()<< "channel from pek_to_tp" << frame.get_channel() << "  " << frame.daq_header.slot_id*100+frame.get_channel()<< std::endl; 
+  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id,m_crate_id, frame.daq_header.slot_id, m_stream_id, frame.get_channel());
   tp.adc_integral = frame.peaks_data.get_adc_integral(i);
   tp.adc_peak = frame.peaks_data.get_adc_max(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;
