@@ -8,7 +8,7 @@
  #include "fdreadoutlibs/wibeth/WIBEthFrameProcessor.hpp" // NOLINT(build/include)
  #include "confmodel/GeoId.hpp"
  #include "appmodel/RawDataProcessor.hpp"
- #include "appmodel/PDSRawDataProcessor.hpp"
+
  #include "appmodel/TPCRawDataProcessor.hpp"
  #include "appmodel/ProcessingStep.hpp"
  #include "appmodel/SamplesOverThresholdMinima.hpp"
