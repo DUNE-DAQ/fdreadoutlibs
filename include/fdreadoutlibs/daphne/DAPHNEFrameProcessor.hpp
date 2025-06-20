@@ -27,8 +27,7 @@
 
 #include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
-#include "appmodel/PDSChannelThreshold.hpp"
-#include "appmodel/PDSDaphneV2Board.hpp"
+
 
 #include "detchannelmaps/PDSChannelMap.hpp"
 
