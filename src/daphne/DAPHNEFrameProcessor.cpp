@@ -50,37 +50,42 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
 
   auto dp = conf->get_module_configuration()->get_data_processor();
-  if (dp == nullptr) TLOG()<< "Data processor does not exist.";
-  auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
-  if (proc_conf == nullptr) TLOG()<< "PDSRawDataProcessor does not exist.";
-  m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
-
- 
-  auto geo_id = conf->get_geo_id();
-  if (geo_id != nullptr) {
-    m_det_id = geo_id->get_detector_id();
-    m_crate_id = geo_id->get_crate_id();
-    m_slot_id = geo_id->get_slot_id();
-    m_stream_id = geo_id->get_stream_id();
-  }
-
-
-  m_channel_map = dunedaq::detchannelmaps::make_pds_map(proc_conf->get_channel_map());
-  const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
-
-  for (int chan = 0; chan < 48; chan++) {// 40 physical PDS channel 8 not. 0->7 contain light info, 8,9, additional info. 10-17 light, 18,19 not etc...  
-    trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
-    if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
-      m_channel_mask_set.insert(off_channel);//m_channel_mask will be a vector fille with random chanel which need to be masked.
-  }
-
-
-  TLOG() << "Registering processing tasks...";
-  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-
-  if (m_post_processing_enabled) { 
-    // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
-    inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+  if (dp == nullptr) {
+    TLOG()<< " PDS Data processor does not exist.";
+  } else {
+    auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
+    if (proc_conf == nullptr) {
+      TLOG()<< "PDSRawDataProcessor does not exist.";
+    } else { 
+      m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
+     
+      auto geo_id = conf->get_geo_id();
+      if (geo_id != nullptr) {
+        m_det_id = geo_id->get_detector_id();
+        m_crate_id = geo_id->get_crate_id();
+        m_slot_id = geo_id->get_slot_id();
+        m_stream_id = geo_id->get_stream_id();
+      }
+    
+    
+      m_channel_map = dunedaq::detchannelmaps::make_pds_map(proc_conf->get_channel_map());
+      const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
+    
+      for (int chan = 0; chan < 48; chan++) {// 40 physical PDS channel 8 not. 0->7 contain light info, 8,9, additional info. 10-17 light, 18,19 not etc...  
+        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
+        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
+          m_channel_mask_set.insert(off_channel);//m_channel_mask will be a vector fille with random chanel which need to be masked.
+      }
+    
+    
+      TLOG() << "Registering processing tasks...";
+      inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
+    
+      if (m_post_processing_enabled) { 
+        // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+        inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+      }
+    }
   }
 
   TLOG() << "Calling parent conf.";
@@ -189,7 +194,6 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       if(df_ptr[i].peaks_data.is_found(j))
       { 
         int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(df_ptr[i].daq_header.det_id, df_ptr[i].daq_header.crate_id, df_ptr[i].daq_header.slot_id, df_ptr[i].daq_header.link_id, df_ptr[i].get_channel());
-        
         if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), ch)) continue;
         if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
 
