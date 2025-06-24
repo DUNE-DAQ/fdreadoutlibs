@@ -50,7 +50,9 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 
 
   auto dp = conf->get_module_configuration()->get_data_processor();
+  if (dp == nullptr) TLOG()<< "Data processor does not exist.";
   auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
+  if (proc_conf == nullptr) TLOG()<< "PDSRawDataProcessor does not exist.";
   m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
 
  
@@ -185,12 +187,9 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
       if(df_ptr[i].peaks_data.is_found(j))
-      {
-        //PUT THE Crate ID...   
+      { 
         int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(df_ptr[i].daq_header.det_id, df_ptr[i].daq_header.crate_id, df_ptr[i].daq_header.slot_id, df_ptr[i].daq_header.link_id, df_ptr[i].get_channel());
-        // if (is_masked(ch)) continue;
-        //the following is not really efficient. A proper masking should be done. 
-
+        
         if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), ch)) continue;
         if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
 
@@ -277,16 +276,6 @@ DAPHNEFrameProcessor::generate_opmon_data() {
  inherited::generate_opmon_data();
   
 }
-
-int DAPHNEFrameProcessor::get_pds_ch(int ch){
-  return (8*(ch/10) + (ch%10)) - ((ch/100) *40);
-}
-
-bool DAPHNEFrameProcessor::is_masked(int channel_id) const {
-  return m_mask.at(channel_id) == 1;
-}
-
-
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
