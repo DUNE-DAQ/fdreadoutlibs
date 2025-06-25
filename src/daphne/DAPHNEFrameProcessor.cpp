@@ -45,6 +45,9 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     }
   }
 
+  TLOG() << "Registering processing tasks...";
+  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
+
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp == nullptr) {
     TLOG()<< " PDS Data processor does not exist.";
@@ -71,15 +74,12 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
         if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
           m_channel_mask_set.insert(off_channel);//m_channel_mask will be a vector fille with random chanel which need to be masked.
       }
+      
+      if (m_post_processing_enabled) { 
+        // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+        inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+      }
     }
-  }
-
-  TLOG() << "Registering processing tasks...";
-  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-
-  if (m_post_processing_enabled) { 
-    // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
-    inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
   }
 
   TLOG() << "Calling parent conf.";
