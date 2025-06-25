@@ -27,9 +27,6 @@ DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-
-
-
 void 
 DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
