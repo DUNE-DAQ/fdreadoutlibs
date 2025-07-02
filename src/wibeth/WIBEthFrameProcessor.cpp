@@ -18,6 +18,7 @@
 
 #include  "datahandlinglibs/opmon/datahandling_info.pb.h"
 
+#include <immintrin.h>
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 using dunedaq::datahandlinglibs::logging::TLVL_TAKE_NOTE;
 
@@ -76,6 +77,34 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 
 void WIBEthFrameProcessor::get_metrics()
 {
+  // Here we construct a table in buffer indexed by MetricBufferKey which contains pipeline, channel,	processor, and metric id as key.
+  // @FIXME This should be constructed from some config
+  // Right now we are hardcoding it
+  std::unordered_map<tpglibs::MetricBufferKey, int16_t> buffer_table;
+  
+  // I am skipping this part until we figure out what to do for test
+  
+  std::unordered_map<tpglibs::MetricBufferKey, tpglibs::ChannelAwareSignalPointer<__m256i>> collect_table;
+
+  // Similarly this should get initialized according to test plan
+  
+  m_tp_generator->propagate_metric_table(collect_table);
+  
+  // In the current synchronous setup, collect_table is filled here
+  for (auto const& [key, value]: collect_table) {
+    // if config is correct, buffer_table and collect_table shoudl have set of same keys
+    // What we need to do is just extract the value from __m256i pointer to the int16_t slots
+    alignas(32) int16_t lanes[16];
+    __m256i vec = *value.valueptr;
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(lanes), vec);
+    
+    // now the __m256i type is poured into an array
+
+    int16_t sample = lanes[value.index];
+    buffer_table[key] = sample;
+  }
+  
+  // Not sure what to do with this yet.
 }
 
 void
