@@ -74,6 +74,10 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
   }
 }
 
+void WIBEthFrameProcessor::get_metrics()
+{
+}
+
 void
 WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {

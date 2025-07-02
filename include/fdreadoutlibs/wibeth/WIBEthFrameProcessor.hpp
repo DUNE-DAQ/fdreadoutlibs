@@ -30,6 +30,7 @@
 //#include "tpg/RegisterToChannelNumber.hpp"
 
 #include "tpglibs/TPGenerator.hpp"
+#include "tpglibs/MetricItem.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -70,6 +71,8 @@ public:
 
 protected:
   virtual void generate_opmon_data() override;
+
+  virtual void get_metrics();
 
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
