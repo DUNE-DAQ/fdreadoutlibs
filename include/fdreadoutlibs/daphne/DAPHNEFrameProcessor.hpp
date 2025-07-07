@@ -25,6 +25,15 @@
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 
+#include "appmodel/TPCRawDataProcessor.hpp"
+#include "appmodel/PDSRawDataProcessor.hpp"
+
+
+#include "detchannelmaps/PDSChannelMap.hpp"
+
+
+#include "appmodel/DataHandlerModule.hpp"
+#include "confmodel/Connection.hpp"
 
 #include <atomic>
 #include <functional>
@@ -63,6 +72,8 @@ public:
     : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
+ 
+
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
 
@@ -92,8 +103,22 @@ protected:
 
   void extract_tps( constframeptr fp);
   dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
-
+  
 private:
+
+  //PDSChannelMap
+  std::shared_ptr<detchannelmaps::PDSChannelMap> m_channel_map;
+  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
+
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+
+  std::set<unsigned int> m_channel_mask_set;
+  uint32_t m_def_adc_intg_thresh = 0;
+
+
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
@@ -104,6 +129,7 @@ private:
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
+  
 
 };
 
