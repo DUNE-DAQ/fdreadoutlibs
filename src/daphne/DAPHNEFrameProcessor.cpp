@@ -6,9 +6,12 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
+
 #include "fddetdataformats/DAPHNEFrame.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
+
+#include "confmodel/GeoId.hpp"
 
 #include <atomic>
 #include <functional>
@@ -41,13 +44,42 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
     }
   }
-  
+
   TLOG() << "Registering processing tasks...";
   inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  
-  if (m_post_processing_enabled) { 
-    // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
-    inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+
+  auto dp = conf->get_module_configuration()->get_data_processor();
+  if (dp == nullptr) {
+    TLOG()<< " PDS Data processor does not exist.";
+  } else {
+    auto proc_conf = dp->cast<appmodel::PDSRawDataProcessor>();
+    if (proc_conf == nullptr) {
+      TLOG()<< "PDS RawDataProcessor does not exist.";
+    } else { 
+      m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
+      
+      auto geo_id = conf->get_geo_id();
+      if (geo_id != nullptr) {
+        m_det_id = geo_id->get_detector_id();
+        m_crate_id = geo_id->get_crate_id();
+        m_slot_id = geo_id->get_slot_id();
+        m_stream_id = geo_id->get_stream_id();
+      }    
+    
+      m_channel_map = dunedaq::detchannelmaps::make_pds_map(proc_conf->get_channel_map());
+      const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
+    
+      for (int chan = 0; chan < 48; chan++) {// 40 physical PDS channel 8 not. 0->7 contain light info, 8,9, additional info. 10-17 light, 18,19 not etc...  
+        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
+        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
+          m_channel_mask_set.insert(off_channel);//m_channel_mask will be a vector fille with random chanel which need to be masked.
+      }
+      
+      if (m_post_processing_enabled) { 
+        // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
+        inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+      }
+    }
   }
 
   TLOG() << "Calling parent conf.";
@@ -113,13 +145,6 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNE frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)";// NOLINT
 
-  // Check timestamp
-  // RS warning : not fixed rate!
-  // if (m_current_ts - m_previous_ts != ???) {
-  //  ++m_ts_error_ctr;
-  //}
-
-
 
   if (m_ts_error_ctr > 1000) {
     if (!m_problem_reported) {
@@ -146,23 +171,29 @@ DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
 void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
 {
 
-//  size_t nhits = 0;
-  if (!fp || fp==nullptr)
+  //  size_t nhits = 0;
+  if (!fp || fp==nullptr){
     return;
+  }
+    
 
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
-
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
+
   for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
       if(df_ptr[i].peaks_data.is_found(j))
-      {
-        trigger::TriggerPrimitiveTypeAdapter tpa;
-        tpa.tp = peak_to_tp(df_ptr[i],j);
+      { 
+        int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(df_ptr[i].daq_header.det_id, df_ptr[i].daq_header.crate_id, df_ptr[i].daq_header.slot_id, df_ptr[i].daq_header.link_id, df_ptr[i].get_channel());
+        if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), ch)) continue;
+        if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
 
+
+        trigger::TriggerPrimitiveTypeAdapter tpa;
+        tpa.tp = peak_to_tp(df_ptr[i],j);// this is the trigger primitive
         //check for timestamps that are due to frame timestamps ~ ts=0, and ignore these peaks
         if(tpa.tp.time_start > 0xFFFFFFFFFFFF0000 || tpa.tp.time_start < 0xFFFF){
           ers::warning(PDSPeakIgnored(ERS_HERE, tpa.tp.time_start, tpa.tp.channel, i, j));
@@ -205,7 +236,7 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
   tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
   // FIXME : hard-coded channel map
   // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = frame.daq_header.slot_id*100+frame.get_channel();
+  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(frame.daq_header.det_id, frame.daq_header.crate_id, frame.daq_header.slot_id, frame.daq_header.link_id, frame.get_channel());
   tp.adc_integral = frame.peaks_data.get_adc_integral(i);
   tp.adc_peak = frame.peaks_data.get_adc_max(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;
@@ -243,6 +274,6 @@ DAPHNEFrameProcessor::generate_opmon_data() {
  inherited::generate_opmon_data();
   
 }
-  
+
 } // namespace fdreadoutlibs
 } // namespace dunedaq

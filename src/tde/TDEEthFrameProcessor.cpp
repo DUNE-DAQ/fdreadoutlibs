@@ -8,6 +8,7 @@
 #include "fdreadoutlibs/tde/TDEEthFrameProcessor.hpp" // NOLINT(build/include)
 #include "confmodel/GeoId.hpp"
 #include "appmodel/RawDataProcessor.hpp"
+#include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/ProcessingStep.hpp"
 #include "appmodel/SamplesOverThresholdMinima.hpp"
 
@@ -108,7 +109,7 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   // Check it post-processing is active
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp != nullptr) {
-    auto proc_conf = dp->cast<appmodel::RawDataProcessor>();
+    auto proc_conf = dp->cast<appmodel::TPCRawDataProcessor>();
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
