@@ -120,11 +120,13 @@ protected:
 
 private:
   bool m_first_hit = true;
+  bool m_tpg_metric_collect_enabled{true}; // FIXME: Make this configurable
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
   std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
+  uint16_t m_tpg_metric_collect_counter{0};
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 

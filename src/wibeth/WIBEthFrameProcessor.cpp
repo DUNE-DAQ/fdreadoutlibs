@@ -70,6 +70,9 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
 {
   inherited::stop(args);
   if (m_post_processing_enabled) {
+    if (m_tpg_metric_collect_enabled) {
+      m_tp_generator->free_metric_collector();
+    }
     // Clears the pipelines and resets with the given configs.
     m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
   }
@@ -207,6 +210,15 @@ WIBEthFrameProcessor::generate_opmon_data()
        el.second = 0;
      }
      m_t0 = now;
+
+    if (m_tpg_metric_collect_enabled) {
+
+      if (m_tpg_metric_collect_counter++ % 128 == 0) { // FIXME: move to configurable interval
+        m_tp_generator->signal_metric_collection();
+        auto metrics = m_tp_generator->get_processor_metrics();
+      }
+
+    }
    }
    inherited::generate_opmon_data();
  }
