@@ -144,6 +144,9 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
           m_channel_mask_set.insert(off_channel);
       }
 
+      m_tpg_metric_collect_enabled = proc_conf->get_metric_collect_enable();
+      m_metric_collect_opmon_rate = proc_conf->get_metric_collect_opmon_rate();
+
       m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
@@ -214,14 +217,10 @@ WIBEthFrameProcessor::generate_opmon_data()
      }
      m_t0 = now;
 
-    if (m_tpg_metric_collect_enabled) {
+     if (m_tpg_metric_collect_enabled && m_update_metric_opmon.load(std::memory_order_release)) {
+       auto metrics = m_tp_generator->get_processor_metrics();
+     }
 
-      if (m_tpg_metric_collect_counter++ % 128 == 0) { // FIXME: move to configurable interval
-        m_tp_generator->signal_metric_collection();
-        auto metrics = m_tp_generator->get_processor_metrics();
-      }
-
-    }
    }
    inherited::generate_opmon_data();
  }
@@ -374,6 +373,10 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter++;
+  if (m_tpg_metric_collect_enabled && m_frame_counter % m_metric_collect_opmon_rate == 0) {
+    m_tp_generator->signal_metric_collection();
+    m_update_metric_opmon.store(true, std::memory_order_release);
+  }
 
   for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
