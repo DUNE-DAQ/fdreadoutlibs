@@ -74,6 +74,7 @@ WIBEthFrameProcessor::stop(const nlohmann::json& args)
       m_tp_generator->free_metric_collector();
     }
     // Clears the pipelines and resets with the given configs.
+    m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
     m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
   }
 }
@@ -142,6 +143,8 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
         if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
           m_channel_mask_set.insert(off_channel);
       }
+
+      m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
 

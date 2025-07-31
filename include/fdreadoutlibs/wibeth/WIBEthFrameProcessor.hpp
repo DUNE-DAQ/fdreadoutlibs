@@ -120,7 +120,7 @@ protected:
 
 private:
   bool m_first_hit = true;
-  bool m_tpg_metric_collect_enabled{true}; // FIXME: Make this configurable
+  bool m_tpg_metric_collect_enabled{false}; // FIXME: Make this configurable
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
