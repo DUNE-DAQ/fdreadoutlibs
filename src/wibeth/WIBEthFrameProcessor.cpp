@@ -217,25 +217,28 @@ WIBEthFrameProcessor::generate_opmon_data()
      }
      m_t0 = now;
 
-     if (m_tpg_metric_collect_enabled) {
-       auto metrics = m_tp_generator->get_processor_metrics();
-
-       for (const auto& [channel, vec] : metrics) {
-        datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
-        for (const auto& [name, val] : vec) {
-          if (name == "m_pedestal") {
-            tpg_proc_info.set_pedestal(val);
-          } else if (name == "m_accum")
-          {
-            tpg_proc_info.set_accum(val);
-          }
-        }
-        publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
-      }
-     }
+     publish_processor_metric_to_opmon();
 
    }
    inherited::generate_opmon_data();
+ }
+
+ void
+ WIBEthFrameProcessor::publish_processor_metric_to_opmon() {
+  if (m_tpg_metric_collect_enabled && m_tp_generator) {
+    auto metrics = m_tp_generator->get_processor_metrics();
+    for (const auto& [channel, vec] : metrics) {
+      datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
+      for (const auto& [name, val] : vec) {
+        if (name == "m_pedestal") {
+          tpg_proc_info.set_pedestal(val);
+        } else if (name == "m_accum") {
+          tpg_proc_info.set_accum(val);
+        }
+      }
+      publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
+    }
+  }
  }
 
 
@@ -387,7 +390,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter++;
   m_frame_counter_for_metrics++;
-  if (m_tpg_metric_collect_enabled && m_frame_counter_for_metrics % m_metric_collect_opmon_rate == 0) {
+  if (m_tpg_metric_collect_enabled && m_tp_generator && m_frame_counter_for_metrics % m_metric_collect_opmon_rate == 0) {
     m_tp_generator->signal_metric_collection();
     m_update_metric_opmon.store(true, std::memory_order_release);
   }

@@ -71,6 +71,8 @@ public:
 protected:
   virtual void generate_opmon_data() override;
 
+  void publish_processor_metric_to_opmon();
+
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
