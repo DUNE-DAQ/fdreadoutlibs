@@ -218,8 +218,9 @@ WIBEthFrameProcessor::generate_opmon_data()
      m_t0 = now;
 
      publish_processor_metric_to_opmon();
-
+     publish_processor_metric_to_opmon_with_aggregation();
    }
+   
    inherited::generate_opmon_data();
  }
 
@@ -240,6 +241,98 @@ WIBEthFrameProcessor::generate_opmon_data()
     }
   }
  }
+
+ void
+ WIBEthFrameProcessor::calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics, const std::string& item_name,
+    int16_t plane_number, uint32_t &mean, uint32_t &min, uint32_t &max, double &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id) {
+    mean = 0;
+    min = std::numeric_limits<uint32_t>::max();
+    max = std::numeric_limits<uint32_t>::min();
+    min_channel_id = 0;
+    max_channel_id = 0;
+    uint32_t num_samples = 0;
+    
+    // First pass: collect all values and calculate sum, min, max
+    std::vector<double> values;
+    for (const auto& [channel, vec] : metrics) {
+      if (m_channel_map->get_plane_from_offline_channel(channel) == plane_number) {
+        for (const auto& [name, val] : vec) {
+          if (name == item_name) {
+            values.push_back(static_cast<double>(val));
+            if (val < min) {
+              min = val;
+              min_channel_id = channel;
+            }
+            if (val > max) {
+              max = val;
+              max_channel_id = channel;
+            }
+            num_samples++;
+          }
+        }
+      }
+    }
+    
+    if (num_samples == 0) {
+      mean = 0;
+      stddev = 0.0;
+      return;
+    }
+    
+    // Calculate mean
+    double sum = 0.0;
+    for (double x : values) sum += x;
+    double mean_double = sum / values.size();
+    mean = static_cast<uint32_t>(mean_double);
+    
+    // Second pass: calculate standard deviation using stable two-pass method
+    double sq_diff_sum = 0.0;
+    for (double x : values) {
+      double d = x - mean_double;
+      sq_diff_sum += d * d;
+    }
+    double variance = sq_diff_sum / (values.size() - 1);
+    stddev = std::sqrt(variance);
+ }
+
+void
+WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
+  if (m_tpg_metric_collect_enabled && m_tp_generator) {
+    auto metrics = m_tp_generator->get_processor_metrics();
+    // Calculate the set of all plane numbers
+    std::set<int16_t> plane_numbers;
+    std::set<std::string> metric_names;
+    for (const auto& [channel, vec] : metrics) {
+      if (m_channel_map) {
+        int16_t plane = m_channel_map->get_plane_from_offline_channel(channel);
+        plane_numbers.insert(plane);
+      }
+      for (const auto& [name, val] : vec) {
+        metric_names.insert(name);
+      }
+    }
+    
+    for (const auto& plane : plane_numbers) {
+      for (const auto& metric_name : metric_names) {
+        uint32_t mean = 0;
+        uint32_t min = 0;
+        uint32_t max = 0;
+        double stddev = 0.0;
+        dunedaq::trgdataformats::channel_t min_channel_id = 0;
+        dunedaq::trgdataformats::channel_t max_channel_id = 0;
+        calculate_metric_summary_across_planes(metrics, metric_name, plane, mean, min, max, stddev, min_channel_id, max_channel_id);
+        datahandlinglibs::opmon::TPGProcessorReducedInfo info;
+        info.set_mean(mean);
+        info.set_max(max);
+        info.set_min(min);
+        info.set_standard_dev(stddev);
+        info.set_max_channel_id(max_channel_id);
+        info.set_min_channel_id(min_channel_id);
+        publish(std::move(info), {{"plane", std::to_string(plane)}, {"metric", metric_name}});
+      }
+    }
+  }
+}
 
 
 /**
@@ -392,7 +485,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   m_frame_counter_for_metrics++;
   if (m_tpg_metric_collect_enabled && m_tp_generator && m_frame_counter_for_metrics % m_metric_collect_opmon_rate == 0) {
     m_tp_generator->signal_metric_collection();
-    m_update_metric_opmon.store(true, std::memory_order_release);
   }
 
   for (const auto& tp : tps) {

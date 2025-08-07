@@ -71,7 +71,21 @@ public:
 protected:
   virtual void generate_opmon_data() override;
 
+  /**
+   * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
+   * */
   void publish_processor_metric_to_opmon();
+
+  /**
+   * Publishes collected processor metrics to opmon, with aggregation of metrics to summary statistics across physical planes
+   * */
+  void publish_processor_metric_to_opmon_with_aggregation(); 
+
+  /**
+   * Calculates summary statistics of metrics across physical planes
+   * */
+  void calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics,
+    const std::string& item_name, int16_t plane_number, uint32_t &mean, uint32_t &min, uint32_t &max, double &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id);
 
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
@@ -130,7 +144,6 @@ private:
   uint32_t m_tp_max_width;
   std::set<unsigned int> m_channel_mask_set;
   uint16_t m_tpg_threshold_selected;
-  std::atomic<bool> m_update_metric_opmon {true};
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
