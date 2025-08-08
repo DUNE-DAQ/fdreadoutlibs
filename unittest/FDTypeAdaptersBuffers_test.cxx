@@ -65,14 +65,14 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_TDEEth)
   dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,
                                                     dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
 }
-BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTBern)
+BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_CRTBern)
 {
-    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,
         dunedaq::fdreadoutlibs::types::CRTBernTypeAdapter>();
 }
-BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTGrenoble)
+BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_CRTGrenoble)
 {
-    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,
         dunedaq::fdreadoutlibs::types::CRTGrenobleTypeAdapter>();
 }
 
