@@ -19,7 +19,8 @@ namespace types {
  * @brief For WIBEth the numbers are different.
  * Header + (64 channels * 64 time slices) = 7200[Bytes]
  * */
-const constexpr std::size_t kDUNEWIBEthSize = 7200; 
+const constexpr std::size_t kDUNEWIBEthSize = 7200;
+
 struct DUNEWIBEthTypeAdapter
 {
   using FrameType = dunedaq::fddetdataformats::WIBEthFrame;
