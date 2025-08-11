@@ -243,57 +243,46 @@ WIBEthFrameProcessor::generate_opmon_data()
  }
 
  void
- WIBEthFrameProcessor::calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics, const std::string& item_name,
-    int16_t plane_number, uint32_t &mean, uint32_t &min, uint32_t &max, double &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id) {
+WIBEthFrameProcessor::calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics, const std::string& item_name,
+    int16_t plane_number, float &mean, int16_t &min, int16_t &max, float &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id) {
+    // Initialize with default values
     mean = 0;
-    min = std::numeric_limits<uint32_t>::max();
-    max = std::numeric_limits<uint32_t>::min();
-    min_channel_id = 0;
-    max_channel_id = 0;
-    uint32_t num_samples = 0;
+    min = std::numeric_limits<int16_t>::max();
+    max = std::numeric_limits<int16_t>::min();
+    min_channel_id = max_channel_id = 0;
     
-    // First pass: collect all values and calculate sum, min, max
-    std::vector<double> values;
+    // Collect values and calculate mean in single pass
+    std::vector<int16_t> values;
+    double sum = 0.0;
     for (const auto& [channel, vec] : metrics) {
-      if (m_channel_map->get_plane_from_offline_channel(channel) == plane_number) {
-        for (const auto& [name, val] : vec) {
-          if (name == item_name) {
-            values.push_back(static_cast<double>(val));
-            if (val < min) {
-              min = val;
-              min_channel_id = channel;
+        if (m_channel_map->get_plane_from_offline_channel(channel) == plane_number) {
+            for (const auto& [name, val] : vec) {
+                if (name == item_name) {
+                    values.push_back(val);
+                    sum += val;
+                    if (val < min) { min = val; min_channel_id = channel; }
+                    if (val > max) { max = val; max_channel_id = channel; }
+                }
             }
-            if (val > max) {
-              max = val;
-              max_channel_id = channel;
-            }
-            num_samples++;
-          }
         }
-      }
     }
     
-    if (num_samples == 0) {
-      mean = 0;
-      stddev = 0.0;
-      return;
+    if (values.empty()) {
+        stddev = 0.0;
+        return;
     }
     
     // Calculate mean
-    double sum = 0.0;
-    for (double x : values) sum += x;
-    double mean_double = sum / values.size();
-    mean = static_cast<uint32_t>(mean_double);
+    mean = static_cast<float>(sum) / static_cast<float>(values.size());
     
-    // Second pass: calculate standard deviation using stable two-pass method
-    double sq_diff_sum = 0.0;
-    for (double x : values) {
-      double d = x - mean_double;
-      sq_diff_sum += d * d;
+    // Calculate standard deviation
+    double variance = 0.0;
+    for (int16_t val : values) {
+        double diff = static_cast<double>(val) - mean;
+        variance += diff * diff;
     }
-    double variance = sq_diff_sum / (values.size() - 1);
-    stddev = std::sqrt(variance);
- }
+    stddev = std::sqrt(variance / (values.size() - 1));
+}
 
 void
 WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
@@ -314,10 +303,10 @@ WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
     
     for (const auto& plane : plane_numbers) {
       for (const auto& metric_name : metric_names) {
-        uint32_t mean = 0;
-        uint32_t min = 0;
-        uint32_t max = 0;
-        double stddev = 0.0;
+        float mean = 0;
+        int16_t min = 0;
+        int16_t max = 0;
+        float stddev = 0.0;
         dunedaq::trgdataformats::channel_t min_channel_id = 0;
         dunedaq::trgdataformats::channel_t max_channel_id = 0;
         calculate_metric_summary_across_planes(metrics, metric_name, plane, mean, min, max, stddev, min_channel_id, max_channel_id);

@@ -85,7 +85,7 @@ protected:
    * Calculates summary statistics of metrics across physical planes
    * */
   void calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics,
-    const std::string& item_name, int16_t plane_number, uint32_t &mean, uint32_t &min, uint32_t &max, double &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id);
+    const std::string& item_name, int16_t plane_number, float &mean, int16_t &min, int16_t &max, float &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id);
 
   // Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
