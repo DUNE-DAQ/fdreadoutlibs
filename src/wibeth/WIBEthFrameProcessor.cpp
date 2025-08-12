@@ -144,12 +144,15 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
           m_channel_mask_set.insert(off_channel);
       }
 
-      m_tpg_metric_collect_enabled = proc_conf->get_metric_collect_enable();
       m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
 
-      m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
+      // Let the TPG generator configure
 
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
+      
+      // After it sees the configs, it will set the metric collector enable state
+      
+      m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
 
       inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1));
     }
