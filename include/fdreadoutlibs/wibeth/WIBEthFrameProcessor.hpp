@@ -82,12 +82,13 @@ protected:
   void publish_processor_metric_to_opmon_with_aggregation(); 
 
   /**
-   * Calculates summary statistics of metrics across physical planes
+   * Optimized version that calculates all metric summaries across all planes in a single pass
+   * Returns a map of plane_number -> map of metric_name -> summary statistics
    * */
-  void calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics,
-    const std::string& item_name, int16_t plane_number, float &mean, int16_t &min, int16_t &max, float &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id);
+  std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
+  calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
 
-  // Internals
+// Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 

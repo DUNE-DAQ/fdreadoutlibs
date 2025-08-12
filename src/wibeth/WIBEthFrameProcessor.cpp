@@ -242,74 +242,83 @@ WIBEthFrameProcessor::generate_opmon_data()
   }
  }
 
- void
-WIBEthFrameProcessor::calculate_metric_summary_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics, const std::string& item_name,
-    int16_t plane_number, float &mean, int16_t &min, int16_t &max, float &stddev, dunedaq::trgdataformats::channel_t &min_channel_id, dunedaq::trgdataformats::channel_t &max_channel_id) {
-    // Initialize with default values
-    mean = 0;
-    min = std::numeric_limits<int16_t>::max();
-    max = std::numeric_limits<int16_t>::min();
-    min_channel_id = max_channel_id = 0;
+std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
+WIBEthFrameProcessor::calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics) {
+    // Structure to hold all statistics: plane -> metric -> (mean, min, max, stddev, min_channel_id, max_channel_id)
+    std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> all_stats;
     
-    // Collect values and calculate mean in single pass
-    std::vector<int16_t> values;
-    double sum = 0.0;
+    // Structure to accumulate statistics: plane -> metric -> (count, mean, M2, min, max, min_channel_id, max_channel_id)
+    std::map<int16_t, std::map<std::string, std::tuple<size_t, double, double, int16_t, int16_t, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> accumulators;
+    
+    // Single pass through all metrics to collect data using Welford's online algorithm for variance
     for (const auto& [channel, vec] : metrics) {
-        if (m_channel_map->get_plane_from_offline_channel(channel) == plane_number) {
-            for (const auto& [name, val] : vec) {
-                if (name == item_name) {
-                    values.push_back(val);
-                    sum += val;
-                    if (val < min) { min = val; min_channel_id = channel; }
-                    if (val > max) { max = val; max_channel_id = channel; }
-                }
+        if (!m_channel_map) continue;
+        
+        int16_t plane = m_channel_map->get_plane_from_offline_channel(channel);
+        
+        for (const auto& [name, val] : vec) {
+            auto& [count, mean, M2, min, max, min_channel_id, max_channel_id] = accumulators[plane][name];
+            
+            count++;
+            
+            if (count == 1 || val < min) {
+                min = val;
+                min_channel_id = channel;
+            }
+            if (count == 1 || val > max) {
+                max = val;
+                max_channel_id = channel;
+            }
+            
+            // Welford's online algorithm for variance calculation
+            if (count == 1) {
+                // First value: initialize mean and M2
+                mean = val;
+                M2 = 0.0;
+            } else {
+                // Update mean and M2 using Welford's algorithm
+                double delta = val - mean;
+                mean += delta / count;
+                double delta2 = val - mean;
+                M2 += delta * delta2;
             }
         }
     }
     
-    if (values.empty()) {
-        stddev = 0.0;
-        return;
+    // Calculate final statistics from accumulated data
+    for (const auto& [plane, metric_map] : accumulators) {
+        for (const auto& [metric_name, acc_data] : metric_map) {
+            const auto& [count, mean, M2, min, max, min_channel_id, max_channel_id] = acc_data;
+            
+            if (count == 0) continue;
+            
+            float stddev = 0.0f;
+            
+            // Calculate standard deviation using accumulated M2
+            if (count > 1) {
+                stddev = std::sqrt(M2 / (count - 1));
+            }
+            
+            all_stats[plane][metric_name] = std::make_tuple(static_cast<float>(mean), min, max, stddev, min_channel_id, max_channel_id);
+        }
     }
     
-    // Calculate mean
-    mean = static_cast<float>(sum) / static_cast<float>(values.size());
-    
-    // Calculate standard deviation
-    double variance = 0.0;
-    for (int16_t val : values) {
-        double diff = static_cast<double>(val) - mean;
-        variance += diff * diff;
-    }
-    stddev = std::sqrt(variance / (values.size() - 1));
+    return all_stats;
 }
 
 void
 WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
   if (m_tpg_metric_collect_enabled && m_tp_generator) {
     auto metrics = m_tp_generator->get_processor_metrics();
-    // Calculate the set of all plane numbers
-    std::set<int16_t> plane_numbers;
-    std::set<std::string> metric_names;
-    for (const auto& [channel, vec] : metrics) {
-      if (m_channel_map) {
-        int16_t plane = m_channel_map->get_plane_from_offline_channel(channel);
-        plane_numbers.insert(plane);
-      }
-      for (const auto& [name, val] : vec) {
-        metric_names.insert(name);
-      }
-    }
     
-    for (const auto& plane : plane_numbers) {
-      for (const auto& metric_name : metric_names) {
-        float mean = 0;
-        int16_t min = 0;
-        int16_t max = 0;
-        float stddev = 0.0;
-        dunedaq::trgdataformats::channel_t min_channel_id = 0;
-        dunedaq::trgdataformats::channel_t max_channel_id = 0;
-        calculate_metric_summary_across_planes(metrics, metric_name, plane, mean, min, max, stddev, min_channel_id, max_channel_id);
+    // Use optimized single-pass calculation for all metrics across all planes
+    auto all_stats = calculate_all_metric_summaries_across_planes(metrics);
+    
+    // Publish all calculated statistics
+    for (const auto& [plane, metric_map] : all_stats) {
+      for (const auto& [metric_name, stats] : metric_map) {
+        const auto& [mean, min, max, stddev, min_channel_id, max_channel_id] = stats;
+        
         datahandlinglibs::opmon::TPGProcessorReducedInfo info;
         info.set_average(mean);
         info.set_max(max);
