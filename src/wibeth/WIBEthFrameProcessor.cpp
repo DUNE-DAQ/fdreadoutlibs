@@ -145,7 +145,7 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       }
 
       m_tpg_metric_collect_enabled = proc_conf->get_metric_collect_enable();
-      m_metric_collect_opmon_rate = proc_conf->get_metric_collect_opmon_rate();
+      m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
 
       m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
 
@@ -478,7 +478,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
-  if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_rate == 0) {
+  if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
   }
 
