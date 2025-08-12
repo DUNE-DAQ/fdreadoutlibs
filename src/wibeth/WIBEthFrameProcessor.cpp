@@ -470,9 +470,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
-  m_frame_counter++;
-  m_frame_counter_for_metrics++;
-  if (m_tpg_metric_collect_enabled && m_tp_generator && m_frame_counter_for_metrics % m_metric_collect_opmon_rate == 0) {
+  m_frame_counter.fetch_add(1, std::memory_order_relaxed);
+  if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_rate == 0) {
     m_tp_generator->signal_metric_collection();
   }
 
@@ -489,7 +488,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  if (m_frame_counter >= 100) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+  if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
@@ -507,7 +506,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
-    m_frame_counter = 0;
   }
 
   m_tpg_hits_count += nhits;

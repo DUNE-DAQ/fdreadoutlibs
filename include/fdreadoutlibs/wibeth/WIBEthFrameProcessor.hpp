@@ -138,7 +138,6 @@ private:
   bool m_first_hit = true;
   bool m_tpg_metric_collect_enabled{false};
   uint32_t m_metric_collect_opmon_rate { 128 };
-  uint32_t m_frame_counter_for_metrics { 0 };
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
