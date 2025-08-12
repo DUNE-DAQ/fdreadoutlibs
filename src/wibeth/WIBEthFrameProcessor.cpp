@@ -311,7 +311,7 @@ WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
         dunedaq::trgdataformats::channel_t max_channel_id = 0;
         calculate_metric_summary_across_planes(metrics, metric_name, plane, mean, min, max, stddev, min_channel_id, max_channel_id);
         datahandlinglibs::opmon::TPGProcessorReducedInfo info;
-        info.set_mean(mean);
+        info.set_average(mean);
         info.set_max(max);
         info.set_min(min);
         info.set_standard_dev(stddev);
