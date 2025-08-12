@@ -217,30 +217,30 @@ WIBEthFrameProcessor::generate_opmon_data()
      }
      m_t0 = now;
 
-     publish_processor_metric_to_opmon();
-     publish_processor_metric_to_opmon_with_aggregation();
+     if (m_tpg_metric_collect_enabled && m_tp_generator) {
+       publish_processor_metric_to_opmon();
+       publish_processor_metric_to_opmon_with_aggregation();
+     }
    }
    
    inherited::generate_opmon_data();
  }
 
  void
- WIBEthFrameProcessor::publish_processor_metric_to_opmon() {
-  if (m_tpg_metric_collect_enabled && m_tp_generator) {
-    auto metrics = m_tp_generator->get_processor_metrics();
-    for (const auto& [channel, vec] : metrics) {
-      datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
-      for (const auto& [name, val] : vec) {
-        if (name == "m_pedestal") {
-          tpg_proc_info.set_pedestal(val);
-        } else if (name == "m_accum") {
-          tpg_proc_info.set_accum(val);
-        }
+WIBEthFrameProcessor::publish_processor_metric_to_opmon() {
+  auto metrics = m_tp_generator->get_processor_metrics();
+  for (const auto& [channel, vec] : metrics) {
+    datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
+    for (const auto& [name, val] : vec) {
+      if (name == "m_pedestal") {
+        tpg_proc_info.set_pedestal(val);
+      } else if (name == "m_accum") {
+        tpg_proc_info.set_accum(val);
       }
-      publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
     }
+    publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
   }
- }
+}
 
 std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
 WIBEthFrameProcessor::calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics) {
@@ -308,26 +308,24 @@ WIBEthFrameProcessor::calculate_all_metric_summaries_across_planes(const std::un
 
 void
 WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
-  if (m_tpg_metric_collect_enabled && m_tp_generator) {
-    auto metrics = m_tp_generator->get_processor_metrics();
-    
-    // Use optimized single-pass calculation for all metrics across all planes
-    auto all_stats = calculate_all_metric_summaries_across_planes(metrics);
-    
-    // Publish all calculated statistics
-    for (const auto& [plane, metric_map] : all_stats) {
-      for (const auto& [metric_name, stats] : metric_map) {
-        const auto& [mean, min, max, stddev, min_channel_id, max_channel_id] = stats;
-        
-        datahandlinglibs::opmon::TPGProcessorReducedInfo info;
-        info.set_average(mean);
-        info.set_max(max);
-        info.set_min(min);
-        info.set_standard_dev(stddev);
-        info.set_max_channel_id(max_channel_id);
-        info.set_min_channel_id(min_channel_id);
-        publish(std::move(info), {{"plane", std::to_string(plane)}, {"metric", metric_name}});
-      }
+  auto metrics = m_tp_generator->get_processor_metrics();
+  
+  // Use optimized single-pass calculation for all metrics across all planes
+  auto all_stats = calculate_all_metric_summaries_across_planes(metrics);
+  
+  // Publish all calculated statistics
+  for (const auto& [plane, metric_map] : all_stats) {
+    for (const auto& [metric_name, stats] : metric_map) {
+      const auto& [mean, min, max, stddev, min_channel_id, max_channel_id] = stats;
+      
+      datahandlinglibs::opmon::TPGProcessorReducedInfo info;
+      info.set_average(mean);
+      info.set_max(max);
+      info.set_min(min);
+      info.set_standard_dev(stddev);
+      info.set_max_channel_id(max_channel_id);
+      info.set_min_channel_id(min_channel_id);
+      publish(std::move(info), {{"plane", std::to_string(plane)}, {"metric", metric_name}});
     }
   }
 }
