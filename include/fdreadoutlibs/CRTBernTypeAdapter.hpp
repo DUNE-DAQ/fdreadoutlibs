@@ -82,7 +82,7 @@ struct CRTBernTypeAdapter
   static const constexpr size_t fixed_payload_size = kCRTBernFrameSize;
   static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kCRTBern;
-  static const constexpr uint64_t expected_tick_difference = 64; // NOLINT(build/unsigned)
+  static const constexpr uint64_t expected_tick_difference = 1; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct CRTBernTypeAdapter) == kCRTBernFrameSize,
