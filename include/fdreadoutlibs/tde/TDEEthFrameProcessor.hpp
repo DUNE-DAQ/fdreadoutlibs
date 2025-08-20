@@ -62,9 +62,9 @@ public:
 
   explicit TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
-  void start(const nlohmann::json& args) override;
+  void start(const appfwk::DAQModule::CommandData_t& args) override;
 
-  void stop(const nlohmann::json& args) override;
+  void stop(const appfwk::DAQModule::CommandData_t& args) override;
 
   void conf(const appmodel::DataHandlerModule* conf) override;
 

@@ -35,7 +35,7 @@ WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::Fra
 }
 
 void
-WIBEthFrameProcessor::start(const nlohmann::json& args)
+WIBEthFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
 {
   // Reset software TPG resources
   if (m_post_processing_enabled) {
@@ -66,7 +66,7 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
 }
 
 void
-WIBEthFrameProcessor::stop(const nlohmann::json& args)
+WIBEthFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
 {
   inherited::stop(args);
   if (m_post_processing_enabled) {
