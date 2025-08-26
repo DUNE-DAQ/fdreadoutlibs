@@ -86,7 +86,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   inherited::conf(conf);
 }
 
-void DAPHNEFrameProcessor::start(const nlohmann::json& args)
+void DAPHNEFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
 {
   // Reset timestamp check
   m_previous_ts = 0;
@@ -102,7 +102,8 @@ void DAPHNEFrameProcessor::start(const nlohmann::json& args)
 
   inherited::start(args);
 }
-void DAPHNEFrameProcessor::stop(const nlohmann::json& args)
+void
+DAPHNEFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
 {
   inherited::stop(args);
 }
