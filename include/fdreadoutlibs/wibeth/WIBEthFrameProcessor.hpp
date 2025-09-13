@@ -158,6 +158,11 @@ private:
   uint32_t m_stream_id; // NOLINT(build/unsigned)
   bool m_emulator_mode = false;
 
+
+  uint32_t m_TP_count_thr = 0;
+  uint32_t m_frame_count_thr = 0;
+  std::atomic<bool> m_TP_count_reached = false;//is this atomic an ovekill
+
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
@@ -177,6 +182,12 @@ private:
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
   std::atomic<uint64_t> m_frame_counter{ 0 };
+
+
+  // how many plane do we actually have?? 
+  // m_TP_counter.store()
+  //do I need atomicity for the vector or for the variables of the vector? 
+
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
