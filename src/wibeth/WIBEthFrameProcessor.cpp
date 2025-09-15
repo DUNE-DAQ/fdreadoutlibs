@@ -505,7 +505,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     }  
     m_tp_channel_rate_map[tp.channel]++;
   }
-  if (m_frame_counter.load(std::memory_order_relaxed) < 1000) TLOG() << "RMA frame counter" <<m_frame_counter.load(std::memory_order_relaxed);
+  if (m_frame_counter.load(std::memory_order_relaxed) < 1000);// TLOG() << "RMA frame counter" <<m_frame_counter.load(std::memory_order_relaxed);
   if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
     if (m_frame_counter.load(std::memory_order_relaxed) < 1000){
       if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0){
