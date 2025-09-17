@@ -95,7 +95,7 @@ struct TDEEthTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 2000; // NOLINT(build/unsigned)
   static const constexpr uint64_t samples_per_frame = 64; // NOLINT(build/unsigned)
   // NOTE: this is actually 31.25
-  static const constexpr uint64_t samples_tick_difference = 32; // NOLINT(build/unsigned)
+  static const float uint64_t samples_tick_difference = 31.25; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct dunedaq::fddetdataformats::TDEEthFrame) == kTDEEthSize,
