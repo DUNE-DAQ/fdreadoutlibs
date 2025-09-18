@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETHTYPEADAPTER_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETHTYPEADAPTER_
 
 #include "daqdataformats/FragmentHeader.hpp"
 #include "daqdataformats/SourceID.hpp"
@@ -91,3 +92,7 @@ static_assert(sizeof(struct dunedaq::fddetdataformats::DAPHNEEthFrame) == kDAPHN
 } // namespace types
 } // namespace fdreadoutlibs
 } // namespace dunedaq
+
+
+
+#endif FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETHTYPEADAPTER_
