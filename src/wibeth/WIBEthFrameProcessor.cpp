@@ -116,9 +116,10 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     auto proc_conf = dp->cast<appmodel::TPCRawDataProcessor>();
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
-      //set the number of TP or frames after which the TPs are sent to the sink
-      m_TP_count_thr = proc_conf->get_TP_count_limit();
-      m_frame_count_thr = proc_conf->get_frame_count_limit();
+
+      // Set the number of frames and TPs above which TPs are sent to sink.
+      m_TP_count_thr = proc_conf->get_TP_count_thr();
+      m_frame_count_thr = proc_conf->get_frame_count_thr();
 
       // Set the minimum TP samples over threshold.
       auto conf_sot_minima = proc_conf->get_sot_minima();
@@ -484,6 +485,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
+  m_frame_rel_counter.fetch_add(1, std::memory_order_relaxed);
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
   }
@@ -498,21 +500,12 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
-    // if (m_frame_counter.load(std::memory_order_relaxed) < 100) TLOG() << "RMA DEBUG TP number" << m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].size();
     if (m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].size() % m_TP_count_thr == 0){
       m_TP_count_reached.store(true);
     }  
     m_tp_channel_rate_map[tp.channel]++;
   }
-
-  if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0 || m_TP_count_reached.load(std::memory_order_relaxed)) {
-    if (m_frame_counter.load(std::memory_order_relaxed) < 1000){
-      // TLOG() << "RMA DEBUG frame " << m_frame_counter.load(std::memory_order_relaxed) << " TP number "<< m_TP_count_reached.load(std::memory_order_relaxed);
-      if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0){
-        TLOG()<< "RMA Frame counter reached";
-      } else if(m_TP_count_reached) TLOG()<< "RMA TP counter reached";
-    
-    }
+  if (m_frame_rel_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0 || m_TP_count_reached.load(std::memory_order_relaxed)) {
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
@@ -530,9 +523,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
+    m_TP_count_reached.store(false);
+    m_frame_rel_counter = 0;
   }
-
-  m_TP_count_reached.store(false);
   m_tpg_hits_count += nhits;
   return;
 }
