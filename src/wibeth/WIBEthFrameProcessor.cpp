@@ -117,10 +117,8 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
       //set the number of TP or frames after which the TPs are sent to the sink
-      m_TP_count_thr = proc_conf->get_TP_count_thr();
-      m_frame_count_thr = proc_conf->get_frame_count_thr();
-      TLOG()<< " m_TP_count_thr " << m_TP_count_thr;
-      TLOG()<< " m_frame_count_thr " << m_frame_count_thr; 
+      m_TP_count_thr = proc_conf->get_TP_count_limit();
+      m_frame_count_thr = proc_conf->get_frame_count_limit();
 
       // Set the minimum TP samples over threshold.
       auto conf_sot_minima = proc_conf->get_sot_minima();
@@ -500,23 +498,26 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
+    // if (m_frame_counter.load(std::memory_order_relaxed) < 100) TLOG() << "RMA DEBUG TP number" << m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].size();
     if (m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].size() % m_TP_count_thr == 0){
       m_TP_count_reached.store(true);
     }  
     m_tp_channel_rate_map[tp.channel]++;
   }
-  if (m_frame_counter.load(std::memory_order_relaxed) < 1000);// TLOG() << "RMA frame counter" <<m_frame_counter.load(std::memory_order_relaxed);
-  if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+
+  if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0 || m_TP_count_reached.load(std::memory_order_relaxed)) {
     if (m_frame_counter.load(std::memory_order_relaxed) < 1000){
+      // TLOG() << "RMA DEBUG frame " << m_frame_counter.load(std::memory_order_relaxed) << " TP number "<< m_TP_count_reached.load(std::memory_order_relaxed);
       if (m_frame_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0){
-        // TLOG() << "RMA frame counter" <<m_frame_counter.load(std::memory_order_relaxed);
-      } else if(m_TP_count_reached) TLOG()<< "RMA TP counter";
+        TLOG()<< "RMA Frame counter reached";
+      } else if(m_TP_count_reached) TLOG()<< "RMA TP counter reached";
+    
     }
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
         continue;
-      }
+      } 
       const auto s_ts_begin = m_tpa_vectors[i].front().tp.time_start;
       const auto channel_begin = m_tpa_vectors[i].front().tp.channel;
       const auto s_ts_end = m_tpa_vectors[i].back().tp.time_start;
