@@ -61,6 +61,11 @@ struct DAPHNEEthTypeAdapter
       }
   }
 
+  void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
+  {
+    // Set error bits in header
+  }
+
   void fake_adc_pattern(int /*channel*/) {
   }
 
@@ -93,6 +98,4 @@ static_assert(sizeof(struct dunedaq::fddetdataformats::DAPHNEEthFrame) == kDAPHN
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-
-
-#endif FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETHTYPEADAPTER_
+#endif /* FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETHTYPEADAPTER_ */
