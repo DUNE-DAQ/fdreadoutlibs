@@ -63,6 +63,7 @@ daq_add_library(
   *.cpp
   wibeth/*.cpp
   daphne/*.cpp
+  daphneeth/*.cpp
   tde/*.cpp
   crt/*.cpp
   LINK_LIBRARIES ${FDREADOUTLIBS_DEPENDENCIES}

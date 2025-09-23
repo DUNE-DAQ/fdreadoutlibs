@@ -5,8 +5,8 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEETHFRAMEPROCESSOR_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEETHFRAMEPROCESSOR_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
 
 #include "logging/Logging.hpp"
 
@@ -88,7 +88,6 @@ protected:
   std::atomic<int> m_ts_error_ctr{ 0 };
 
   void extract_tps( constframeptr fp);
-  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEEthFrame &frame, int i);
   
 private:
 
@@ -122,5 +121,5 @@ private:
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEETHFRAMEPROCESSOR_HPP_
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
 

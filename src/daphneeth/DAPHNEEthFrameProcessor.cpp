@@ -113,24 +113,8 @@ DAPHNEEthFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
 void 
 DAPHNEEthFrameProcessor::timestamp_check(frameptr fp)
 {
-  // Let Source Emulator deal with this
+
 /*
-  // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
-    // RS warning : not fixed rate!
-    if (m_first_ts_fake) {
-      fp->fake_timestamps(m_previous_ts, 16);
-      m_first_ts_fake = false;
-    } else {
-      fp->fake_timestamps(m_previous_ts + 192, 16);
-    }
-  }*/
-
-  // FIXME: This is a temporary fix to avoid frames with unphysical timestamp set to the far future to interfere with 
-  // the operations of the LB.
-  // These frames are effectively "corrupted" or "invalid frames" and hould be handled as such.
-
-
   for (size_t i=0; i<types::kDAPHNENumFrames; i++){
     auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEEthFrame*>(fp);
 
@@ -140,6 +124,7 @@ DAPHNEEthFrameProcessor::timestamp_check(frameptr fp)
       df_ptr[i].daq_header.timestamp_1 = df_ptr[i].daq_header.timestamp_2 = 0;
     }
   }
+*/
 
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
@@ -177,7 +162,7 @@ void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
     return;
   }
     
-
+/*
   auto nonconstframeptr = const_cast<frameptr>(fp);
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEEthFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
@@ -223,27 +208,9 @@ void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
       m_new_hits += new_tps;
     }
   }
-
+*/
   return;
 }
-
-dunedaq::trgdataformats::TriggerPrimitive 
-DAPHNEEthFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEEthFrame &frame, int i)
-{
-  dunedaq::trgdataformats::TriggerPrimitive tp;
-  // TODO: add check on peak presence
-  tp.time_start = frame.get_timestamp()+frame.peaks_data.get_sample_start(i);
-  tp.samples_to_peak = frame.peaks_data.get_sample_max(i);
-  tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
-  // FIXME : hard-coded channel map
-  // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(frame.daq_header.det_id, frame.daq_header.crate_id, frame.daq_header.slot_id, frame.daq_header.link_id, frame.get_channel());
-  tp.adc_integral = frame.peaks_data.get_adc_integral(i);
-  tp.adc_peak = frame.peaks_data.get_adc_max(i);
-  tp.detid = dunedaq::trgdataformats::INVALID_DETID;
-  return tp;
-}
-
 
 void
 DAPHNEEthFrameProcessor::generate_opmon_data() {
