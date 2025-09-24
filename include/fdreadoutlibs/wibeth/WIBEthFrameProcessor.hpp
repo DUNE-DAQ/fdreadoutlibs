@@ -160,7 +160,7 @@ private:
 
   uint32_t m_TP_count_thr = 0;
   uint32_t m_frame_count_thr = 0;
-  std::atomic<bool> m_TP_count_reached = false;//is this atomic an ovekill
+  size_t m_current_tp_count=0;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 

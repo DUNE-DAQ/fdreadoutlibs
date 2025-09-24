@@ -484,6 +484,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
+  m_current_tp_count += tps.size();
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
   m_frame_rel_counter.fetch_add(1, std::memory_order_relaxed);
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
@@ -497,15 +498,12 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     // Need to move into a type adapter.
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
-
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
-    if (m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].size() % m_TP_count_thr == 0){
-      m_TP_count_reached.store(true);
-    }  
     m_tp_channel_rate_map[tp.channel]++;
   }
-  if (m_frame_rel_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0 || m_TP_count_reached.load(std::memory_order_relaxed)) {
+  
+  if (m_frame_rel_counter.load(std::memory_order_relaxed) % m_frame_count_thr == 0 || sum < m_TP_count_thr) {
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
@@ -523,7 +521,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
-    m_TP_count_reached.store(false);
+    m_current_tp_count=0;
     m_frame_rel_counter = 0;
   }
   m_tpg_hits_count += nhits;
