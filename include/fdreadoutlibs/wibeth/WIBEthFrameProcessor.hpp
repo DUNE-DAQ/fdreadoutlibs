@@ -158,9 +158,11 @@ private:
   bool m_emulator_mode = false;
 
 
-  uint32_t m_TP_count_thr = 0;
-  uint32_t m_frame_count_thr = 0;
-  size_t m_current_tp_count=0;
+  uint32_t m_tp_count_limit = 0;
+  uint32_t m_frame_count_limit = 0;
+  size_t m_current_tp_count = 0;
+  size_t m_current_frame_count = 0;
+
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
@@ -181,7 +183,6 @@ private:
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
   std::atomic<uint64_t> m_frame_counter{ 0 };
-  std::atomic<uint64_t> m_frame_rel_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };
