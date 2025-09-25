@@ -485,7 +485,6 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_current_tp_count += tps.size();
-  m_frame_counter.fetch_add(1, std::memory_order_relaxed);
   m_current_frame_count++;
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
@@ -502,8 +501,8 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
-  
-  if (m_current_frame_count < m_frame_count_limit || m_current_tp_count < m_tp_count_limit) {
+
+  if (m_current_frame_count > m_frame_count_limit || m_current_tp_count > m_tp_count_limit) {
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
