@@ -65,8 +65,8 @@ public:
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
 
-  void start(const nlohmann::json& args) override;
-  void stop(const nlohmann::json& args) override;
+  void start(const appfwk::DAQModule::CommandData_t& args) override;
+  void stop(const appfwk::DAQModule::CommandData_t& args) override;
 
 protected:
   virtual void generate_opmon_data() override;

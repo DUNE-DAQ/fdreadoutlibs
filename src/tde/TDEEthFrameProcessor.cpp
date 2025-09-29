@@ -35,7 +35,7 @@ TDEEthFrameProcessor::TDEEthFrameProcessor(std::unique_ptr<datahandlinglibs::Fra
 }
 
 void
-TDEEthFrameProcessor::start(const nlohmann::json& args)
+TDEEthFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
 {
   // Reset software TPG resources
   if (m_post_processing_enabled) {
@@ -66,7 +66,7 @@ TDEEthFrameProcessor::start(const nlohmann::json& args)
 }
 
 void
-TDEEthFrameProcessor::stop(const nlohmann::json& args)
+TDEEthFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
 {
   inherited::stop(args);
   if (m_post_processing_enabled) {

@@ -62,16 +62,33 @@ public:
 
   explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
-  void start(const nlohmann::json& args) override;
+  void start(const appfwk::DAQModule::CommandData_t& args) override;
 
-  void stop(const nlohmann::json& args) override;
+  void stop(const appfwk::DAQModule::CommandData_t& args) override;
 
   void conf(const appmodel::DataHandlerModule* conf) override;
 
 protected:
   virtual void generate_opmon_data() override;
 
-  // Internals
+  /**
+   * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
+   * */
+  void publish_processor_metric_to_opmon();
+
+  /**
+   * Publishes collected processor metrics to opmon, with aggregation of metrics to summary statistics across physical planes
+   * */
+  void publish_processor_metric_to_opmon_with_aggregation(); 
+
+  /**
+   * Optimized version that calculates all metric summaries across all planes in a single pass
+   * Returns a map of plane_number -> map of metric_name -> summary statistics
+   * */
+  std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
+  calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
+
+// Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 
@@ -120,6 +137,8 @@ protected:
 
 private:
   bool m_first_hit = true;
+  bool m_tpg_metric_collect_enabled{false};
+  uint32_t m_metric_collect_opmon_period { 128 };
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
   uint32_t m_tp_max_width;
