@@ -10,6 +10,7 @@
 
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/CRTBernTypeAdapter.hpp"
@@ -60,6 +61,12 @@ BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNESuperChunk)
 {
   dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
                                                       dunedaq::fdreadoutlibs::types::DAPHNESuperChunkTypeAdapter>();
+}
+
+BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNEEth)
+{
+  dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+                                                      dunedaq::fdreadoutlibs::types::DAPHNEEthTypeAdapter>();
 }
 
 BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)

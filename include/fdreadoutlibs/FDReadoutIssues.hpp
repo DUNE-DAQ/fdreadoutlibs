@@ -46,7 +46,15 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   "WIB data have crate/slot/link " << wcrate << "/" << wslot << "/" << wlink << " while this readout link is configured for " << crate << "/" << slot << "/" << link,
                   ((uint32_t)wcrate) ((uint32_t)wslot) ((uint32_t)wlink) ((uint32_t)crate) ((uint32_t)slot) ((uint32_t)link))
 
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSPeakIgnored,
+                  "Ignoring PDS Peak with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe << ", ipeak=" << ipeak,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe) ((size_t)ipeak))
 
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSUnphysicalFrameTimestamp,
+                  "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
+                  ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))
 } // namespace dunedaq
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTISSUES_HPP_
