@@ -502,8 +502,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  // if (m_current_frame_count > m_frame_count_limit || m_current_tp_count > m_tp_count_limit) {
-  if (m_current_frame_count > m_frame_count_limit == 0 || m_current_tp_count > m_tp_count_limit) {
+  if (m_current_frame_count > m_frame_count_limit || m_current_tp_count > m_tp_count_limit) {
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {

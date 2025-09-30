@@ -139,6 +139,11 @@ private:
   uint32_t m_stream_id; // NOLINT(build/unsigned)
   bool m_emulator_mode = false;
 
+  uint32_t m_tp_count_limit = 0;
+  uint32_t m_frame_count_limit = 0;
+  size_t m_current_tp_count = 0;
+  size_t m_current_frame_count = 0;
+
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
