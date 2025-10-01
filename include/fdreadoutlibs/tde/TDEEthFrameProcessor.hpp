@@ -10,42 +10,6 @@
 
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 
-// #include "appfwk/DAQModuleHelper.hpp"
-#include "iomanager/IOManager.hpp"
-#include "iomanager/Sender.hpp"
-#include "logging/Logging.hpp"
-
-#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
-
-#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
-#include "fdreadoutlibs/FDReadoutIssues.hpp"
-
-#include "appmodel/DataHandlerModule.hpp"
-#include "confmodel/Connection.hpp"
-#include "daqdataformats/Types.hpp"
-#include "detchannelmaps/TPCChannelMap.hpp"
-#include "trgdataformats/Types.hpp"
-
-//#include "tpg/ProcessingInfo.hpp"
-//#include "tpg/RegisterToChannelNumber.hpp"
-
-#include "tpglibs/TPGenerator.hpp"
-
-#include <algorithm>
-#include <atomic>
-#include <bitset>
-#include <functional>
-#include <future>
-#include <memory>
-#include <pthread.h>
-#include <queue>
-#include <string>
-#include <thread>
-#include <utility>
-#include <vector>
-#include <random>
-
-
 namespace dunedaq {
 namespace fdreadoutlibs {
 

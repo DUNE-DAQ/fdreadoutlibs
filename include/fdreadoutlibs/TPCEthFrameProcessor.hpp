@@ -1,30 +1,71 @@
 /**
- * @file WIBEthFrameProcessor.hpp WIBEth specific Task based raw processor
+ * @file TPCEthFrameProcessor.hpp TPCEth generic task based raw processor
  *
  * This is part of the DUNE DAQ , copyright 2022.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TPCETHFRAMEPROCESSOR_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TPCETHFRAMEPROCESSOR_HPP_
 
-#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+#include "fdreadoutlibs/FDReadoutIssues.hpp"
+
+#include "appmodel/DataHandlerModule.hpp"
+#include "appmodel/ProcessingStep.hpp"
+#include "appmodel/RawDataProcessor.hpp"
+#include "appmodel/SamplesOverThresholdMinima.hpp"
+#include "appmodel/TPCRawDataProcessor.hpp"
+
+#include "confmodel/GeoId.hpp"
+
+#include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
+#include "datahandlinglibs/ReadoutLogging.hpp"
+#include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
+#include "datahandlinglibs/opmon/datahandling_info.pb.h"
+
+#include "daqdataformats/Types.hpp"
+
+#include "detchannelmaps/TPCChannelMap.hpp"
+
+#include "iomanager/Sender.hpp"
+#include "logging/Logging.hpp"
+
+#include "tpglibs/TPGenerator.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
+#include "trgdataformats/Types.hpp"
+
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class WIBEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>
+template <class ReadoutTypeAdapter>
+class TPCEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<ReadoutTypeAdapter>
 {
 
 public:
-  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::DUNEWIBEthTypeAdapter>;
-  using frameptr = types::DUNEWIBEthTypeAdapter*;
-  using constframeptr = const types::DUNEWIBEthTypeAdapter*;
-  using wibframeptr = dunedaq::fddetdataformats::WIBEthFrame*;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<ReadoutTypeAdapter>;
+  using frameptr = ReadoutTypeAdapter*;
+  using constframeptr = const ReadoutTypeAdapter*;
+  using tpcframeptr = ReadoutTypeAdapter::FrameType*;
   // Channel map function type
   //typedef int (*chan_map_fn_t)(int);
 
-  explicit WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
+  explicit TPCEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
   void start(const appfwk::DAQModule::CommandData_t& args) override;
 
@@ -33,7 +74,7 @@ public:
   void conf(const appmodel::DataHandlerModule* conf) override;
 
 protected:
-  virtual void generate_opmon_data() override;
+  void generate_opmon_data() override;
 
   /**
    * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
@@ -43,13 +84,13 @@ protected:
   /**
    * Publishes collected processor metrics to opmon, with aggregation of metrics to summary statistics across physical planes
    * */
-  void publish_processor_metric_to_opmon_with_aggregation(); 
+  void publish_processor_metric_to_opmon_with_aggregation();
 
   /**
    * Optimized version that calculates all metric summaries across all planes in a single pass
    * Returns a map of plane_number -> map of metric_name -> summary statistics
    * */
-  std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
+  std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
   calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
 
 // Internals
@@ -98,7 +139,6 @@ protected:
   void find_hits(constframeptr fp);
   //void find_hits(constframeptr fp);
 
-private:
   bool m_first_hit = true;
   bool m_tpg_metric_collect_enabled{false};
   uint32_t m_metric_collect_opmon_period { 128 };
@@ -121,24 +161,15 @@ private:
   uint32_t m_stream_id; // NOLINT(build/unsigned)
   bool m_emulator_mode = false;
 
-
-  uint32_t m_tp_count_limit = 0;
-  uint32_t m_frame_count_limit = 0;
-  size_t m_current_tp_count = 0;
-  size_t m_current_frame_count = 0;
-  bool m_tp_limit_enabled = false;
-  bool m_frame_limit_enabled = false;
-
-
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
   // Mapping from expanded AVX register position to offline channel number
-  //std::array<uint, swtpg_wibeth::NUM_REGISTERS_PER_FRAME * swtpg_wibeth::SAMPLES_PER_REGISTER> m_register_channels;
+  //std::array<uint, swtpg_tpceth::NUM_REGISTERS_PER_FRAME * swtpg_tpceth::SAMPLES_PER_REGISTER> m_register_channels;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
   std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
-  std::shared_ptr<iomanager::SenderConcept<fddetdataformats::WIBEthFrame>> m_err_frame_sink;
+  std::shared_ptr<iomanager::SenderConcept<tpcframeptr*>> m_err_frame_sink;
 
   //std::thread m_add_hits_tphandler_thread;
 
@@ -156,4 +187,6 @@ private:
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
+#include "fdreadoutlibs/detail/TPCEthFrameProcessor.hxx"
+
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TPCETHFRAMEPROCESSOR_HPP_
