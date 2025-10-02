@@ -90,29 +90,6 @@ protected:
    * */
   std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
   calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
-
-  dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
-  dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
-
-  uint16_t m_previous_seq_id = 0;
-  uint16_t m_current_seq_id = 0;
-
-  dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
-  dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
-
-  bool m_first_ts_missmatch = true;
-  bool m_ts_problem_reported = false;
-  bool m_ts_error_state = false;
-  std::atomic<uint64_t> m_ts_error_ctr{ 0 };
-
-  bool m_first_seq_id_mismatch = true;
-  bool m_seq_id_problem_reported = false;
-  bool m_seq_id_error_state = false;
-  std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
-  std::atomic<int16_t> m_seq_id_min_jump{ 0 };
-  std::atomic<int16_t> m_seq_id_max_jump{ 0 };
-
-
   /**
    * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
    * */
@@ -131,41 +108,68 @@ protected:
 
   void find_hits(constframeptr fp);
 
-  bool m_first_hit = true;
-  bool m_tpg_metric_collect_enabled{false};
-  uint32_t m_metric_collect_opmon_period { 128 };
+  // Timestamp related variables.
+  dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
+
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_previous_ts = 0;
+  dunedaq::daqdataformats::timestamp_t m_pattern_generator_current_ts = 0;
+
+  bool m_first_ts_missmatch = true;
+  bool m_ts_problem_reported = false;
+  bool m_ts_error_state = false;
+  std::atomic<uint64_t> m_ts_error_ctr{ 0 };
+
+  // Sequence ID related variables.
+  uint16_t m_previous_seq_id = 0;
+  uint16_t m_current_seq_id = 0;
+
+  bool m_first_seq_id_mismatch = true;
+  bool m_seq_id_problem_reported = false;
+  bool m_seq_id_error_state = false;
+  std::atomic<uint64_t> m_seq_id_error_ctr{ 0 };
+  std::atomic<int16_t> m_seq_id_min_jump{ 0 };
+  std::atomic<int16_t> m_seq_id_max_jump{ 0 };
+
+  bool m_emulator_mode = false;
+
+  // TPG related variables.
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
+
+  std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
+  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
+
+  // TPG: channel variables.
+  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
   std::set<unsigned int> m_channel_mask_set;
+  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
+
+  bool m_first_hit = true;
+
+  // OpMon related variables.
+  bool m_tpg_metric_collect_enabled{false};
+  uint32_t m_metric_collect_opmon_period { 128 };
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
   std::atomic<int> m_tpg_hits_count{ 0 };
-
-  uint32_t m_det_id; // NOLINT(build/unsigned)
-  uint32_t m_crate_id; // NOLINT(build/unsigned)
-  uint32_t m_slot_id;  // NOLINT(build/unsigned)
-  uint32_t m_stream_id; // NOLINT(build/unsigned)
-  bool m_emulator_mode = false;
-
-  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
-
-  std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
-  std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
-
-  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
-  std::shared_ptr<iomanager::SenderConcept<tpcframeptr*>> m_err_frame_sink;
-
-
-  daqdataformats::SourceID m_sourceid;
-
   std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
-  std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
+
+  std::atomic<uint64_t> m_frame_counter{ 0 };
+
+  // Source & Geo ID related variables.
+  uint32_t m_det_id; // NOLINT(build/unsigned)
+  uint32_t m_crate_id; // NOLINT(build/unsigned)
+  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_stream_id; // NOLINT(build/unsigned)
+
+  daqdataformats::SourceID m_sourceid;
 };
 
 } // namespace fdreadoutlibs
