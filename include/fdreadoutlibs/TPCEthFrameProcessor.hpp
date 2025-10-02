@@ -141,9 +141,9 @@ protected:
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
 
   // TPG: channel variables.
-  std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
   std::set<unsigned int> m_channel_mask_set;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
+  std::unordered_map<trgdataformats::channel_t, unsigned int> m_channel_plane_map;
 
   bool m_first_frame = true;
 

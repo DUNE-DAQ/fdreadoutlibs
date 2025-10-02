@@ -112,16 +112,20 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule
       }
 
       // Setup post-processing pipeline
-      m_channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
+      std::shared_ptr<detchannelmaps::TPCChannelMap> channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
       for (int chan = 0; chan < 64; chan++) {
-        trgdataformats::channel_t off_channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
-        int16_t plane = m_channel_map->get_plane_from_offline_channel(off_channel);
+        trgdataformats::channel_t off_channel = channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
+        int16_t plane = channel_map->get_plane_from_offline_channel(off_channel);
         m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
 
         // This processor only needs to handle some (maybe 0) of the masked channels.
         // Only get those relevant channels for the later check.
-        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end())
+        // Only get the planes for the channels that are not masked.
+        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end()) {
           m_channel_mask_set.insert(off_channel);
+        } else {
+          m_channel_plane_map[off_channel] = plane;
+        }
       }
 
       m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
@@ -237,9 +241,9 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::calculate_all_metric_summaries_across_
 
     // Single pass through all metrics to collect data using Welford's online algorithm for variance
     for (const auto& [channel, vec] : metrics) {
-        if (!m_channel_map) continue;
+        if (m_channel_plane_map.empty()) continue;
 
-        int16_t plane = m_channel_map->get_plane_from_offline_channel(channel);
+        int16_t plane = m_channel_plane_map[channel];
 
         for (const auto& [name, val] : vec) {
             auto& [count, mean, M2, min, max, min_channel_id, max_channel_id] = accumulators[plane][name];
@@ -440,15 +444,15 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
 
   for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
-    if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
+    if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), uint32_t(tp.channel)))
       continue;
     // Need to move into a type adapter.
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
-    m_tp_channel_rate_map[tp.channel]++;
+    m_tpa_vectors[m_channel_plane_map[uint32_t(tp.channel)]].push_back(tpa);
+    m_tp_channel_rate_map[uint32_t(tp.channel)]++;
   }
 
   if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
