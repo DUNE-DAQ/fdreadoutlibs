@@ -74,6 +74,16 @@ public:
 protected:
   void generate_opmon_data() override;
 
+  void configure_source_and_geo_ids(const appmodel::DataHandlerModule* conf);
+
+  void configure_preprocessing(const appmodel::DataHandlerModule* conf);
+
+  void configure_postprocessing(const appmodel::DataHandlerModule* conf);
+
+  void configure_channel_plane_numbers(const appmodel::TPCRawDataProcessor* proc_conf);
+
+  void configure_find_tps(const appmodel::DataHandlerModule* conf, const appmodel::TPCRawDataProcessor* proc_conf);
+
   /**
    * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
    * */

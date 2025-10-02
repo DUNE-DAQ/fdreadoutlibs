@@ -60,8 +60,59 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::stop(const appfwk::DAQModule::CommandD
 
 template <class ReadoutTypeAdapter>
 void
-TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule* conf)
+TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_source_and_geo_ids(const appmodel::DataHandlerModule* conf)
 {
+  m_sourceid.id = conf->get_source_id();
+  m_sourceid.subsystem = ReadoutTypeAdapter::subsystem;
+  auto geo_id = conf->get_geo_id();
+  if (geo_id != nullptr) {
+    m_det_id = geo_id->get_detector_id();
+    m_crate_id = geo_id->get_crate_id();
+    m_slot_id = geo_id->get_slot_id();
+    m_stream_id = geo_id->get_stream_id();
+  }
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_preprocessing(const appmodel::DataHandlerModule* conf)
+{
+  m_emulator_mode = conf->get_emulation_mode();
+  if (!m_emulator_mode) {
+    inherited::add_preprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::sequence_check, this, std::placeholders::_1));
+  }
+
+  inherited::add_preprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::timestamp_check, this, std::placeholders::_1));
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_channel_plane_numbers(const appmodel::TPCRawDataProcessor* proc_conf)
+{
+  const std::shared_ptr<detchannelmaps::TPCChannelMap> channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
+  const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
+
+  for (int chan = 0; chan < 64; chan++) {
+    trgdataformats::channel_t off_channel = channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
+    int16_t plane = channel_map->get_plane_from_offline_channel(off_channel);
+    m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
+
+    // This processor only needs to handle some (maybe 0) of the masked channels.
+    // Only get those relevant channels for the later check.
+    // Only get the planes for the channels that are not masked.
+    if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end()) {
+      m_channel_mask_set.insert(off_channel);
+    } else {
+      m_channel_plane_map[off_channel] = plane;
+    }
+  }
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::DataHandlerModule* conf, const appmodel::TPCRawDataProcessor* proc_conf)
+{
+  // Set the TP sinks
   size_t idx = 0;
   for (auto output : conf->get_outputs()) {
     try {
@@ -73,74 +124,61 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule
     }
   }
 
-  m_sourceid.id = conf->get_source_id();
-  m_sourceid.subsystem = ReadoutTypeAdapter::subsystem;
-  auto geo_id = conf->get_geo_id();
-  if (geo_id != nullptr) {
-    m_det_id = geo_id->get_detector_id();
-    m_crate_id = geo_id->get_crate_id();
-    m_slot_id = geo_id->get_slot_id();
-    m_stream_id = geo_id->get_stream_id();
+  m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
+
+  // Set the minimum TP samples over threshold.
+  auto conf_sot_minima = proc_conf->get_sot_minima();
+  std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
+                                   conf_sot_minima->get_sot_minimum_plane1(),
+                                   conf_sot_minima->get_sot_minimum_plane2()};
+  m_tp_generator->set_sot_minima(sot_minima);
+
+  std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
+  for (auto step : processing_steps) {
+    m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
   }
-  m_emulator_mode = conf->get_emulation_mode();
 
-  // Setup pre-processing pipeline
-  if (!m_emulator_mode)
-    inherited::add_preprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::sequence_check, this, std::placeholders::_1));
+  // Let the TPG generator configure
+  m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, ReadoutTypeAdapter::samples_tick_difference);
 
-  inherited::add_preprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::timestamp_check, this, std::placeholders::_1));
+  // After it sees the configs, it will set the metric collector enable state
+  m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
+  m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
 
-  // Check it post-processing is active
-  auto dp = conf->get_module_configuration()->get_data_processor();
-  if (dp != nullptr) {
-    auto proc_conf = dp->cast<appmodel::TPCRawDataProcessor>();
-    if (proc_conf != nullptr && this->m_post_processing_enabled) {
-      m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
+  inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps, this, std::placeholders::_1));
+}
 
-      // Set the minimum TP samples over threshold.
-      auto conf_sot_minima = proc_conf->get_sot_minima();
-      std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
-                                       conf_sot_minima->get_sot_minimum_plane1(),
-                                       conf_sot_minima->get_sot_minimum_plane2()};
-      m_tp_generator->set_sot_minima(sot_minima);
-
-      const std::vector<unsigned int> channel_mask_vec = proc_conf->get_channel_mask();
-
-      std::vector<const appmodel::ProcessingStep*> processing_steps = proc_conf->get_processing_steps();
-      for (auto step : processing_steps) {
-        m_tpg_configs.push_back(std::make_pair(step->class_name(), step->to_json(false).back()));
-      }
-
-      // Setup post-processing pipeline
-      std::shared_ptr<detchannelmaps::TPCChannelMap> channel_map = dunedaq::detchannelmaps::make_tpc_map(proc_conf->get_channel_map());
-      for (int chan = 0; chan < 64; chan++) {
-        trgdataformats::channel_t off_channel = channel_map->get_offline_channel_from_det_crate_slot_stream_chan(m_det_id, m_crate_id, m_slot_id, m_stream_id, chan);
-        int16_t plane = channel_map->get_plane_from_offline_channel(off_channel);
-        m_channel_plane_numbers.push_back(std::make_pair(off_channel, plane));
-
-        // This processor only needs to handle some (maybe 0) of the masked channels.
-        // Only get those relevant channels for the later check.
-        // Only get the planes for the channels that are not masked.
-        if (std::find(channel_mask_vec.begin(), channel_mask_vec.end(), off_channel) != channel_mask_vec.end()) {
-          m_channel_mask_set.insert(off_channel);
-        } else {
-          m_channel_plane_map[off_channel] = plane;
-        }
-      }
-
-      m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
-
-      // Let the TPG generator configure
-
-      m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, ReadoutTypeAdapter::samples_tick_difference);
-
-      // After it sees the configs, it will set the metric collector enable state
-
-      m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
-
-      inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps, this, std::placeholders::_1));
-    }
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_postprocessing(const appmodel::DataHandlerModule* conf)
+{
+  const appmodel::DataProcessor* dp = conf->get_module_configuration()->get_data_processor();
+  if (dp == nullptr) {
+    return;
   }
+
+  const appmodel::TPCRawDataProcessor* proc_conf = dp->cast<appmodel::TPCRawDataProcessor>();
+  if (proc_conf == nullptr) {
+    return;
+  }
+
+  // Need TPCRawDataProcessor configurations to configure the following.
+  configure_channel_plane_numbers(proc_conf);
+  configure_find_tps(conf, proc_conf);
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule* conf)
+{
+  configure_source_and_geo_ids(conf);
+
+  configure_preprocessing(conf);
+
+  if (this->m_post_processing_enabled) {
+    configure_postprocessing(conf);
+  }
+
   inherited::conf(conf);
 }
 
