@@ -134,7 +134,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule
 
       m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
 
-      inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_hits, this, std::placeholders::_1));
+      inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps, this, std::placeholders::_1));
     }
   }
   inherited::conf(conf);
@@ -417,19 +417,19 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::timestamp_check(frameptr fp)
  * */
 template <class ReadoutTypeAdapter>
 void
-TPCEthFrameProcessor<ReadoutTypeAdapter>::find_hits(constframeptr fp)
+TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
 {
   if (!fp)
     return;
   auto wfptr = reinterpret_cast<tpcframeptr>((uint8_t*)fp); // NOLINT
 
-  // Check that the system is properly configured from the first hit.
-  if (m_first_hit) {
+  // Check that the system is properly configured from the first frame.
+  if (m_first_frame) {
     if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
       ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
     }
 
-    m_first_hit = false;
+    m_first_frame = false;
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);

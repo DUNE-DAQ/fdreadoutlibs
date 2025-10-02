@@ -106,7 +106,7 @@ protected:
    * Pipeline Stage 2.: Do software TPG
    * */
 
-  void find_hits(constframeptr fp);
+  void find_tps(constframeptr fp);
 
   // Timestamp related variables.
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
@@ -145,7 +145,7 @@ protected:
   std::set<unsigned int> m_channel_mask_set;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
 
-  bool m_first_hit = true;
+  bool m_first_frame = true;
 
   // OpMon related variables.
   bool m_tpg_metric_collect_enabled{false};
