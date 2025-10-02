@@ -176,7 +176,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
      tp_info.set_num_tps_send_failed(new_tps_send_failed);
 
      this->publish(std::move(tp_info));
-     // Find the channels with the top  TP rates
+     // Find the channels with the top TP rates
      // Create a vector of pairs to store the map elements
      std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
      // Sort the vector in descending order of the value of the pairs
@@ -327,22 +327,6 @@ template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::sequence_check(frameptr fp)
 {
-  // FIXME: Make source emulator deal with this! Hard to do since source emu is templated...
-  /* If EMU data, emulate perfectly incrementing timestamp
-  if (m_emulator_mode) {
-    // uint64_t ts_next = m_previous_seq_id + 1; // NOLINT(build/unsigned)
-    auto wf = reinterpret_cast<tpcframeptr>(((uint8_t*)fp));            // NOLINT
-    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      //auto wfh = const_cast<tpcframeptr>(wf->header());
-      wf->daq_header.crate_id = m_crate_id;
-      wf->daq_header.slot_id = m_slot_id;
-      wf->daq_header.stream_id = m_stream_id;
-      wf->daq_header.seq_id = (m_previous_seq_id+i) & 0xfff;
-      wf++;
-    }
-  }
-  */
-
   // Acquire timestamp
   auto wfptr = reinterpret_cast<tpcframeptr>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
@@ -398,22 +382,6 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::timestamp_check(frameptr fp)
 
   uint16_t tpceth_tick_difference = ReadoutTypeAdapter::expected_tick_difference;
   uint16_t tpceth_frame_tick_difference = tpceth_tick_difference * fp->get_num_frames();
-
-  // FIXME: let source emulator deal with this!
-  /* If EMU data, emulate perfectly incrementing timestamp
-  if (m_emulator_mode) {                                     // emulate perfectly incrementing timestamp
-    uint64_t ts_next = m_previous_ts + tpceth_frame_tick_difference; // NOLINT(build/unsigned)
-    auto wf = reinterpret_cast<tpcframeptr>(((uint8_t*)fp));            // NOLINT
-    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) {           // NOLINT(build/unsigned)
-      //auto wfh = const_cast<tpcframeptr>(wf->header());
-      wf->daq_header.crate_id = m_crate_id;
-      wf->daq_header.slot_id = m_slot_id;
-      wf->daq_header.stream_id = m_stream_id;
-      wf->set_timestamp(ts_next);
-      ts_next += tpceth_tick_difference;
-      wf++;
-    }
-  }*/
 
   auto wfptr = reinterpret_cast<tpcframeptr>(fp); // NOLINT
   m_current_ts = wfptr->get_timestamp();

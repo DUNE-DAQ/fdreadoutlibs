@@ -62,8 +62,6 @@ public:
   using frameptr = ReadoutTypeAdapter*;
   using constframeptr = const ReadoutTypeAdapter*;
   using tpcframeptr = ReadoutTypeAdapter::FrameType*;
-  // Channel map function type
-  //typedef int (*chan_map_fn_t)(int);
 
   explicit TPCEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
 
@@ -93,7 +91,6 @@ protected:
   std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
   calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
 
-// Internals
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
 
@@ -115,10 +112,6 @@ protected:
   std::atomic<int16_t> m_seq_id_min_jump{ 0 };
   std::atomic<int16_t> m_seq_id_max_jump{ 0 };
 
-  /**
-   * Pipeline Stage 0: Pattern generator for hit finding in emulated mode
-   * */
-  void use_pattern_generator(frameptr fp);
 
   /**
    * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
@@ -137,21 +130,15 @@ protected:
    * */
 
   void find_hits(constframeptr fp);
-  //void find_hits(constframeptr fp);
 
   bool m_first_hit = true;
   bool m_tpg_metric_collect_enabled{false};
   uint32_t m_metric_collect_opmon_period { 128 };
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
-  uint32_t m_tp_max_width;
   std::set<unsigned int> m_channel_mask_set;
-  uint16_t m_tpg_threshold_selected;
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
-
-  size_t m_num_msg = 0;
-  size_t m_num_push_fail = 0;
 
   std::atomic<int> m_tpg_hits_count{ 0 };
 
@@ -163,15 +150,12 @@ protected:
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
-  // Mapping from expanded AVX register position to offline channel number
-  //std::array<uint, swtpg_tpceth::NUM_REGISTERS_PER_FRAME * swtpg_tpceth::SAMPLES_PER_REGISTER> m_register_channels;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
   std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
 
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
   std::shared_ptr<iomanager::SenderConcept<tpcframeptr*>> m_err_frame_sink;
 
-  //std::thread m_add_hits_tphandler_thread;
 
   daqdataformats::SourceID m_sourceid;
 
