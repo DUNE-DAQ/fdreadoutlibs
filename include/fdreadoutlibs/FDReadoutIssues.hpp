@@ -10,6 +10,8 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTISSUES_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTISSUES_HPP_
 
+#include "daqdataformats/Types.hpp"
+
 #include <ers/Issue.hpp>
 #include "logging/Logging.hpp" // NOTE: if ISSUES ARE DECLARED BEFORE include logging/Logging.hpp, TLOG_DEBUG<<issue wont work.
 #include <string>
@@ -43,7 +45,7 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   FailedToSendTPVector,
                   "Failed to send TP vector beginning with start time " << s_ts_begin << " and channel number " << channel_begin << ", ending with start time " << s_ts_end << " and channel number " << channel_end,
-                  ((dunedaq::daqdataformats::timestamp_t)s_ts_begin) ((uint64_t)channel_begin) ((dunedaq::daqdataformats::timestamp_t)s_ts_end) ((uint64_t)channel_end))
+                  ((daqdataformats::timestamp_t)s_ts_begin) ((uint64_t)channel_begin) ((daqdataformats::timestamp_t)s_ts_end) ((uint64_t)channel_end))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   LinkMisconfiguration,
