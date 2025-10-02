@@ -39,9 +39,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::start(const appfwk::DAQModule::Command
 
   // Reset stats
   m_t0 = std::chrono::high_resolution_clock::now();
-  m_new_hits = 0;
-  m_new_tps = 0;
-  m_tpg_hits_count.exchange(0);
+  m_num_new_tps.exchange(0);
   inherited::start(args);
 }
 
@@ -160,20 +158,19 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
 
    if (this->m_post_processing_enabled) {
      auto now = std::chrono::high_resolution_clock::now();
-     int new_hits = m_tpg_hits_count.exchange(0);
-     int new_tps = m_new_tps.exchange(0);
-     int new_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
-     int new_tps_send_failed = m_tps_send_failed.exchange(0);
+     int num_new_tps = m_num_new_tps.exchange(0);
+     int num_new_tps_suppressed_too_long = m_tps_suppressed_too_long.exchange(0);
+     int num_new_tps_send_failed = m_tps_send_failed.exchange(0);
      double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
-     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
+     TLOG_DEBUG(TLVL_BOOKKEEPING) << "TP rate: " << std::to_string(num_new_tps / seconds / 1000.) << " [kHz]";
+     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new TPs: " << num_new_tps;
 
      datahandlinglibs::opmon::HitFindingInfo tp_info;
-     tp_info.set_rate_tp_hits(new_hits / seconds / 1000.);
+     tp_info.set_rate_tp_hits(num_new_tps / seconds / 1000.);
 
-     tp_info.set_num_tps_sent(new_tps);
-     tp_info.set_num_tps_suppressed_too_long(new_tps_suppressed_too_long);
-     tp_info.set_num_tps_send_failed(new_tps_send_failed);
+     tp_info.set_num_tps_sent(num_new_tps);
+     tp_info.set_num_tps_suppressed_too_long(num_new_tps_suppressed_too_long);
+     tp_info.set_num_tps_send_failed(num_new_tps_send_failed);
 
      this->publish(std::move(tp_info));
      // Find the channels with the top TP rates
@@ -422,7 +419,6 @@ template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::find_hits(constframeptr fp)
 {
-  size_t nhits = 0;
   if (!fp)
     return;
   auto wfptr = reinterpret_cast<tpcframeptr>((uint8_t*)fp); // NOLINT
@@ -457,8 +453,8 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_hits(constframeptr fp)
 
   if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
     for (int i = 0; i < 3; i++) {
-      int new_tps = m_tpa_vectors[i].size();
-      if (new_tps == 0) {
+      int num_new_tps = m_tpa_vectors[i].size();
+      if (num_new_tps == 0) {
         continue;
       }
       const auto s_ts_begin = m_tpa_vectors[i].front().tp.time_start;
@@ -469,13 +465,10 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_hits(constframeptr fp)
         ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
         m_tps_send_failed++;
       } else {
-        m_new_tps += new_tps;
-        nhits += new_tps;
+        m_num_new_tps += num_new_tps;
       }
     }
   }
-
-  m_tpg_hits_count += nhits;
   return;
 }
 

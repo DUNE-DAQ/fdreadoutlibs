@@ -153,9 +153,7 @@ protected:
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
-  std::atomic<int> m_tpg_hits_count{ 0 };
-  std::atomic<uint64_t> m_new_hits{ 0 }; // NOLINT(build/unsigned)
-  std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_num_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
 
