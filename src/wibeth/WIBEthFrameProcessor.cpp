@@ -484,6 +484,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
+  m_frame_counter.fetch_add(1, std::memory_order_relaxed);
   m_current_frame_count++;
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
@@ -503,7 +504,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   if (m_current_frame_count >= m_frame_count_limit || (m_current_tp_count >= m_tp_count_limit && m_tp_count_limit !=0)){
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {// TO DO: the number of plane here is hard coded to 3. should this be configurable at a point?
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
         continue;
@@ -520,7 +521,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
-    m_current_tp_count=0;
+    m_current_tp_count = 0;
     m_current_frame_count = 0;
   }
   m_tpg_hits_count += nhits;
