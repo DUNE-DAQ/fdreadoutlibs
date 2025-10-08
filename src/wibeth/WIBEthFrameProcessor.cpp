@@ -118,9 +118,15 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
       // Set the number of frames and TPs above which TPs are sent to sink.
-      m_tp_count_limit = proc_conf->get_tp_count_limit();
       m_frame_count_limit = proc_conf->get_frame_count_limit();
+      m_tp_count_limit = proc_conf->get_tp_count_limit();
+      m_frame_limit_enabled = m_frame_count_limit != 0;
+      m_tp_limit_enabled = m_tp_count_limit != 0;
 
+      if (!m_frame_limit_enabled && !m_tp_limit_enabled){
+        ers::warning(FrameAndTPCountersDisabled(ERS_HERE));
+      }
+    
       // Set the minimum TP samples over threshold.
       auto conf_sot_minima = proc_conf->get_sot_minima();
       std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
@@ -503,7 +509,10 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  if (m_current_frame_count >= m_frame_count_limit || (m_current_tp_count >= m_tp_count_limit && m_tp_count_limit !=0)){
+  const bool frame_limit_reached = m_frame_limit_enabled && (m_current_frame_count >= m_frame_count_limit);
+  const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
+
+  if (frame_limit_reached || tp_limit_reached){
     for (int i = 0; i < 3; i++) {// TO DO: the number of plane here is hard coded to 3. should this be configurable at a point?
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {

@@ -143,6 +143,8 @@ private:
   uint32_t m_frame_count_limit = 0;
   size_t m_current_tp_count = 0;
   size_t m_current_frame_count = 0;
+  bool m_tp_limit_enabled = false;
+  bool m_frame_limit_enabled = false;
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 
@@ -162,7 +164,6 @@ private:
   std::atomic<uint64_t> m_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
-  std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 };

@@ -162,6 +162,8 @@ private:
   uint32_t m_frame_count_limit = 0;
   size_t m_current_tp_count = 0;
   size_t m_current_frame_count = 0;
+  bool m_tp_limit_enabled = false;
+  bool m_frame_limit_enabled = false;
 
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
