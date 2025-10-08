@@ -65,6 +65,7 @@ daq_add_library(
   daphne/*.cpp
   tde/*.cpp
   crt/*.cpp
+  tpg/*.cpp
   LINK_LIBRARIES ${FDREADOUTLIBS_DEPENDENCIES}
 )
 
@@ -82,6 +83,7 @@ daq_add_application(tde_file_creator tde_file_creator.cxx TEST LINK_LIBRARIES fd
 daq_add_unit_test(DAPHNEStreamSuperChunkTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDTypeAdaptersBuffers_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDReadoutRequestHandlers_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(TPGInternalStateHarvester_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
