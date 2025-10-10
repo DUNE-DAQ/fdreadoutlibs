@@ -67,7 +67,8 @@ void TPGInternalStateHarvester::rebuild_prealloc_caches_()
   // cache the metric names for each processor and accumulate to the corresponding pipeline
   for (const auto& [proc, pipeline_id] : m_processor_references) {
     if (proc) {
-      auto names = proc->get_metric_items(); // copy once
+      // Use the processor's interface method which delegates to the registry
+      auto names = proc->get_requested_internal_state_names();
       if (static_cast<size_t>(pipeline_id) < m_expected_items_per_pipeline.size()) {
         m_expected_items_per_pipeline[pipeline_id] += names.size();
       }
@@ -104,10 +105,14 @@ TPGInternalStateHarvester::harvest_once()
       continue;
     }
 
-    // 1) get the cached metric names; if empty, use fall back to pull directly
-    const auto& metric_names_cached = m_metric_items_per_proc.size() > i
-                                      ? m_metric_items_per_proc[i]
-                                      : proc->get_metric_items();
+    // 1) get the cached metric names; if empty, fall back to pulling directly from processor
+    std::vector<std::string> metric_names_cached;
+    if (m_metric_items_per_proc.size() > i) {
+      metric_names_cached = m_metric_items_per_proc[i];
+    } else {
+      // Fallback: use processor's interface method
+      metric_names_cached = proc->get_requested_internal_state_names();
+    }
 
     // 2) get the current snapshot
     const auto arr = proc->read_internal_states_as_integer_array();

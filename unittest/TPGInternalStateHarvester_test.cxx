@@ -31,7 +31,7 @@ public:
     // Mock implementation - do nothing
   }
 
-  std::vector<std::string> get_metric_items() override {
+  std::vector<std::string> get_requested_internal_state_names() const override {
     return m_metric_names;
   }
 

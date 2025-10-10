@@ -34,6 +34,14 @@ WIBEthFrameProcessor::WIBEthFrameProcessor(std::unique_ptr<datahandlinglibs::Fra
 {
 }
 
+WIBEthFrameProcessor::~WIBEthFrameProcessor()
+{
+  // Ensure state harvester thread is properly stopped
+  if (m_state_harvester) {
+    m_state_harvester->stop_collection_thread();
+  }
+}
+
 void
 WIBEthFrameProcessor::start(const nlohmann::json& args)
 {
@@ -62,16 +70,27 @@ WIBEthFrameProcessor::start(const nlohmann::json& args)
   m_new_hits = 0;
   m_new_tps = 0;
   m_tpg_hits_count.exchange(0);
+  
   inherited::start(args);
 }
 
 void
 WIBEthFrameProcessor::stop(const nlohmann::json& args)
 {
+  // Stop the state harvester collection thread if it exists
+  if (m_state_harvester) {
+    m_state_harvester->stop_collection_thread();
+  }
+  
   inherited::stop(args);
   if (m_post_processing_enabled) {
     // Clears the pipelines and resets with the given configs.
     m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
+    
+    // Restart the state harvester collection thread after reconfiguration
+    if (m_state_harvester && m_tpg_metric_collect_enabled) {
+      m_state_harvester->start_collection_thread();
+    }
   }
 }
 
@@ -140,11 +159,43 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
           m_channel_mask_set.insert(off_channel);
       }
 
-      // Let the TPG generator configure
+      m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_period();
 
+      // Check if metric collection is enabled in the configs
+      m_tpg_metric_collect_enabled = false;
+      for (const auto& name_config : m_tpg_configs) {
+        if (name_config.second.contains("metric_collect_toggle_state") && 
+            name_config.second["metric_collect_toggle_state"] == true) {
+          m_tpg_metric_collect_enabled = true;
+          break;
+        }
+      }
+
+      // Let the TPG generator configure
       m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, types::DUNEWIBEthTypeAdapter::samples_tick_difference);
 
-      auto processsor_references = m_tp_generator->get_all_processor_references_with_pipeline_index();
+      // Only create and configure state harvester if metric collection is enabled
+      if (m_tpg_metric_collect_enabled) {
+        auto processsor_references = m_tp_generator->get_all_processor_references_with_pipeline_index();
+
+        m_state_harvester = std::make_unique<fdreadoutlibs::TPGInternalStateHarvester>();
+
+        const uint8_t channels_per_pipeline = 16;
+        const uint8_t pipelines = static_cast<uint8_t>(m_channel_plane_numbers.size() / channels_per_pipeline);
+        
+        TLOG_DEBUG(TLVL_BOOKKEEPING) << "Configuring state harvester with " << static_cast<int>(channels_per_pipeline) 
+                                      << " channels per pipeline, " << static_cast<int>(pipelines) << " pipelines, " 
+                                      << processsor_references.size() << " processor references";
+        
+        m_state_harvester->update_channel_plane_numbers(m_channel_plane_numbers,
+                                                        channels_per_pipeline, pipelines);
+        m_state_harvester->set_processor_references(processsor_references);
+        
+        // Start the collection thread immediately after configuration
+        m_state_harvester->start_collection_thread();
+        
+        TLOG_DEBUG(TLVL_BOOKKEEPING) << "State harvester configured and started successfully";
+      }
 
       inherited::add_postprocess_task(std::bind(&WIBEthFrameProcessor::find_hits, this, std::placeholders::_1));
     }
@@ -211,6 +262,11 @@ WIBEthFrameProcessor::generate_opmon_data()
        el.second = 0;
      }
      m_t0 = now;
+
+    if (m_tpg_metric_collect_enabled && m_tp_generator) {
+      publish_processor_metric_to_opmon();
+      publish_processor_metric_to_opmon_with_aggregation();
+    }
    }
    
    inherited::generate_opmon_data();
@@ -367,6 +423,12 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
+  
+  // Trigger asynchronous metric collection in background thread
+  if (m_tpg_metric_collect_enabled && m_state_harvester && 
+      m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
+    m_state_harvester->trigger_harvest();
+  }
 
   for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
@@ -403,6 +465,138 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   m_tpg_hits_count += nhits;
   return;
+}
+
+void
+WIBEthFrameProcessor::publish_processor_metric_to_opmon() {
+  if (!m_state_harvester) {
+    return;
+  }
+  
+  // Get latest results from background collection thread
+  auto metrics = m_state_harvester->get_latest_results();
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Publishing processor metrics for " << metrics.size() << " channels";
+  
+  int metrics_published = 0;
+  
+  // Publish per-channel metrics
+  for (const auto& [channel, vec] : metrics) {
+    datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
+    bool has_valid_metrics = false;
+    
+    for (const auto& [name, val] : vec) {
+      if (name == "pedestal") {
+        tpg_proc_info.set_pedestal(val);
+        has_valid_metrics = true;
+      } else if (name == "accum") {
+        tpg_proc_info.set_accum(val);
+        has_valid_metrics = true;
+      }
+    }
+    
+    if (has_valid_metrics) {
+      publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
+      metrics_published++;
+    }
+  }
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Published " << metrics_published << " channel metrics";
+}
+
+std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> 
+WIBEthFrameProcessor::calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics) {
+    // Structure to hold all statistics: plane -> metric -> (mean, min, max, stddev, min_channel_id, max_channel_id)
+    std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> all_stats;
+    
+    // Structure to accumulate statistics: plane -> metric -> (count, mean, M2, min, max, min_channel_id, max_channel_id)
+    std::map<int16_t, std::map<std::string, std::tuple<size_t, double, double, int16_t, int16_t, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>> accumulators;
+    
+    // Single pass through all metrics to collect data using Welford's online algorithm for variance
+    for (const auto& [channel, vec] : metrics) {
+        if (!m_channel_map) continue;
+        
+        int16_t plane = m_channel_map->get_plane_from_offline_channel(channel);
+        
+        for (const auto& [name, val] : vec) {
+            auto& [count, mean, M2, min, max, min_channel_id, max_channel_id] = accumulators[plane][name];
+            
+            count++;
+            
+            if (count == 1 || val < min) {
+                min = val;
+                min_channel_id = channel;
+            }
+            if (count == 1 || val > max) {
+                max = val;
+                max_channel_id = channel;
+            }
+            
+            // Welford's online algorithm for variance calculation
+            if (count == 1) {
+                // First value: initialize mean and M2
+                mean = val;
+                M2 = 0.0;
+            } else {
+                // Update mean and M2 using Welford's algorithm
+                double delta = val - mean;
+                mean += delta / count;
+                double delta2 = val - mean;
+                M2 += delta * delta2;
+            }
+        }
+    }
+    
+    // Calculate final statistics from accumulated data
+    for (const auto& [plane, metric_map] : accumulators) {
+        for (const auto& [metric_name, acc_data] : metric_map) {
+            const auto& [count, mean, M2, min, max, min_channel_id, max_channel_id] = acc_data;
+            
+            if (count == 0) continue;
+            
+            float stddev = 0.0f;
+            
+            // Calculate standard deviation using accumulated M2
+            if (count > 1) {
+                stddev = std::sqrt(M2 / (count - 1));
+            }
+            
+            all_stats[plane][metric_name] = std::make_tuple(static_cast<float>(mean), min, max, stddev, min_channel_id, max_channel_id);
+        }
+    }
+    
+    return all_stats;
+}
+
+void
+WIBEthFrameProcessor::publish_processor_metric_to_opmon_with_aggregation() {
+  if (!m_state_harvester) {
+    return;
+  }
+  
+  // Get latest results from background collection thread
+  auto metrics = m_state_harvester->get_latest_results();
+  
+  // Use optimized single-pass calculation for all metrics across all planes
+  auto all_stats = calculate_all_metric_summaries_across_planes(metrics);
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Publishing aggregated metrics for " << all_stats.size() << " planes";
+  
+  // Publish all calculated statistics
+  for (const auto& [plane, metric_map] : all_stats) {
+    for (const auto& [metric_name, stats] : metric_map) {
+      const auto& [mean, min, max, stddev, min_channel_id, max_channel_id] = stats;
+      
+      datahandlinglibs::opmon::TPGProcessorReducedInfo info;
+      info.set_average(mean);
+      info.set_max(max);
+      info.set_min(min);
+      info.set_standard_dev(stddev);
+      info.set_max_channel_id(max_channel_id);
+      info.set_min_channel_id(min_channel_id);
+      publish(std::move(info), {{"plane", std::to_string(plane)}, {"metric", metric_name}});
+    }
+  }
 }
 
 } // namespace fdreadoutlibs
