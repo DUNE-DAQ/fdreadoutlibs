@@ -120,7 +120,7 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       m_tp_limit_enabled = m_tp_count_limit != 0;
 
       if (!m_frame_limit_enabled && !m_tp_limit_enabled){
-        ers::warning(FrameAndTPCountersDisabled(ERS_HERE));
+        ers::error(FrameAndTPCountersDisabled(ERS_HERE));
       }
  
       // Set the minimum TP samples over threshold.
