@@ -34,7 +34,7 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   FrameAndTPCountersDisabled,
-                  "Both the frame and TP counters are currently disabled in your configuration (TPCRawDataProcessor), as both frame_count_limit and tp_count_limit are set to 0. Please enable at least one of these limits by setting it to a nonzero value to proceed.",
+                  "Both frame_count_limit and tp_count_limit were set to 0 (disabled) in the TPCRawDataProcessor config. TPs will not send.",
                   ) 
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,

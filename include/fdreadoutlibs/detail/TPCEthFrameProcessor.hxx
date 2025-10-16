@@ -151,6 +151,16 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
   // Let the TPG generator configure
   m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, ReadoutTypeAdapter::samples_tick_difference);
 
+  // Set the limits on when to send TPs and check that we can actually send on these limits.
+  m_frame_count_limit = proc_conf->get_frame_count_limit();
+  m_tp_count_limit = proc_conf->get_tp_count_limit();
+  m_frame_limit_enabled = m_frame_count_limit > 0;
+  m_tp_limit_enabled = m_tp_count_limit > 0;
+
+  if (!m_frame_limit_enabled && !m_tp_limit_enabled) {
+    ers::error(FrameAndTPCountersDisabled(ERS_HERE));
+  }
+
   // After it sees the configs, it will set the metric collector enable state
   m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
   m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
@@ -252,6 +262,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_postprocessing()
   m_tpg_configs.clear();
   m_plane_to_tpa_vector_map.clear();
   m_plane_to_tp_sink_map.clear();
+
+  m_frame_limit_enabled = false;
+  m_tp_limit_enabled = false;
+  m_current_tp_count = 0;
+  m_tp_count_limit = 0;
+  m_frame_count_at_last_send = 0;
 
   // OpMon variables
   m_tpg_metric_collect_enabled = false;
@@ -572,8 +588,9 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
   auto wfptr = reinterpret_cast<tpcframeptr>((uint8_t*)fp); // NOLINT
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
-  m_frame_counter.fetch_add(1, std::memory_order_relaxed);
-  if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
+
+  uint64_t current_frame_count = m_frame_counter.fetch_add(1, std::memory_order_relaxed) + 1;
+  if (m_tpg_metric_collect_enabled && current_frame_count % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
   }
 
@@ -588,9 +605,15 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_plane_to_tpa_vector_map[m_channel_plane_map[uint32_t(tp.channel)]].push_back(tpa);
     m_tp_channel_rate_map[uint32_t(tp.channel)]++;
+    m_current_tp_count++;
   }
 
-  if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+  const bool frame_limit_reached = m_frame_limit_enabled && (current_frame_count - m_frame_count_at_last_send >= m_frame_count_limit);
+  const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
+
+  if (frame_limit_reached || tp_limit_reached) {
+    m_current_tp_count = 0;
+    m_frame_count_at_last_send = current_frame_count;
     for (auto& [plane_num, tpa_vector] : m_plane_to_tpa_vector_map) {
       int num_new_tps = tpa_vector.size();
       if (num_new_tps == 0) {

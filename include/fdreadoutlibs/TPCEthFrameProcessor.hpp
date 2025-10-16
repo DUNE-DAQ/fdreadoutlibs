@@ -163,6 +163,14 @@ protected:
   std::unordered_map<unsigned int, std::vector<trigger::TriggerPrimitiveTypeAdapter>> m_plane_to_tpa_vector_map;
   std::unordered_map<unsigned int, std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>>> m_plane_to_tp_sink_map;
 
+  uint32_t m_tp_count_limit = 0;
+  uint32_t m_frame_count_limit = 0;
+  uint32_t m_current_tp_count = 0;
+  uint32_t m_frame_count_at_last_send = 0;
+
+  bool m_tp_limit_enabled = false;
+  bool m_frame_limit_enabled = false;
+
   // TPG: channel variables.
   std::set<unsigned int> m_channel_mask_set;
   std::set<unsigned int> m_plane_numbers_set;
