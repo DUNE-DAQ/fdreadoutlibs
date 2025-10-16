@@ -71,6 +71,8 @@ public:
 
   void conf(const appmodel::DataHandlerModule* conf) override;
 
+  void scrap(const appfwk::DAQModule::CommandData_t& cfg) override;
+
 protected:
   void generate_opmon_data() override;
 
@@ -83,6 +85,16 @@ protected:
   void configure_channel_plane_numbers(const appmodel::TPCRawDataProcessor* proc_conf);
 
   void configure_find_tps(const appmodel::DataHandlerModule* conf, const appmodel::TPCRawDataProcessor* proc_conf);
+
+  void scrap_source_and_geo_ids();
+
+  void scrap_preprocessing();
+
+  void scrap_postprocessing();
+
+  void scrap_channel_plane_numbers();
+
+  void scrap_find_tps();
 
   /**
    * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
@@ -118,6 +130,9 @@ protected:
 
   void find_tps(constframeptr fp);
 
+  bool m_emulator_mode = false;
+  bool m_first_frame = true;
+
   // Timestamp related variables.
   dunedaq::daqdataformats::timestamp_t m_previous_ts = 0;
   dunedaq::daqdataformats::timestamp_t m_current_ts = 0;
@@ -141,21 +156,18 @@ protected:
   std::atomic<int16_t> m_seq_id_min_jump{ 0 };
   std::atomic<int16_t> m_seq_id_max_jump{ 0 };
 
-  bool m_emulator_mode = false;
-
   // TPG related variables.
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
 
-  std::vector<trigger::TriggerPrimitiveTypeAdapter> m_tpa_vectors[3];
-  std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink[3];
+  std::unordered_map<unsigned int, std::vector<trigger::TriggerPrimitiveTypeAdapter>> m_plane_to_tpa_vector_map;
+  std::unordered_map<unsigned int, std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>>> m_plane_to_tp_sink_map;
 
   // TPG: channel variables.
   std::set<unsigned int> m_channel_mask_set;
+  std::set<unsigned int> m_plane_numbers_set;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
   std::unordered_map<trgdataformats::channel_t, unsigned int> m_channel_plane_map;
-
-  bool m_first_frame = true;
 
   // OpMon related variables.
   bool m_tpg_metric_collect_enabled{false};

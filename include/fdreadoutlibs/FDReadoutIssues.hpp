@@ -48,6 +48,11 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   ((daqdataformats::timestamp_t)s_ts_begin) ((uint64_t)channel_begin) ((daqdataformats::timestamp_t)s_ts_end) ((uint64_t)channel_end))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  DetectorPlaneToTPSinkMismatch,
+                  "There are more detector planes " << num_planes << " than available TP sinks " << num_tp_sinks << ".",
+                  ((size_t) num_planes) ((size_t) num_tp_sinks))
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
                   LinkMisconfiguration,
                   "WIB data have crate/slot/link " << wcrate << "/" << wslot << "/" << wlink << " while this readout link is configured for " << crate << "/" << slot << "/" << link,
                   ((uint32_t)wcrate) ((uint32_t)wslot) ((uint32_t)wlink) ((uint32_t)crate) ((uint32_t)slot) ((uint32_t)link))

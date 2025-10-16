@@ -104,6 +104,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_channel_plane_numbers(const 
       m_channel_mask_set.insert(off_channel);
     } else {
       m_channel_plane_map[off_channel] = plane;
+      m_plane_numbers_set.insert(plane);
     }
   }
 }
@@ -112,16 +113,25 @@ template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::DataHandlerModule* conf, const appmodel::TPCRawDataProcessor* proc_conf)
 {
-  // Set the TP sinks
-  size_t idx = 0;
+  // Setting TP sinks.
+  // Configurations currently have the sinks iterate in order, but there may be more sinks than planes.
+  int plane_number = 0;
   for (auto output : conf->get_outputs()) {
     try {
       if (output->get_data_type() == "TriggerPrimitiveVector") {
-         m_tp_sink[idx++] = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
+         if (m_plane_numbers_set.contains(plane_number)) {
+           m_plane_to_tp_sink_map[plane_number] = get_iom_sender<std::vector<trigger::TriggerPrimitiveTypeAdapter>>(output->UID());
+         }
+         plane_number++;
       }
     } catch (const ers::Issue& excpt) {
       ers::error(datahandlinglibs::ResourceQueueError(ERS_HERE, "tp", "DefaultRequestHandlerModel", excpt));
     }
+  }
+
+  // We do need a coverage for all planes.
+  if (m_plane_numbers_set.size() > m_plane_to_tp_sink_map.size()) {
+      ers::error(DetectorPlaneToTPSinkMismatch(ERS_HERE, m_plane_numbers_set.size(), m_plane_to_tp_sink_map.size()));
   }
 
   m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
@@ -181,6 +191,93 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::conf(const appmodel::DataHandlerModule
 
   inherited::conf(conf);
 }
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_source_and_geo_ids()
+{
+  m_sourceid = daqdataformats::SourceID();
+
+  m_det_id = 0;
+  m_crate_id = 0;
+  m_slot_id = 0;
+  m_stream_id = 0;
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_preprocessing()
+{
+  m_emulator_mode = false;
+  m_first_frame = true;
+
+  // Timestamps.
+  m_previous_ts = 0;
+  m_current_ts = 0;
+
+  m_pattern_generator_previous_ts = 0;
+  m_pattern_generator_current_ts = 0;
+
+  m_first_ts_missmatch = true;
+  m_ts_problem_reported = false;
+  m_ts_error_state = false;
+  m_ts_error_ctr = 0;
+
+  // Sequence ID.
+  m_previous_seq_id = 0;
+  m_current_seq_id = 0;
+
+  m_first_seq_id_mismatch = true;
+  m_seq_id_problem_reported = false;
+  m_seq_id_error_state = false;
+  m_seq_id_error_ctr = 0;
+  m_seq_id_min_jump = 0;
+  m_seq_id_max_jump = 0;
+
+  // The preprocessing tasks scrap is handled by inherited::scrap().
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_postprocessing()
+{
+  // Channel-plane variables
+  m_channel_mask_set.clear();
+  m_plane_numbers_set.clear();
+  m_channel_plane_numbers.clear();
+  m_channel_plane_map.clear();
+
+  // TP variables
+  m_tp_generator.reset(new tpglibs::TPGenerator());
+  m_tpg_configs.clear();
+  m_plane_to_tpa_vector_map.clear();
+  m_plane_to_tp_sink_map.clear();
+
+  // OpMon variables
+  m_tpg_metric_collect_enabled = false;
+  m_metric_collect_opmon_period = 128;
+  m_tp_channel_rate_map.clear();
+  m_num_new_tps.exchange(0);
+  m_tps_suppressed_too_long.exchange(0);
+  m_tps_send_failed.exchange(0);
+  m_frame_counter.exchange(0);
+  m_t0 = std::chrono::high_resolution_clock::now();
+}
+
+template <class ReadoutTypeAdapter>
+void
+TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap(const appfwk::DAQModule::CommandData_t& cfg)
+{
+  scrap_source_and_geo_ids();
+  scrap_preprocessing();
+
+  if (this->m_post_processing_enabled) {
+    scrap_postprocessing();
+  }
+
+  inherited::scrap(cfg);
+}
+
 
 template <class ReadoutTypeAdapter>
 void
@@ -370,6 +467,15 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::sequence_check(frameptr fp)
   auto wfptr = reinterpret_cast<tpcframeptr>(fp); // NOLINT
   m_current_seq_id = wfptr->daq_header.seq_id;
 
+  // Check that the system is properly configured from the first frame.
+  if (m_first_frame) [[unlikely]] {
+    if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
+    }
+
+    m_first_frame = false;
+  }
+
   // Check sequence id
   // Calculate the next sequence id (12 bits)
   uint16_t expected_seq_id = (m_previous_seq_id + fp->get_num_frames()) & 0xfff;
@@ -465,15 +571,6 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
     return;
   auto wfptr = reinterpret_cast<tpcframeptr>((uint8_t*)fp); // NOLINT
 
-  // Check that the system is properly configured from the first frame.
-  if (m_first_frame) {
-    if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
-    }
-
-    m_first_frame = false;
-  }
-
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
@@ -489,22 +586,22 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
     tpa.tp = tp;
 
     tpa.tp.detid = m_det_id;  // Last missing piece.
-    m_tpa_vectors[m_channel_plane_map[uint32_t(tp.channel)]].push_back(tpa);
+    m_plane_to_tpa_vector_map[m_channel_plane_map[uint32_t(tp.channel)]].push_back(tpa);
     m_tp_channel_rate_map[uint32_t(tp.channel)]++;
   }
 
   if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
-    for (int i = 0; i < 3; i++) {
-      int num_new_tps = m_tpa_vectors[i].size();
+    for (auto& [plane_num, tpa_vector] : m_plane_to_tpa_vector_map) {
+      int num_new_tps = tpa_vector.size();
       if (num_new_tps == 0) {
         continue;
       }
-      const auto s_ts_begin = m_tpa_vectors[i].front().tp.time_start;
-      const auto channel_begin = m_tpa_vectors[i].front().tp.channel;
-      const auto s_ts_end = m_tpa_vectors[i].back().tp.time_start;
-      const auto channel_end = m_tpa_vectors[i].back().tp.channel;
-      if (!m_tp_sink[i]->try_send(std::move(m_tpa_vectors[i]), iomanager::Sender::s_no_block)) {
-        ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
+      const auto ts_begin = tpa_vector.front().tp.time_start;
+      const auto channel_begin = tpa_vector.front().tp.channel;
+      const auto ts_end = tpa_vector.back().tp.time_start;
+      const auto channel_end = tpa_vector.back().tp.channel;
+      if (!m_plane_to_tp_sink_map[plane_num]->try_send(std::move(tpa_vector), iomanager::Sender::s_no_block)) {
+        ers::warning(FailedToSendTPVector(ERS_HERE, ts_begin, channel_begin, ts_end, channel_end));
         m_tps_send_failed++;
       } else {
         m_num_new_tps += num_new_tps;
