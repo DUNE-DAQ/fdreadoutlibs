@@ -113,6 +113,16 @@ TDEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
+      // Set the number of frames and TPs above which TPs are sent to sink.
+      m_frame_count_limit = proc_conf->get_frame_count_limit();
+      m_tp_count_limit = proc_conf->get_tp_count_limit();
+      m_frame_limit_enabled = m_frame_count_limit != 0;
+      m_tp_limit_enabled = m_tp_count_limit != 0;
+
+      if (!m_frame_limit_enabled && !m_tp_limit_enabled){
+        ers::error(FrameAndTPCountersDisabled(ERS_HERE));
+      }
+ 
       // Set the minimum TP samples over threshold.
       auto conf_sot_minima = proc_conf->get_sot_minima();
       std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
@@ -358,12 +368,12 @@ TDEEthFrameProcessor::find_hits(constframeptr fp)
   }
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
-  m_frame_counter++;
-
+  m_current_frame_count++;
   for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
       continue;
+    m_current_tp_count++;
     // Need to move into a type adapter.
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
@@ -373,7 +383,10 @@ TDEEthFrameProcessor::find_hits(constframeptr fp)
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  if (m_frame_counter >= 100) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
+  const bool frame_limit_reached = m_frame_limit_enabled && (m_current_frame_count >= m_frame_count_limit);
+  const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
+
+  if (frame_limit_reached || tp_limit_reached){
     for (int i = 0; i < 3; i++) {
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
@@ -391,7 +404,8 @@ TDEEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
-    m_frame_counter = 0;
+    m_current_tp_count=0;
+    m_current_frame_count = 0;
   }
 
   m_tpg_hits_count += nhits;

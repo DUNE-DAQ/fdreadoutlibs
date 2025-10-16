@@ -134,7 +134,6 @@ protected:
   void find_hits(constframeptr fp);
   //void find_hits(constframeptr fp);
 
-
 private:
   bool m_first_hit = true;
   bool m_tpg_metric_collect_enabled{false};
@@ -157,6 +156,15 @@ private:
   uint32_t m_slot_id;  // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
   bool m_emulator_mode = false;
+
+
+  uint32_t m_tp_count_limit = 0;
+  uint32_t m_frame_count_limit = 0;
+  size_t m_current_tp_count = 0;
+  size_t m_current_frame_count = 0;
+  bool m_tp_limit_enabled = false;
+  bool m_frame_limit_enabled = false;
+
 
   std::shared_ptr<detchannelmaps::TPCChannelMap> m_channel_map;
 

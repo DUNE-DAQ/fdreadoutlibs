@@ -117,6 +117,16 @@ WIBEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
     if (proc_conf != nullptr && m_post_processing_enabled) {
       m_tp_generator = std::make_unique<tpglibs::TPGenerator>();
 
+      // Set the number of frames and TPs above which TPs are sent to sink.
+      m_frame_count_limit = proc_conf->get_frame_count_limit();
+      m_tp_count_limit = proc_conf->get_tp_count_limit();
+      m_frame_limit_enabled = m_frame_count_limit != 0;
+      m_tp_limit_enabled = m_tp_count_limit != 0;
+
+      if (!m_frame_limit_enabled && !m_tp_limit_enabled){
+        ers::error(FrameAndTPCountersDisabled(ERS_HERE));
+      }
+    
       // Set the minimum TP samples over threshold.
       auto conf_sot_minima = proc_conf->get_sot_minima();
       std::vector<uint16_t> sot_minima{conf_sot_minima->get_sot_minimum_plane0(),
@@ -481,6 +491,7 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
 
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
   m_frame_counter.fetch_add(1, std::memory_order_relaxed);
+  m_current_frame_count++;
   if (m_tpg_metric_collect_enabled && m_frame_counter.load(std::memory_order_relaxed) % m_metric_collect_opmon_period == 0) {
     m_tp_generator->signal_metric_collection();
   }
@@ -489,21 +500,24 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), tp.channel))
       continue;
+    m_current_tp_count++;
     // Need to move into a type adapter.
     trigger::TriggerPrimitiveTypeAdapter tpa;
     tpa.tp = tp;
-
     tpa.tp.detid = m_det_id;  // Last missing piece.
     m_tpa_vectors[m_channel_map->get_plane_from_offline_channel(tp.channel)].push_back(tpa);
     m_tp_channel_rate_map[tp.channel]++;
   }
 
-  if (m_frame_counter.load(std::memory_order_relaxed) % 100 == 0) { // FIXME: Hard-coding 100 for now. This should be defined elsewhere or configurable.
-    for (int i = 0; i < 3; i++) {
+  const bool frame_limit_reached = m_frame_limit_enabled && (m_current_frame_count >= m_frame_count_limit);
+  const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
+
+  if (frame_limit_reached || tp_limit_reached){
+    for (int i = 0; i < 3; i++) {// TO DO: the number of plane here is hard coded to 3. should this be configurable at a point?
       int new_tps = m_tpa_vectors[i].size();
       if (new_tps == 0) {
         continue;
-      }
+      } 
       const auto s_ts_begin = m_tpa_vectors[i].front().tp.time_start;
       const auto channel_begin = m_tpa_vectors[i].front().tp.channel;
       const auto s_ts_end = m_tpa_vectors[i].back().tp.time_start;
@@ -516,8 +530,9 @@ WIBEthFrameProcessor::find_hits(constframeptr fp)
         nhits += new_tps;
       }
     }
+    m_current_tp_count = 0;
+    m_current_frame_count = 0;
   }
-
   m_tpg_hits_count += nhits;
   return;
 }
