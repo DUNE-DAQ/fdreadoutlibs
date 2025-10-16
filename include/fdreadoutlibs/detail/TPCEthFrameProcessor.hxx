@@ -158,7 +158,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
   m_tp_limit_enabled = m_tp_count_limit > 0;
 
   if (!m_frame_limit_enabled && !m_tp_limit_enabled) {
-    ers::error(FrameAndTPCountersDisabled(ERS_HERE));
+    throw FrameAndTPCountersDisabled(ERS_HERE);
   }
 
   // After it sees the configs, it will set the metric collector enable state
