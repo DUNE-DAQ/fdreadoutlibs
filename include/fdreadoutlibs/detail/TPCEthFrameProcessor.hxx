@@ -611,7 +611,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
   const bool frame_limit_reached = m_frame_limit_enabled && (current_frame_count - m_frame_count_at_last_send >= m_frame_count_limit);
   const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
 
-  if (frame_limit_reached || tp_limit_reached) {
+  if (frame_limit_reached || tp_limit_reached) [[unlikely]] {
     m_current_tp_count = 0;
     m_frame_count_at_last_send = current_frame_count;
     for (auto& [plane_num, tpa_vector] : m_plane_to_tpa_vector_map) {
