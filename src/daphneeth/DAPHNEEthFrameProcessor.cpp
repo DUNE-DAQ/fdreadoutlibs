@@ -96,9 +96,7 @@ void DAPHNEEthFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args
 
   // Reset stats
   m_t0 = std::chrono::high_resolution_clock::now();
-  m_new_hits = 0;
-  m_new_tps = 0;
-  //m_tpg_hits_count.exchange(0);
+  m_num_new_tps.exchange(0);
 
   inherited::start(args);
 }
@@ -157,7 +155,6 @@ DAPHNEEthFrameProcessor::frame_error_check(frameptr /*fp*/)
 void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
 {
 
-  //  size_t nhits = 0;
   if (!fp || fp==nullptr){
     return;
   }
@@ -192,8 +189,8 @@ void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
     }
   }
 
-  int new_tps = ttpp.size();
-  if (new_tps > 0) {
+  int num_new_tps = ttpp.size();
+  if (num_new_tps > 0) {
 
     const auto s_ts_begin = ttpp.front().tp.time_start;
     const auto channel_begin = ttpp.front().tp.channel;
@@ -202,10 +199,9 @@ void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
     
     if (!m_tp_sink->try_send(std::move(ttpp), iomanager::Sender::s_no_block)) {
       ers::warning(FailedToSendTPVector(ERS_HERE, s_ts_begin, channel_begin, s_ts_end, channel_end));
-      m_tps_send_failed += new_tps;
+      m_tps_send_failed += num_new_tps;
     } else {
-      m_new_tps += new_tps;
-      m_new_hits += new_tps;
+      m_num_new_tps += num_new_tps;
     }
   }
 */
@@ -218,20 +214,19 @@ DAPHNEEthFrameProcessor::generate_opmon_data() {
   //right now, just fill some basic tp info...
   if (m_post_processing_enabled) {
     auto now = std::chrono::high_resolution_clock::now();
-    int new_hits = m_new_hits.exchange(0);
-    int new_tps = m_new_tps.exchange(0);
-    int new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
-    int new_tps_send_failed = m_tps_send_failed.exchange(0);
+    int num_new_tps = m_num_new_tps.exchange(0);
+    int num_new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
+    int num_new_tps_send_failed = m_tps_send_failed.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Hit rate: " << std::to_string(new_hits / seconds / 1000.) << " [kHz]";
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new hits: " << new_hits << " new TPs: " << new_tps;
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "TP rate: " << std::to_string(num_new_tps / seconds / 1000.) << " [kHz]";
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new TPs: " << num_new_tps;
     
     datahandlinglibs::opmon::HitFindingInfo tp_info;
-    tp_info.set_rate_tp_hits(new_hits / seconds / 1000.);
+    tp_info.set_rate_tp_hits(num_new_tps / seconds / 1000.);
     
-    tp_info.set_num_tps_sent(new_tps);
-    tp_info.set_num_tps_suppressed_too_long(new_tps_suppressed_too_long);
-    tp_info.set_num_tps_send_failed(new_tps_send_failed);
+    tp_info.set_num_tps_sent(num_new_tps);
+    tp_info.set_num_tps_suppressed_too_long(num_new_tps_suppressed_too_long);
+    tp_info.set_num_tps_send_failed(num_new_tps_send_failed);
     
     publish(std::move(tp_info));
 
