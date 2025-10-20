@@ -106,4 +106,3 @@ static_assert(sizeof(struct DAPHNESuperChunkTypeAdapter) == kDAPHNESuperChunkSiz
 } // namespace dunedaq
 
 #endif /* FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNESUPERCHUNKTYPEADAPTER_ */
-

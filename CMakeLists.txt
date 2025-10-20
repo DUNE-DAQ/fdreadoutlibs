@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(fdreadoutlibs VERSION 2.6.0)
+project(fdreadoutlibs VERSION 2.6.2)
 
 find_package(daq-cmake REQUIRED)
 
@@ -63,6 +63,7 @@ daq_add_library(
   *.cpp
   wibeth/*.cpp
   daphne/*.cpp
+  daphneeth/*.cpp
   tde/*.cpp
   crt/*.cpp
   tpg/*.cpp

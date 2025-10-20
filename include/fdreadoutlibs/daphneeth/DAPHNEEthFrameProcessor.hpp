@@ -1,12 +1,12 @@
 /**
- * @file DAPHNEFrameProcessor.hpp DAPHNE specific Task based raw processor
+ * @file DAPHNEEthFrameProcessor.hpp DAPHNE specific Task based raw processor
  *
  * This is part of the DUNE DAQ , copyright 2020.
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEFRAMEPROCESSOR_HPP_
-#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEFRAMEPROCESSOR_HPP_
+#ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
+#define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
 
 #include "logging/Logging.hpp"
 
@@ -21,9 +21,9 @@
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
 
-#include "fddetdataformats/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEEthFrame.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
-#include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
 
 #include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
@@ -45,22 +45,20 @@ using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 namespace dunedaq {  
 namespace fdreadoutlibs {
 
-class DAPHNEFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>
+class DAPHNEEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEEthTypeAdapter>
 {
 
 public:
-  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>;
-  using frameptr = types::DAPHNESuperChunkTypeAdapter*;
-  using daphneframeptr = dunedaq::fddetdataformats::DAPHNEFrame*;
+  using inherited = datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEEthTypeAdapter>;
+  using frameptr = types::DAPHNEEthTypeAdapter*;
+  using daphneframeptr = dunedaq::fddetdataformats::DAPHNEEthFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
-  using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
+  using constframeptr = const types::DAPHNEEthTypeAdapter*;
 
   // Constructor
-  explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
-    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
+  explicit DAPHNEEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEEthTypeAdapter>(error_registry, post_processing_enabled)
   {}
-
- 
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
@@ -90,7 +88,6 @@ protected:
   std::atomic<int> m_ts_error_ctr{ 0 };
 
   void extract_tps( constframeptr fp);
-  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
   
 private:
 
@@ -123,4 +120,5 @@ private:
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
-#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNE_DAPHNEFRAMEPROCESSOR_HPP_
+#endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
+

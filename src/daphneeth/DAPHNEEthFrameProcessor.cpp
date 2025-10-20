@@ -1,5 +1,5 @@
 /**
- * @file DAPHNEFrameProcessor.hpp DAPHNE specific Task based raw processor
+ * @file DAPHNEEthFrameProcessor.hpp DAPHNE specific Task based raw processor
  * implementation
  *
  * This is part of the DUNE DAQ , copyright 2020.
@@ -7,9 +7,9 @@
  * received with this code.
  */
 
-#include "fddetdataformats/DAPHNEFrame.hpp"
+#include "fddetdataformats/DAPHNEEthFrame.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
-#include "fdreadoutlibs/daphne/DAPHNEFrameProcessor.hpp"
+#include "fdreadoutlibs/daphneeth/DAPHNEEthFrameProcessor.hpp"
 
 #include "confmodel/GeoId.hpp"
 
@@ -28,7 +28,7 @@ namespace dunedaq {
 namespace fdreadoutlibs {
 
 void 
-DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
+DAPHNEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   TLOG() << "Looking for TP sink...";
 
@@ -46,7 +46,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   }
 
   TLOG() << "Registering processing tasks...";
-  inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::timestamp_check, this, std::placeholders::_1));
+  inherited::add_preprocess_task(std::bind(&DAPHNEEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
 
   auto dp = conf->get_module_configuration()->get_data_processor();
   if (dp == nullptr) {
@@ -77,7 +77,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       
       if (m_post_processing_enabled) { 
         // Extract TPs back as a pre-processing task, due to LatencyBuffer post-proc issues using SkipList.
-        inherited::add_preprocess_task(std::bind(&DAPHNEFrameProcessor::extract_tps, this, std::placeholders::_1));
+        inherited::add_preprocess_task(std::bind(&DAPHNEEthFrameProcessor::extract_tps, this, std::placeholders::_1));
       }
     }
   }
@@ -86,7 +86,7 @@ DAPHNEFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   inherited::conf(conf);
 }
 
-void DAPHNEFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
+void DAPHNEEthFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
 {
   // Reset timestamp check
   m_previous_ts = 0;
@@ -101,7 +101,7 @@ void DAPHNEFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args)
   inherited::start(args);
 }
 void
-DAPHNEFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
+DAPHNEEthFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
 {
   inherited::stop(args);
 }
@@ -109,28 +109,12 @@ DAPHNEFrameProcessor::stop(const appfwk::DAQModule::CommandData_t& args)
  * Pipeline Stage 1.: Check proper timestamp increments in DAPHNE frame
  * */
 void 
-DAPHNEFrameProcessor::timestamp_check(frameptr fp)
+DAPHNEEthFrameProcessor::timestamp_check(frameptr fp)
 {
-  // Let Source Emulator deal with this
+
 /*
-  // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
-    // RS warning : not fixed rate!
-    if (m_first_ts_fake) {
-      fp->fake_timestamps(m_previous_ts, 16);
-      m_first_ts_fake = false;
-    } else {
-      fp->fake_timestamps(m_previous_ts + 192, 16);
-    }
-  }*/
-
-  // FIXME: This is a temporary fix to avoid frames with unphysical timestamp set to the far future to interfere with 
-  // the operations of the LB.
-  // These frames are effectively "corrupted" or "invalid frames" and hould be handled as such.
-
-
   for (size_t i=0; i<types::kDAPHNENumFrames; i++){
-    auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
+    auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEEthFrame*>(fp);
 
     if(df_ptr[i].get_timestamp() > 0xFFFFFFFFFFFF0000 || df_ptr[i].get_timestamp() < 0xFFFF){
       ers::warning(PDSUnphysicalFrameTimestamp(ERS_HERE, df_ptr[i].get_timestamp(), df_ptr[i].get_channel(), i));
@@ -138,6 +122,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
       df_ptr[i].daq_header.timestamp_1 = df_ptr[i].daq_header.timestamp_2 = 0;
     }
   }
+*/
 
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
@@ -161,27 +146,27 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
  * Pipeline Stage 2.: Check DAPHNE headers for error flags
  * */
 void 
-DAPHNEFrameProcessor::frame_error_check(frameptr /*fp*/)
+DAPHNEEthFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields
 }
 
 
-void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
+void DAPHNEEthFrameProcessor::extract_tps(constframeptr fp)
 {
 
   if (!fp || fp==nullptr){
     return;
   }
     
-
+/*
   auto nonconstframeptr = const_cast<frameptr>(fp);
-  auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
+  auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEEthFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
 
   for (size_t i=0; i<types::kDAPHNENumFrames; i++)
   {
-    for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
+    for(size_t j=0; j<fddetdataformats::DAPHNEEthFrame::PeakDescriptorData::max_peaks;j++)
     {
       if(df_ptr[i].peaks_data.is_found(j))
       { 
@@ -219,37 +204,19 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
       m_num_new_tps += num_new_tps;
     }
   }
-
+*/
   return;
 }
 
-dunedaq::trgdataformats::TriggerPrimitive 
-DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, int i)
-{
-  dunedaq::trgdataformats::TriggerPrimitive tp;
-  // TODO: add check on peak presence
-  tp.time_start = frame.get_timestamp()+frame.peaks_data.get_sample_start(i);
-  tp.samples_to_peak = frame.peaks_data.get_sample_max(i);
-  tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
-  // FIXME : hard-coded channel map
-  // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(frame.daq_header.det_id, frame.daq_header.crate_id, frame.daq_header.slot_id, frame.daq_header.link_id, frame.get_channel());
-  tp.adc_integral = frame.peaks_data.get_adc_integral(i);
-  tp.adc_peak = frame.peaks_data.get_adc_max(i);
-  tp.detid = dunedaq::trgdataformats::INVALID_DETID;
-  return tp;
-}
-
-
 void
-DAPHNEFrameProcessor::generate_opmon_data() {
+DAPHNEEthFrameProcessor::generate_opmon_data() {
 
   //right now, just fill some basic tp info...
   if (m_post_processing_enabled) {
     auto now = std::chrono::high_resolution_clock::now();
     int num_new_tps = m_num_new_tps.exchange(0);
-    int new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
-    int new_tps_send_failed = m_tps_send_failed.exchange(0);
+    int num_new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
+    int num_new_tps_send_failed = m_tps_send_failed.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "TP rate: " << std::to_string(num_new_tps / seconds / 1000.) << " [kHz]";
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "Total new TPs: " << num_new_tps;
@@ -258,8 +225,8 @@ DAPHNEFrameProcessor::generate_opmon_data() {
     tp_info.set_rate_tp_hits(num_new_tps / seconds / 1000.);
     
     tp_info.set_num_tps_sent(num_new_tps);
-    tp_info.set_num_tps_suppressed_too_long(new_tps_suppressed_too_long);
-    tp_info.set_num_tps_send_failed(new_tps_send_failed);
+    tp_info.set_num_tps_suppressed_too_long(num_new_tps_suppressed_too_long);
+    tp_info.set_num_tps_send_failed(num_new_tps_send_failed);
     
     publish(std::move(tp_info));
 
