@@ -34,6 +34,7 @@
 #include "tpglibs/TPGenerator.hpp"
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "trgdataformats/Types.hpp"
+#include "fdreadoutlibs/tpg/TPGInternalStateHarvester.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -158,6 +159,7 @@ protected:
 
   // TPG related variables.
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
+  std::unique_ptr<fdreadoutlibs::TPGInternalStateHarvester> m_state_harvester;
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
 
   std::unordered_map<unsigned int, std::vector<trigger::TriggerPrimitiveTypeAdapter>> m_plane_to_tpa_vector_map;

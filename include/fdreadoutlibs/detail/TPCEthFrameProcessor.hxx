@@ -40,20 +40,26 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::start(const appfwk::DAQModule::Command
   // Reset stats
   m_t0 = std::chrono::high_resolution_clock::now();
   m_num_new_tps.exchange(0);
+
+      
+  // Start the state harvester collection thread if enabled
+  if (m_state_harvester && m_tpg_metric_collect_enabled) {
+    m_state_harvester->start_collection_thread();
+  }
   inherited::start(args);
 }
 
 template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::stop(const appfwk::DAQModule::CommandData_t& args)
-{
+{ 
   inherited::stop(args);
   if (this->m_post_processing_enabled) {
-    if (m_tpg_metric_collect_enabled) {
-      m_tp_generator->free_metric_collector();
+    // Stop the state harvester collection thread if it exists
+    if (m_state_harvester) {
+      m_state_harvester->stop_collection_thread();
     }
     // Clears the pipelines and resets with the given configs.
-    m_tp_generator->set_metric_collector_enable_state(m_tpg_metric_collect_enabled);
     m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, ReadoutTypeAdapter::samples_tick_difference);
   }
 }
@@ -161,9 +167,40 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
     throw FrameAndTPCountersDisabled(ERS_HERE);
   }
 
-  // After it sees the configs, it will set the metric collector enable state
-  m_tpg_metric_collect_enabled = m_tp_generator->get_metric_collector_enable_state();
-  m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_rate();
+  m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_period();
+
+  // Check if metric collection is enabled in the configs
+  m_tpg_metric_collect_enabled = false;
+  for (const auto& name_config : m_tpg_configs) {
+    if (name_config.second.contains("metric_collect_toggle_state") && 
+        name_config.second["metric_collect_toggle_state"] == true) {
+      m_tpg_metric_collect_enabled = true;
+      break;
+    }
+  }
+
+  // Only create and configure state harvester if metric collection is enabled
+  if (m_tpg_metric_collect_enabled) {
+    auto processsor_references = m_tp_generator->get_all_processor_references_with_pipeline_index();
+
+    m_state_harvester = std::make_unique<fdreadoutlibs::TPGInternalStateHarvester>();
+
+    const uint8_t channels_per_pipeline = 16;
+    const uint8_t pipelines = static_cast<uint8_t>(m_channel_plane_numbers.size() / channels_per_pipeline);
+    
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Configuring state harvester with " << static_cast<int>(channels_per_pipeline) 
+                                  << " channels per pipeline, " << static_cast<int>(pipelines) << " pipelines, " 
+                                  << processsor_references.size() << " processor references";
+    
+    m_state_harvester->update_channel_plane_numbers(m_channel_plane_numbers,
+                                                    channels_per_pipeline, pipelines);
+    m_state_harvester->set_processor_references(processsor_references);
+    
+    // Start the collection thread immediately after configuration
+    m_state_harvester->start_collection_thread();
+    
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "State harvester configured and started successfully";
+  }
 
   inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps, this, std::placeholders::_1));
 }
@@ -355,10 +392,10 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
      }
      m_t0 = now;
 
-     if (m_tpg_metric_collect_enabled && m_tp_generator) {
-       publish_processor_metric_to_opmon();
-       publish_processor_metric_to_opmon_with_aggregation();
-     }
+    if (m_tpg_metric_collect_enabled && m_state_harvester) {
+      publish_processor_metric_to_opmon();
+      publish_processor_metric_to_opmon_with_aggregation();
+    }
    }
 
    inherited::generate_opmon_data();
@@ -367,18 +404,39 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
 template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::publish_processor_metric_to_opmon() {
-  auto metrics = m_tp_generator->get_processor_metrics();
+  if (!m_state_harvester) {
+    return;
+  }
+  
+  // Get latest results from background collection thread
+  auto metrics = m_state_harvester->get_latest_results();
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Publishing processor metrics for " << metrics.size() << " channels";
+  
+  int metrics_published = 0;
+  
+  // Publish per-channel metrics
   for (const auto& [channel, vec] : metrics) {
     datahandlinglibs::opmon::TPGProcessorInfo tpg_proc_info;
+    bool has_valid_metrics = false;
+    
     for (const auto& [name, val] : vec) {
-      if (name == "m_pedestal") {
+      if (name == "pedestal") {
         tpg_proc_info.set_pedestal(val);
-      } else if (name == "m_accum") {
+        has_valid_metrics = true;
+      } else if (name == "accum") {
         tpg_proc_info.set_accum(val);
+        has_valid_metrics = true;
       }
     }
-    this->publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
+    
+    if (has_valid_metrics) {
+      this->publish(std::move(tpg_proc_info), {{"channel", std::to_string(channel)}});
+      metrics_published++;
+    }
   }
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Published " << metrics_published << " channel metrics";
 }
 
 template <class ReadoutTypeAdapter>
@@ -449,16 +507,23 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::calculate_all_metric_summaries_across_
 template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::publish_processor_metric_to_opmon_with_aggregation() {
-  auto metrics = m_tp_generator->get_processor_metrics();
-
+  if (!m_state_harvester) {
+    return;
+  }
+  
+  // Get latest results from background collection thread
+  auto metrics = m_state_harvester->get_latest_results();
+  
   // Use optimized single-pass calculation for all metrics across all planes
   auto all_stats = calculate_all_metric_summaries_across_planes(metrics);
-
+  
+  TLOG_DEBUG(TLVL_BOOKKEEPING) << "Publishing aggregated metrics for " << all_stats.size() << " planes";
+  
   // Publish all calculated statistics
   for (const auto& [plane, metric_map] : all_stats) {
     for (const auto& [metric_name, stats] : metric_map) {
       const auto& [mean, min, max, stddev, min_channel_id, max_channel_id] = stats;
-
+      
       datahandlinglibs::opmon::TPGProcessorReducedInfo info;
       info.set_average(mean);
       info.set_max(max);
@@ -590,8 +655,11 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
   std::vector<trgdataformats::TriggerPrimitive> tps = (*m_tp_generator)(wfptr);
 
   uint64_t current_frame_count = m_frame_counter.fetch_add(1, std::memory_order_relaxed) + 1;
-  if (m_tpg_metric_collect_enabled && current_frame_count % m_metric_collect_opmon_period == 0) {
-    m_tp_generator->signal_metric_collection();
+  
+  // Trigger asynchronous metric collection in background thread
+  if (m_tpg_metric_collect_enabled && m_state_harvester && 
+      current_frame_count % m_metric_collect_opmon_period == 0) {
+    m_state_harvester->trigger_harvest();
   }
 
   for (const auto& tp : tps) {
