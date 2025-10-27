@@ -9,6 +9,7 @@
 #define BOOST_TEST_MODULE FDReadoutRequestHandlers_test // NOLINT
 
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthStreamTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
@@ -56,7 +57,19 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEStreamSuperChunk)
     dunedaq::datahandlinglibs::BinarySearchQueueModel,
     dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
 }
+BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStreamSuperChunk)
+{
+  dunedaq::datahandlinglibs::test::test_request_model<
+    dunedaq::datahandlinglibs::FixedRateQueueModel,
+    dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
+}
 
+BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEEthStream)
+{
+  dunedaq::datahandlinglibs::test::test_request_model<
+    dunedaq::datahandlinglibs::BinarySearchQueueModel,
+    dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
+}
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNESuperChunk)
 {
   dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
