@@ -295,7 +295,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_postprocessing()
   m_channel_plane_map.clear();
 
   // TP variables
-  m_tp_generator.reset(new tpglibs::TPGenerator());
+  m_tp_generator->reset();
   m_tpg_configs.clear();
   m_plane_to_tpa_vector_map.clear();
   m_plane_to_tp_sink_map.clear();
