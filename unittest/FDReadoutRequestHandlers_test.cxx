@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEStreamSuperChunk)
     dunedaq::datahandlinglibs::BinarySearchQueueModel,
     dunedaq::fdreadoutlibs::types::DAPHNEStreamSuperChunkTypeAdapter>();
 }
-BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStreamSuperChunk)
+BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStream)
 {
   dunedaq::datahandlinglibs::test::test_request_model<
     dunedaq::datahandlinglibs::FixedRateQueueModel,
