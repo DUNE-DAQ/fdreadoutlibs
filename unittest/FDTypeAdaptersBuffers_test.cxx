@@ -9,6 +9,7 @@
 #define BOOST_TEST_MODULE FDTypeAdaptersBuffers_test // NOLINT
 
 #include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthStreamTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
@@ -56,7 +57,11 @@ BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNEEth)
   dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
                                                     dunedaq::fdreadoutlibs::types::DAPHNEEthTypeAdapter>();
 }
-BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)
+BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStream)
+{
+  dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,
+                                                    dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
+}BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)
 {
   dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,
                                                     dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
