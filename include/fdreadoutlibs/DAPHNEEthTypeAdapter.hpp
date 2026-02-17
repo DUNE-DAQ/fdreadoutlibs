@@ -66,7 +66,7 @@ struct DAPHNEEthTypeAdapter
     // Set error bits in header
   }
 
-  void fake_adc_pattern(int /*channel*/) {
+  void fake_adc_pattern(int /*channel*/, int /*time_sample*/ = 0) {
   }
 
   FrameType* begin()

@@ -57,7 +57,7 @@ namespace dunedaq::fdreadoutlibs::types {
     void fake_geoid(uint16_t /*crate_id*/, uint16_t /*slot_id*/, uint16_t /*link_id*/) {
     }
 
-    void fake_adc_pattern(int /*channel*/) {
+    void fake_adc_pattern(int /*channel*/, int /*time_sample*/ = 0) {
     }
 
 

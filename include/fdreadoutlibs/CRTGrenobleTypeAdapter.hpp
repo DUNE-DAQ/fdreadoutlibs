@@ -53,8 +53,9 @@ struct CRTGrenobleTypeAdapter
       df->daq_header.crate_id = crate_id;
       }
 
-  void fake_adc_pattern(int channel) {
+  void fake_adc_pattern(int channel, int time_sample = 0) {
     auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
+    // CRT frames don't use time samples in the same way as TPC, only placeholder
     frame->set_adc(channel,0xbeef);
   }
 

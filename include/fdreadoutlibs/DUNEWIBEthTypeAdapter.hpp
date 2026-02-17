@@ -60,11 +60,11 @@ struct DUNEWIBEthTypeAdapter
       }
   }
 
-  void fake_adc_pattern(int channel) {
+  void fake_adc_pattern(int channel, int time_sample = 0) {
     auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
-    // Set the ADC to the uint16 maximum value 
-    // AAA: setting only the first time sample
-    frame->set_adc(channel, 0, 16383);
+    // Set the ADC to the uint16 maximum value
+    // Support multiple time samples
+    frame->set_adc(channel, time_sample, 16383);
   }
 
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
