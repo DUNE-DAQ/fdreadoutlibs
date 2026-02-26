@@ -663,6 +663,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
   }
 
   for (const auto& tp : tps) {
+    TLOG_DEBUG(0) << "TP channel = " << tp.channel << ", time_start = " << tp.time_start;
     // If this TP is on a masked channel, skip it.
     if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), uint32_t(tp.channel)))
       continue;
@@ -695,6 +696,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
         ers::warning(FailedToSendTPVector(ERS_HERE, ts_begin, channel_begin, ts_end, channel_end));
         m_tps_send_failed++;
       } else {
+        TLOG_DEBUG(0) << "Number of TPs sent is " << num_new_tps << ", in this monitoring interval: " << m_num_new_tps;
         m_num_new_tps += num_new_tps;
       }
     }
