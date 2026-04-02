@@ -1,6 +1,8 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TYPEADAPTERS_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TYPEADAPTERS_
 
+#include "daqdataformats/SourceID.hpp"
+#include "daqdataformats/FragmentHeader.hpp"  // for FragmentType
 #include "fddetdataformats/FrameConcepts.hpp"
 
 #include <vector>
@@ -20,14 +22,22 @@ namespace dunedaq::fdreadoutlibs::types {
   void fake_frame_errors(FrameType* frame, std::vector<uint16_t>* fake_errors) {};
 
 
-  
   template <typename FrameType,
-	    int NumFrames>
+	    int NumFrames,
+	    uint64_t ExpectedTickDifference,
+	    daqdataformats::SourceID::Subsystem SubSystem,
+	    daqdataformats::FragmentType FragmentType
+	    >
   requires fddetdataformats::AdaptableFrameConcept<FrameType>
   struct TypeAdapter {
 
     static constexpr int s_num_frames { NumFrames };
-    
+
+    // Naming convention is wrong for consistency with existing code
+    static constexpr uint64_t expected_tick_difference { ExpectedTickDifference };
+    static constexpr daqdataformats::SourceID::Subsystem subsystem { SubSystem };
+    static constexpr daqdataformats::FragmentType fragment_type { FragmentType };
+
     char data[sizeof(FrameType)*s_num_frames];
 
     bool operator<(const TypeAdapter& other) const {
