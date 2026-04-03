@@ -16,11 +16,14 @@ namespace dunedaq::fdreadoutlibs::types {
 						     daqdataformats::SourceID::Subsystem::kDetectorReadout,
 						     daqdataformats::FragmentType::kDAPHNEEth>;
 
-  void fake_timestamps(fddetdataformats::DAPHNEEthFrame* frame,
-		       uint64_t first_timestamp, uint64_t /*ignored*/) {
-    frame->set_timestamp(first_timestamp);
+  template <>
+  void fake_timestamps<dunedaq::fddetdataformats::DAPHNEEthFrame>(
+								  dunedaq::fddetdataformats::DAPHNEEthFrame* frame,
+								  uint64_t ts,
+								  uint64_t) {
+    frame->set_timestamp(ts);
   }
-
+  
 } // namespace dunedaq::fdreadoutlibs::types
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_REFACTOREDDAPHNEETHTYPEADAPTER_

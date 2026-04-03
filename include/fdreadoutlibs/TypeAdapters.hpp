@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace dunedaq::fdreadoutlibs::types {
-
+  
   template <typename FrameType>
   requires fddetdataformats::AdaptableFrameConcept<FrameType>
   void fake_timestamps(FrameType* frame, uint64_t first_timestamp, uint64_t offset ) {};
@@ -41,8 +41,8 @@ namespace dunedaq::fdreadoutlibs::types {
     char data[sizeof(FrameType)*s_num_frames];
 
     bool operator<(const TypeAdapter& other) const {
-      auto thisptr = reinterpret_cast<FrameType*>(&data); // NO LINT
-      auto otherptr = reinterpret_cast<FrameType*>(&other.data); // NOLINT 
+      auto thisptr = reinterpret_cast<const FrameType*>(&data); // NO LINT
+      auto otherptr = reinterpret_cast<const FrameType*>(&other.data); // NOLINT 
 
       return *thisptr < *otherptr;
     }
@@ -80,16 +80,16 @@ namespace dunedaq::fdreadoutlibs::types {
     }
 
     void fake_timestamps(uint64_t first_timestamp, uint64_t offset ) { // NOLINT(build/unsigned)
-      dunedaq::fdreadoutlibs::types::fake_timestamps<FrameType>(reinterpret_cast<FrameType*>(data), first_timestamp, offset);
+      dunedaq::fdreadoutlibs::types::fake_timestamps(reinterpret_cast<FrameType*>(data), first_timestamp, offset);
     }
 
     void fake_adc_pattern(int channel) {
-      dunedaq::fdreadoutlibs::types::fake_adc_pattern<FrameType>(reinterpret_cast<FrameType*>(data), channel);
+      dunedaq::fdreadoutlibs::types::fake_adc_pattern(reinterpret_cast<FrameType*>(data), channel);
     }
 
     // Why not make this a reference rather than a pointer?
     void fake_frame_errors(std::vector<uint16_t>* fake_errors) { // NOLINT
-      dunedaq::fdreadoutlibs::types::fake_frame_errors<FrameType>(reinterpret_cast<FrameType*>(data), fake_errors);
+      dunedaq::fdreadoutlibs::types::fake_frame_errors(reinterpret_cast<FrameType*>(data), fake_errors);
     }
   };
 
