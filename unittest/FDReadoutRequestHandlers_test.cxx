@@ -14,6 +14,7 @@
 #include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
+#include "fdreadoutlibs/CRTBernTypeAdapter.hpp"
 #include "fdreadoutlibs/CRTGrenobleTypeAdapter.hpp"
 
 #include "datahandlinglibs/testutils/TestUtilities.hpp"
@@ -91,6 +92,12 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_TDEEth)
 {
   dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,
                                                       dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
+}
+
+BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTBern)
+{
+  dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+                                                      dunedaq::fdreadoutlibs::types::CRTBernTypeAdapter>();
 }
 
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTGrenoble)
