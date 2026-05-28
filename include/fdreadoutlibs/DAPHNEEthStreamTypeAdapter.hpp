@@ -58,7 +58,7 @@ namespace dunedaq::fdreadoutlibs::types {
   void fake_adc_pattern(int channel) {
     // Set the ADC for the first sample to the 14-bit max value 
     auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
-    frame->set_adc(channel, 0, 0x3FFF);
+    frame->set_adc(0, channel, 0x3FFF);
   }
 
 
