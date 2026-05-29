@@ -10,20 +10,17 @@
 
 namespace dunedaq::fdreadoutlibs::types {
 
-  using RefactoredDAPHNEEthTypeAdapter = TypeAdapter<fddetdataformats::DAPHNEEthFrame,
-						     1,
-						     1,
+  class RefactoredDAPHNEEthTypeAdapter : public TypeAdapter<fddetdataformats::DAPHNEEthFrame,
+					 NumFrames{1},
+    ExpectedTickDifference{1},
 						     daqdataformats::SourceID::Subsystem::kDetectorReadout,
-						     daqdataformats::FragmentType::kDAPHNEEth>;
+							    daqdataformats::FragmentType::kDAPHNEEth> {
+  public:
+    void fake_timestamps(uint64_t ts, uint64_t) {
+      reinterpret_cast<fddetdataformats::DAPHNEEthFrame*>(&data)->set_timestamp(ts);
+    }
+  };
 
-  template <>
-  void fake_timestamps<dunedaq::fddetdataformats::DAPHNEEthFrame>(
-								  dunedaq::fddetdataformats::DAPHNEEthFrame* frame,
-								  uint64_t ts,
-								  uint64_t) {
-    frame->set_timestamp(ts);
-  }
-  
 } // namespace dunedaq::fdreadoutlibs::types
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_REFACTOREDDAPHNEETHTYPEADAPTER_

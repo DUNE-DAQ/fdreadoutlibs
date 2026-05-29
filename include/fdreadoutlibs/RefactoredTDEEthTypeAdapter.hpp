@@ -9,20 +9,21 @@
 
 namespace dunedaq::fdreadoutlibs::types {
 
-  using RefactoredTDEEthTypeAdapter = TypeAdapter<fddetdataformats::TDEEthFrame,
-						  1,
-						  2000
-						  daqdataformats::SourceID::Subsystem::kDetectorReadout,
-						  daqdataformats::FragmentType::kTDEEth>;
+  class RefactoredTDEEthTypeAdapter : public TypeAdapter<fddetdataformats::TDEEthFrame,
+				      NumFrames{1},
+    ExpectedTickDifference{2000},
+    daqdataformats::SourceID::Subsystem::kDetectorReadout,
+    daqdataformats::FragmentType::kTDEEth> {
+  public:
+    void fake_timestamps(fddetdataformats::TDEEthFrame* frame,
+			 uint64_t first_timestamp, uint64_t /*ignored*/) {
+      frame->set_timestamp(first_timestamp);
+    }
 
-  void fake_timestamps(fddetdataformats::TDEEthFrame* frame,
-		       uint64_t first_timestamp, uint64_t /*ignored*/) {
-    frame->set_timestamp(first_timestamp);
-  }
-
-  void fake_adc_pattern(fddetdataformats::TDEEthFrame* frame, int channel) {
-    frame->set_adc(channel, 0, 16383);
-  }
+    void fake_adc_pattern(fddetdataformats::TDEEthFrame* frame, int channel) {
+      frame->set_adc(channel, 0, 16383);
+    }
+  };
 
 } // namespace dunedaq::fdreadoutlibs::types
 
