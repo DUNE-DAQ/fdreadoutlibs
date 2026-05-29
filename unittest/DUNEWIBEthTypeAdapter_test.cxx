@@ -54,9 +54,9 @@ BOOST_AUTO_TEST_CASE(GeoID)
 
   frame.fake_geoid(7, 8, 9);
 
-  BOOST_REQUIRE(frame.begin()->daq_header.crate_id == 7);
-  BOOST_REQUIRE(frame.begin()->daq_header.slot_id == 8);
-  BOOST_REQUIRE(frame.begin()->daq_header.stream_id == 9);
+  BOOST_REQUIRE(frame.begin()->get_daqheader().crate_id == 7);
+  BOOST_REQUIRE(frame.begin()->get_daqheader().slot_id == 8);
+  BOOST_REQUIRE(frame.begin()->get_daqheader().stream_id == 9);
 }
 
 BOOST_AUTO_TEST_CASE(AdcPattern)
