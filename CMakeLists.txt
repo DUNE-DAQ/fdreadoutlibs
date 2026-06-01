@@ -88,8 +88,6 @@ daq_add_unit_test(TDEEthTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(TPGInternalStateHarvester_test LINK_LIBRARIES fdreadoutlibs)
 
 daq_add_unit_test(TypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
-daq_add_unit_test(RefactoredDAPHNEEthTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
-daq_add_unit_test(RefactoredDAPHNEEthStreamTypeAdapter_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation

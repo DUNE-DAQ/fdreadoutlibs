@@ -21,15 +21,18 @@ namespace dunedaq::fdreadoutlibs::types {
   struct ExpectedTickDifference {
     const uint64_t val;
   };
-  
-  template <typename FrameType,
+
+  // T -> the frame type
+  template <typename T,
 	    NumFrames NFrames,
 	    ExpectedTickDifference ExpectedTickDiff,
 	    daqdataformats::SourceID::Subsystem SubSystem,
 	    daqdataformats::FragmentType FragmentType
 	    >
-  requires fddetdataformats::AdaptableFrameConcept<FrameType>
+  requires fddetdataformats::AdaptableFrameConcept<T>
   struct TypeAdapter {
+
+    using FrameType = T;
 
     static constexpr int s_num_frames { NFrames.val };
 
