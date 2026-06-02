@@ -67,11 +67,11 @@ namespace dunedaq::fdreadoutlibs::types {
       return reinterpret_cast<FrameType*>(data + sizeof(FrameType)*s_num_frames); // NOLINT
     }
 
-    constexpr size_t get_payload_size() { return sizeof(FrameType)*s_num_frames; }
+    constexpr size_t get_payload_size() const { return sizeof(FrameType)*s_num_frames; }
 
-    constexpr size_t get_num_frames() { return s_num_frames; }
+    constexpr size_t get_num_frames() const { return s_num_frames; }
 
-    constexpr size_t get_frame_size() { return sizeof(FrameType); }
+    constexpr size_t get_frame_size() const { return sizeof(FrameType); }
     
     void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t stream_id) {
       for (int i = 0; i < s_num_frames; ++i) {
