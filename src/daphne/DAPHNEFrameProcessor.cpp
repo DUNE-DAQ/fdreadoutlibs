@@ -128,14 +128,13 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   // the operations of the LB.
   // These frames are effectively "corrupted" or "invalid frames" and hould be handled as such.
 
+  auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
 
-  for (size_t i=0; i<types::kDAPHNENumFrames; i++){
-    auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
+  for (auto i = 0; i < fp->get_num_frames(); ++i) {
 
     if(df_ptr[i].get_timestamp() > 0xFFFFFFFFFFFF0000 || df_ptr[i].get_timestamp() < 0xFFFF){
       ers::warning(PDSUnphysicalFrameTimestamp(ERS_HERE, df_ptr[i].get_timestamp(), df_ptr[i].get_channel(), i));
-      // Force the TS to 0
-      df_ptr[i].daq_header.timestamp_1 = df_ptr[i].daq_header.timestamp_2 = 0;
+      df_ptr[i].set_timestamp(0);
     }
   }
 
@@ -179,15 +178,15 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
 
-  for (size_t i=0; i<types::kDAPHNENumFrames; i++)
+  for (size_t i=0; i<fp->get_num_frames(); i++)
   {
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
-      if(df_ptr[i].peaks_data.is_found(j))
+      if(df_ptr[i].get_peaks_data().is_found(j))
       { 
-        int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(df_ptr[i].daq_header.det_id, df_ptr[i].daq_header.crate_id, df_ptr[i].daq_header.slot_id, df_ptr[i].daq_header.link_id, df_ptr[i].get_channel());
+        int ch =  m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(df_ptr[i].get_daqheader().det_id, df_ptr[i].get_daqheader().crate_id, df_ptr[i].get_daqheader().slot_id, df_ptr[i].get_daqheader().link_id, df_ptr[i].get_channel());
         if (std::binary_search(m_channel_mask_set.begin(), m_channel_mask_set.end(), ch)) continue;
-        if (df_ptr[i].peaks_data.get_adc_integral(j) < m_def_adc_intg_thresh) continue;
+        if (df_ptr[i].get_peaks_data().get_adc_integral(j) < m_def_adc_intg_thresh) continue;
 
 
         trigger::TriggerPrimitiveTypeAdapter tpa;
@@ -198,7 +197,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
           continue;
         }
         
-        tpa.tp.detid = df_ptr->daq_header.det_id;
+        tpa.tp.detid = df_ptr->get_daqheader().det_id;
         ttpp.push_back(tpa);
       }
     }
@@ -228,14 +227,14 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame &frame, 
 {
   dunedaq::trgdataformats::TriggerPrimitive tp;
   // TODO: add check on peak presence
-  tp.time_start = frame.get_timestamp()+frame.peaks_data.get_sample_start(i);
-  tp.samples_to_peak = frame.peaks_data.get_sample_max(i);
-  tp.samples_over_threshold = frame.peaks_data.get_samples_over_baseline(i);
+  tp.time_start = frame.get_timestamp()+frame.get_peaks_data().get_sample_start(i);
+  tp.samples_to_peak = frame.get_peaks_data().get_sample_max(i);
+  tp.samples_over_threshold = frame.get_peaks_data().get_samples_over_baseline(i);
   // FIXME : hard-coded channel map
   // WARNING: slot ids in DAPHNEs are all 0!
-  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(frame.daq_header.det_id, frame.daq_header.crate_id, frame.daq_header.slot_id, frame.daq_header.link_id, frame.get_channel());
-  tp.adc_integral = frame.peaks_data.get_adc_integral(i);
-  tp.adc_peak = frame.peaks_data.get_adc_max(i);
+  tp.channel = m_channel_map->get_offline_channel_from_det_crate_slot_stream_chan(frame.get_daqheader().det_id, frame.get_daqheader().crate_id, frame.get_daqheader().slot_id, frame.get_daqheader().link_id, frame.get_channel());
+  tp.adc_integral = frame.get_peaks_data().get_adc_integral(i);
+  tp.adc_peak = frame.get_peaks_data().get_adc_max(i);
   tp.detid = dunedaq::trgdataformats::INVALID_DETID;
   return tp;
 }

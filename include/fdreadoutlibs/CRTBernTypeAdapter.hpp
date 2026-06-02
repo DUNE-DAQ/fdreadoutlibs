@@ -27,7 +27,7 @@ struct CRTBernTypeAdapter
   {
     auto thisptr = reinterpret_cast<const FrameType*>(&data);        // NOLINT
     auto otherptr = reinterpret_cast<const FrameType*>(&other.data); // NOLINT
-    return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
+    return thisptr->get_timestamp() < otherptr->get_timestamp();
   }
 
   uint64_t get_timestamp() const // NOLINT(build/unsigned)
@@ -47,11 +47,9 @@ struct CRTBernTypeAdapter
   }
 
   void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t stream_id) {
-      auto df = reinterpret_cast<FrameType*>(reinterpret_cast<uint8_t*>(&data));
-      df->daq_header.slot_id = slot_id;
-      df->daq_header.stream_id = stream_id;
-      df->daq_header.crate_id = crate_id;
-      }
+    auto df = reinterpret_cast<FrameType*>(reinterpret_cast<uint8_t*>(&data));
+    df->set_geoid(crate_id, slot_id, stream_id);
+  }
 
   void fake_adc_pattern(int channel) {
     auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
