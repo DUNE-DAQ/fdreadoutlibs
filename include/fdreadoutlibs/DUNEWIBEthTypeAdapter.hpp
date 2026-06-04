@@ -94,7 +94,7 @@ struct DUNEWIBEthTypeAdapter
   static const constexpr float samples_tick_difference = 32; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::fddetdataformats::WIBEthFrame) == kDUNEWIBEthSize,
+static_assert(sizeof(dunedaq::fddetdataformats::WIBEthFrame) == kDUNEWIBEthSize,
               "Check your assumptions on DUNEWIBEthTypeAdapter");
 
 

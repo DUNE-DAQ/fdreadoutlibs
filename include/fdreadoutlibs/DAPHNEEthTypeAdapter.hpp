@@ -88,7 +88,7 @@ struct DAPHNEEthTypeAdapter
   static const constexpr uint64_t expected_tick_difference = 1; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::fddetdataformats::DAPHNEEthFrame) == kDAPHNEEthSize,
+static_assert(sizeof(dunedaq::fddetdataformats::DAPHNEEthFrame) == kDAPHNEEthSize,
               "Check your assumptions on DAPHNEEthEthTypeAdapter");
 
 
