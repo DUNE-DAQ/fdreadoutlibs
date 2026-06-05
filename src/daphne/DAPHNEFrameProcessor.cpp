@@ -130,7 +130,7 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
 
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
 
-  for (auto i = 0; i < fp->get_num_frames(); ++i) {
+  for (size_t i = 0; i < fp->get_num_frames(); ++i) {
 
     if(df_ptr[i].get_timestamp() > 0xFFFFFFFFFFFF0000 || df_ptr[i].get_timestamp() < 0xFFFF){
       ers::warning(PDSUnphysicalFrameTimestamp(ERS_HERE, df_ptr[i].get_timestamp(), df_ptr[i].get_channel(), i));
