@@ -546,12 +546,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::sequence_check(frameptr fp)
 {
   // Acquire timestamp
   auto wfptr = reinterpret_cast<tpcframeptr>(fp); // NOLINT
-  m_current_seq_id = wfptr->get_daqheader().seq_id;
+  m_current_seq_id = wfptr->daq_header.seq_id;
 
   // Check that the system is properly configured from the first frame.
   if (m_first_frame) [[unlikely]] {
-    if (wfptr->get_daqheader().crate_id != m_crate_id || wfptr->get_daqheader().slot_id != m_slot_id || wfptr->get_daqheader().stream_id != m_stream_id) {
-      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->get_daqheader().crate_id, wfptr->get_daqheader().slot_id, wfptr->get_daqheader().stream_id, m_crate_id, m_slot_id, m_stream_id));
+    if (wfptr->daq_header.crate_id != m_crate_id || wfptr->daq_header.slot_id != m_slot_id || wfptr->daq_header.stream_id != m_stream_id) {
+      ers::error(LinkMisconfiguration(ERS_HERE, wfptr->daq_header.crate_id, wfptr->daq_header.slot_id, wfptr->daq_header.stream_id, m_crate_id, m_slot_id, m_stream_id));
     }
 
     m_first_frame = false;

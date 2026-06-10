@@ -60,7 +60,9 @@ struct DAPHNESuperChunkTypeAdapter
   void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t link_id) {
       for (unsigned int i = 0; i < get_num_frames(); ++i) {
         auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
-	df->set_geoid(crate_id, slot_id, link_id);
+	df->daq_header.slot_id = slot_id;
+        df->daq_header.link_id = link_id;
+        df->daq_header.crate_id = crate_id;
       }
   }
 

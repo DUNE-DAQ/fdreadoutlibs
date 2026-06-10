@@ -28,7 +28,7 @@ namespace dunedaq::fdreadoutlibs::types {
     {
       auto thisptr = reinterpret_cast<const FrameType*>(&data);        // NOLINT
       auto otherptr = reinterpret_cast<const FrameType*>(&other.data); // NOLINT
-      return thisptr->get_timestamp() < otherptr->get_timestamp() ? true : false;
+      return thisptr->get_timestamp() < otherptr->get_timestamp();
     }
 
     uint64_t get_timestamp() const // NOLINT(build/unsigned)
