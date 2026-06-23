@@ -47,9 +47,9 @@ BOOST_AUTO_TEST_CASE(Timestamps)
 
   for (size_t i = 0; i < blob_of_junk.get_num_frames(); ++i) {
     const DAPHNEStreamSuperChunkTypeAdapter::FrameType* frame = blob_of_junk.begin() + i;
-    BOOST_REQUIRE(frame->daq_header.get_timestamp() == timestamp + i*offset);
+    BOOST_REQUIRE(frame->get_timestamp() == timestamp + i*offset);
   }
-  
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

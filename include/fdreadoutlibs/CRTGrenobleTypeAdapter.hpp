@@ -51,7 +51,7 @@ struct CRTGrenobleTypeAdapter
       df->daq_header.slot_id = slot_id;
       df->daq_header.stream_id = stream_id;
       df->daq_header.crate_id = crate_id;
-      }
+  }
 
   void fake_adc_pattern(int channel) {
     auto frame = reinterpret_cast<FrameType*>(&data); // NOLINT
