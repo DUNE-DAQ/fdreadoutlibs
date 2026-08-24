@@ -98,7 +98,7 @@ struct TDEEthTypeAdapter
   static const constexpr float samples_tick_difference = 31.25; // NOLINT(build/unsigned)
 };
 
-static_assert(sizeof(struct dunedaq::fddetdataformats::TDEEthFrame) == kTDEEthSize,
+static_assert(sizeof(dunedaq::fddetdataformats::TDEEthFrame) == kTDEEthSize,
               "Check your assumptions on TDEEthTypeAdapter");
 
 

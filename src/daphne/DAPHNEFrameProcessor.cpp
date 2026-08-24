@@ -128,14 +128,13 @@ DAPHNEFrameProcessor::timestamp_check(frameptr fp)
   // the operations of the LB.
   // These frames are effectively "corrupted" or "invalid frames" and hould be handled as such.
 
+  auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
 
-  for (size_t i=0; i<types::kDAPHNENumFrames; i++){
-    auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(fp);
+  for (size_t i = 0; i < fp->get_num_frames(); ++i) {
 
     if(df_ptr[i].get_timestamp() > 0xFFFFFFFFFFFF0000 || df_ptr[i].get_timestamp() < 0xFFFF){
       ers::warning(PDSUnphysicalFrameTimestamp(ERS_HERE, df_ptr[i].get_timestamp(), df_ptr[i].get_channel(), i));
-      // Force the TS to 0
-      df_ptr[i].daq_header.timestamp_1 = df_ptr[i].daq_header.timestamp_2 = 0;
+      df_ptr[i].set_timestamp(0);
     }
   }
 
@@ -179,7 +178,7 @@ void DAPHNEFrameProcessor::extract_tps(constframeptr fp)
   auto df_ptr = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>((uint8_t*)nonconstframeptr); // NOLINT
   std::vector<trigger::TriggerPrimitiveTypeAdapter> ttpp;
 
-  for (size_t i=0; i<types::kDAPHNENumFrames; i++)
+  for (size_t i=0; i<fp->get_num_frames(); i++)
   {
     for(size_t j=0; j<fddetdataformats::DAPHNEFrame::PeakDescriptorData::max_peaks;j++)
     {
