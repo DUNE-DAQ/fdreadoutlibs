@@ -70,21 +70,25 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGStateMonitoringDisabledAtBuildTime,
                   "TPG state monitoring config flags are set but tpglibs was built with "
                   "TPGLIBS_ENABLE_STATE_MONITORING=OFF. No processor metrics will be "
-                  "collected. Rebuild with -DTPGLIBS_ENABLE_STATE_MONITORING=ON to enable.",
+                  "collected. To enable: export TPGLIBS_ENABLE_STATE_MONITORING=ON, then "
+                  "rebuild from a clean build directory (dbt-build -c).",
                   )
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGToggleStateDeprecated,
                   "ProcessingStep attribute 'metric_collect_toggle_state' is set but this "
-                  "flag is deprecated. State monitoring is now controlled at build time via "
-                  "TPGLIBS_ENABLE_STATE_MONITORING. This attribute will be removed in a "
+                  "flag is deprecated. State monitoring is now controlled at build time: "
+                  "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
+                  "build directory (dbt-build -c). This attribute will be removed in a "
                   "future release.",
                   )
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGStateMonitoringConfigIgnored,
                   "ProcessingStep attribute '" << attribute_name << "' is configured but "
-                  "has no effect because TPGLIBS_ENABLE_STATE_MONITORING=OFF.",
+                  "has no effect because TPGLIBS_ENABLE_STATE_MONITORING=OFF. To enable: "
+                  "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
+                  "build directory (dbt-build -c).",
                   ((std::string)attribute_name))
 
 } // namespace dunedaq
