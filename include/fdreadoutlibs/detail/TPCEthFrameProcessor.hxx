@@ -42,10 +42,11 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::start(const appfwk::DAQModule::Command
   m_num_new_tps.exchange(0);
 
       
-  // Start the state harvester collection thread if enabled
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
   if (m_state_harvester && m_tpg_metric_collect_enabled) {
     m_state_harvester->start_collection_thread();
   }
+#endif
   inherited::start(args);
 }
 
@@ -55,10 +56,11 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::stop(const appfwk::DAQModule::CommandD
 { 
   inherited::stop(args);
   if (this->m_post_processing_enabled) {
-    // Stop the state harvester collection thread if it exists
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
     if (m_state_harvester) {
       m_state_harvester->stop_collection_thread();
     }
+#endif
     // Clears the pipelines and resets with the given configs.
     m_tp_generator->configure(m_tpg_configs, m_channel_plane_numbers, ReadoutTypeAdapter::samples_tick_difference);
   }
@@ -169,17 +171,27 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
 
   m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_period();
 
-  // Check if metric collection is enabled in the configs
+  // In ALL builds: warn if obsolete metric_collect_toggle_state is set
+  for (const auto& name_config : m_tpg_configs) {
+    if (name_config.second.contains("metric_collect_toggle_state") &&
+        name_config.second["metric_collect_toggle_state"] == true) {
+      ers::warning(TPGToggleStateDeprecated(ERS_HERE));
+      break;
+    }
+  }
+
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
+  // Monitoring enabled at build time — set up harvester
+  // Still read toggle_state for backwards compat (honor it for now)
   m_tpg_metric_collect_enabled = false;
   for (const auto& name_config : m_tpg_configs) {
-    if (name_config.second.contains("metric_collect_toggle_state") && 
+    if (name_config.second.contains("metric_collect_toggle_state") &&
         name_config.second["metric_collect_toggle_state"] == true) {
       m_tpg_metric_collect_enabled = true;
       break;
     }
   }
 
-  // Only create and configure state harvester if metric collection is enabled
   if (m_tpg_metric_collect_enabled) {
     auto processsor_references = m_tp_generator->get_all_processor_references_with_pipeline_index();
 
@@ -187,20 +199,47 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
 
     const uint8_t channels_per_pipeline = 16;
     const uint8_t pipelines = static_cast<uint8_t>(m_channel_plane_numbers.size() / channels_per_pipeline);
-    
-    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Configuring state harvester with " << static_cast<int>(channels_per_pipeline) 
-                                  << " channels per pipeline, " << static_cast<int>(pipelines) << " pipelines, " 
+
+    TLOG_DEBUG(TLVL_BOOKKEEPING) << "Configuring state harvester with " << static_cast<int>(channels_per_pipeline)
+                                  << " channels per pipeline, " << static_cast<int>(pipelines) << " pipelines, "
                                   << processsor_references.size() << " processor references";
-    
+
     m_state_harvester->update_channel_plane_numbers(m_channel_plane_numbers,
                                                     channels_per_pipeline, pipelines);
     m_state_harvester->set_processor_references(processsor_references);
-    
-    // Start the collection thread immediately after configuration
+
     m_state_harvester->start_collection_thread();
-    
+
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "State harvester configured and started successfully";
   }
+
+#else
+  // Monitoring disabled at build time
+  m_tpg_metric_collect_enabled = false;
+
+  // Warn if per-processor monitoring params are configured but will have no effect
+  bool warned_build_off = false;
+  for (const auto& name_config : m_tpg_configs) {
+    if (name_config.second.contains("metric_collect_time_sample_period") &&
+        name_config.second["metric_collect_time_sample_period"] != 256) {
+      if (!warned_build_off) {
+        ers::warning(TPGStateMonitoringDisabledAtBuildTime(ERS_HERE));
+        warned_build_off = true;
+      }
+      ers::warning(TPGStateMonitoringConfigIgnored(ERS_HERE,
+                   "metric_collect_time_sample_period"));
+    }
+    if (name_config.second.contains("requested_internal_states") &&
+        !name_config.second["requested_internal_states"].get<std::string>().empty()) {
+      if (!warned_build_off) {
+        ers::warning(TPGStateMonitoringDisabledAtBuildTime(ERS_HERE));
+        warned_build_off = true;
+      }
+      ers::warning(TPGStateMonitoringConfigIgnored(ERS_HERE,
+                   "requested_internal_states"));
+    }
+  }
+#endif
 
   inherited::add_postprocess_task(std::bind(&TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps, this, std::placeholders::_1));
 }
@@ -392,15 +431,18 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
      }
      m_t0 = now;
 
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
     if (m_tpg_metric_collect_enabled && m_state_harvester) {
       publish_processor_metric_to_opmon();
       publish_processor_metric_to_opmon_with_aggregation();
     }
+#endif
    }
 
    inherited::generate_opmon_data();
  }
 
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
 template <class ReadoutTypeAdapter>
 void
 TPCEthFrameProcessor<ReadoutTypeAdapter>::publish_processor_metric_to_opmon() {
@@ -535,6 +577,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::publish_processor_metric_to_opmon_with
     }
   }
 }
+#endif // TPGLIBS_ENABLE_STATE_MONITORING
 
 
 /**
@@ -656,11 +699,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
 
   uint64_t current_frame_count = m_frame_counter.fetch_add(1, std::memory_order_relaxed) + 1;
   
-  // Trigger asynchronous metric collection in background thread
-  if (m_tpg_metric_collect_enabled && m_state_harvester && 
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
+  if (m_tpg_metric_collect_enabled && m_state_harvester &&
       current_frame_count % m_metric_collect_opmon_period == 0) {
     m_state_harvester->trigger_harvest();
   }
+#endif
 
   for (const auto& tp : tps) {
     // If this TP is on a masked channel, skip it.

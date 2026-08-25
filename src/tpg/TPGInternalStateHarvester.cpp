@@ -5,6 +5,7 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
 #include "fdreadoutlibs/tpg/TPGInternalStateHarvester.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "logging/Logging.hpp"
@@ -279,3 +280,4 @@ void TPGInternalStateHarvester::collection_thread_worker_() {
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
+#endif // TPGLIBS_ENABLE_STATE_MONITORING
