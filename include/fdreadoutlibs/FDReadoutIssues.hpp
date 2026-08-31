@@ -66,6 +66,31 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   PDSUnphysicalFrameTimestamp,
                   "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
                   ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  TPGStateMonitoringDisabledAtBuildTime,
+                  "TPG state monitoring config flags are set but tpglibs was built with "
+                  "TPGLIBS_ENABLE_STATE_MONITORING=OFF. No processor metrics will be "
+                  "collected. To enable: export TPGLIBS_ENABLE_STATE_MONITORING=ON, then "
+                  "rebuild from a clean build directory (dbt-build -c).",
+                  )
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  TPGToggleStateDeprecated,
+                  "ProcessingStep attribute 'metric_collect_toggle_state' is set but this "
+                  "flag is deprecated. State monitoring is now controlled at build time: "
+                  "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
+                  "build directory (dbt-build -c). This attribute will be removed in a "
+                  "future release.",
+                  )
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  TPGStateMonitoringConfigIgnored,
+                  "ProcessingStep attribute '" << attribute_name << "' is configured but "
+                  "has no effect because TPGLIBS_ENABLE_STATE_MONITORING=OFF. To enable: "
+                  "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
+                  "build directory (dbt-build -c).",
+                  ((std::string)attribute_name))
+
 } // namespace dunedaq
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_FDREADOUTISSUES_HPP_

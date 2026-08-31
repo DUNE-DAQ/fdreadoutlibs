@@ -6,6 +6,8 @@
  * received with this code.
  */
 
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
+
 #include "fdreadoutlibs/tpg/TPGInternalStateHarvester.hpp"
 #include "tpglibs/AbstractProcessor.hpp"
 #include "tpglibs/ProcessorMetricArray.hpp"
@@ -713,3 +715,5 @@ BOOST_AUTO_TEST_CASE(ZeroValueCollection)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif // TPGLIBS_ENABLE_STATE_MONITORING
