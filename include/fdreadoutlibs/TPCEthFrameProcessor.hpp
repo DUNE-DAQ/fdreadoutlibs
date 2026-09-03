@@ -34,7 +34,9 @@
 #include "tpglibs/TPGenerator.hpp"
 #include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "trgdataformats/Types.hpp"
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
 #include "fdreadoutlibs/tpg/TPGInternalStateHarvester.hpp"
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -97,22 +99,12 @@ protected:
 
   void scrap_find_tps();
 
-  /**
-   * Publishes collected processor metrics to opmon, currently called in generate_opmon_data()
-   * */
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
   void publish_processor_metric_to_opmon();
-
-  /**
-   * Publishes collected processor metrics to opmon, with aggregation of metrics to summary statistics across physical planes
-   * */
   void publish_processor_metric_to_opmon_with_aggregation();
-
-  /**
-   * Optimized version that calculates all metric summaries across all planes in a single pass
-   * Returns a map of plane_number -> map of metric_name -> summary statistics
-   * */
   std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
   calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
+#endif
   /**
    * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
    * */
@@ -159,7 +151,9 @@ protected:
 
   // TPG related variables.
   std::unique_ptr<tpglibs::TPGenerator> m_tp_generator;
+#ifdef TPGLIBS_ENABLE_STATE_MONITORING
   std::unique_ptr<fdreadoutlibs::TPGInternalStateHarvester> m_state_harvester;
+#endif
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
 
   std::unordered_map<unsigned int, std::vector<trigger::TriggerPrimitiveTypeAdapter>> m_plane_to_tpa_vector_map;
