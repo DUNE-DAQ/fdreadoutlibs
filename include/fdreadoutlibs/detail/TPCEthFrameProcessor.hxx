@@ -171,15 +171,6 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
 
   m_metric_collect_opmon_period = proc_conf->get_metric_collect_opmon_period();
 
-  // In ALL builds: warn if obsolete metric_collect_toggle_state is set
-  for (const auto& name_config : m_tpg_configs) {
-    if (name_config.second.contains("metric_collect_toggle_state") &&
-        name_config.second["metric_collect_toggle_state"] == true) {
-      ers::warning(TPGToggleStateDeprecated(ERS_HERE));
-      break;
-    }
-  }
-
 #ifdef TPGLIBS_ENABLE_STATE_MONITORING
   // Monitoring enabled at build time — set up harvester
   // Still read toggle_state for backwards compat (honor it for now)
@@ -220,23 +211,18 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::configure_find_tps(const appmodel::Dat
   // Warn if per-processor monitoring params are configured but will have no effect
   bool warned_build_off = false;
   for (const auto& name_config : m_tpg_configs) {
-    if (name_config.second.contains("metric_collect_time_sample_period") &&
-        name_config.second["metric_collect_time_sample_period"] != 256) {
-      if (!warned_build_off) {
-        ers::warning(TPGStateMonitoringDisabledAtBuildTime(ERS_HERE));
-        warned_build_off = true;
-      }
-      ers::warning(TPGStateMonitoringConfigIgnored(ERS_HERE,
-                   "metric_collect_time_sample_period"));
-    }
-    if (name_config.second.contains("requested_internal_states") &&
-        !name_config.second["requested_internal_states"].get<std::string>().empty()) {
-      if (!warned_build_off) {
-        ers::warning(TPGStateMonitoringDisabledAtBuildTime(ERS_HERE));
-        warned_build_off = true;
-      }
-      ers::warning(TPGStateMonitoringConfigIgnored(ERS_HERE,
-                   "requested_internal_states"));
+    // Check if any of the monitoring configs are not the default values: someone is requesting them.
+    const bool toggle_state_set =
+        name_config.second.value("metric_collect_toggle_state", false) == true;
+    const bool time_sample_period_set =
+        name_config.second.value("metric_collect_time_sample_period", uint64_t{256}) != 256;
+    const bool requested_internal_states_set =
+        !name_config.second.value("requested_internal_states", std::string{}).empty();
+    if (!warned_build_off && (toggle_state_set || time_sample_period_set || requested_internal_states_set))
+    {
+      // warn only once.
+      ers::warning(TPGStateMonitoringConfigIgnored(ERS_HERE));
+      warned_build_off = true;
     }
   }
 #endif
