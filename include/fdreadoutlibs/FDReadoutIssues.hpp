@@ -67,29 +67,14 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
                   ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))
 ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  TPGStateMonitoringDisabledAtBuildTime,
-                  "TPG state monitoring config flags are set but tpglibs was built with "
-                  "TPGLIBS_ENABLE_STATE_MONITORING=OFF. No processor metrics will be "
-                  "collected. To enable: export TPGLIBS_ENABLE_STATE_MONITORING=ON, then "
-                  "rebuild from a clean build directory (dbt-build -c).",
-                  )
-
-ERS_DECLARE_ISSUE(fdreadoutlibs,
-                  TPGToggleStateDeprecated,
-                  "ProcessingStep attribute 'metric_collect_toggle_state' is set but this "
-                  "flag is deprecated. State monitoring is now controlled at build time: "
-                  "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
-                  "build directory (dbt-build -c). This attribute will be removed in a "
-                  "future release.",
-                  )
-
-ERS_DECLARE_ISSUE(fdreadoutlibs,
                   TPGStateMonitoringConfigIgnored,
-                  "ProcessingStep attribute '" << attribute_name << "' is configured but "
-                  "has no effect because TPGLIBS_ENABLE_STATE_MONITORING=OFF. To enable: "
+                  "At least one attribute for state monitoring is configured, but "
+                  "the package was built with TPGLIBS_ENABLE_STATE_MONITORING=OFF."
+                  "There will be no effects from these set attributes and no collection."
+                  " To enable, keep the current configuration and run: "
                   "export TPGLIBS_ENABLE_STATE_MONITORING=ON, then rebuild from a clean "
                   "build directory (dbt-build -c).",
-                  ((std::string)attribute_name))
+                  )
 
 } // namespace dunedaq
 
