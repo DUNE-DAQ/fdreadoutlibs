@@ -21,6 +21,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::start(const appfwk::DAQModule::Command
   if (this->m_post_processing_enabled) {
     m_tps_suppressed_too_long = 0;
     m_tps_send_failed = 0;
+    m_num_tp_trains_sent = 0;
+    m_num_tp_trains_send_failed = 0;
+    m_min_tp_train_size = std::numeric_limits<uint32_t>::max();
+    m_max_tp_train_size = 0;
+    m_num_tp_train_send_checks_by_frame_limit = 0;
+    m_num_tp_train_send_checks_by_tp_limit = 0;
   }
 
   // Reset timestamp check
@@ -338,6 +344,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::scrap_postprocessing()
   m_num_new_tps.exchange(0);
   m_tps_suppressed_too_long.exchange(0);
   m_tps_send_failed.exchange(0);
+  m_num_tp_trains_sent.exchange(0);
+  m_num_tp_trains_send_failed.exchange(0);
+  m_min_tp_train_size.exchange(std::numeric_limits<uint32_t>::max());
+  m_max_tp_train_size.exchange(0);
+  m_num_tp_train_send_checks_by_frame_limit.exchange(0);
+  m_num_tp_train_send_checks_by_tp_limit.exchange(0);
   m_frame_counter.exchange(0);
   m_t0 = std::chrono::high_resolution_clock::now();
 }
@@ -390,6 +402,17 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::generate_opmon_data()
      tp_info.set_num_tps_send_failed(num_new_tps_send_failed);
 
      this->publish(std::move(tp_info));
+
+     datahandlinglibs::opmon::TPTrainInfo tp_train_info;
+     tp_train_info.set_num_tp_trains_sent(m_num_tp_trains_sent.exchange(0));
+     tp_train_info.set_num_tp_trains_send_failed(m_num_tp_trains_send_failed.exchange(0));
+     const uint32_t min_tp_train_size = m_min_tp_train_size.exchange(std::numeric_limits<uint32_t>::max());
+     tp_train_info.set_min_tp_train_size(min_tp_train_size == std::numeric_limits<uint32_t>::max() ? 0 : min_tp_train_size);
+     tp_train_info.set_max_tp_train_size(m_max_tp_train_size.exchange(0));
+     tp_train_info.set_num_tp_train_send_checks_by_frame_limit(m_num_tp_train_send_checks_by_frame_limit.exchange(0));
+     tp_train_info.set_num_tp_train_send_checks_by_tp_limit(m_num_tp_train_send_checks_by_tp_limit.exchange(0));
+     this->publish(std::move(tp_train_info));
+
      // Find the channels with the top TP rates
      // Create a vector of pairs to store the map elements
      std::vector<std::pair<uint, int>> channel_tp_rate_vec(m_tp_channel_rate_map.begin(), m_tp_channel_rate_map.end());
@@ -710,6 +733,12 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
   const bool tp_limit_reached = m_tp_limit_enabled && (m_current_tp_count >= m_tp_count_limit);
 
   if (frame_limit_reached || tp_limit_reached) [[unlikely]] {
+    if (tp_limit_reached) {
+      m_num_tp_train_send_checks_by_tp_limit++;
+    } else if (frame_limit_reached) {
+      m_num_tp_train_send_checks_by_frame_limit++;
+    }
+
     m_current_tp_count = 0;
     m_frame_count_at_last_send = current_frame_count;
     for (auto& [plane_num, tpa_vector] : m_plane_to_tpa_vector_map) {
@@ -717,6 +746,7 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
       if (num_new_tps == 0) {
         continue;
       }
+      const uint32_t tp_train_size = static_cast<uint32_t>(num_new_tps);
       const auto ts_begin = tpa_vector.front().tp.time_start;
       const auto channel_begin = tpa_vector.front().tp.channel;
       const auto ts_end = tpa_vector.back().tp.time_start;
@@ -724,8 +754,16 @@ TPCEthFrameProcessor<ReadoutTypeAdapter>::find_tps(constframeptr fp)
       if (!m_plane_to_tp_sink_map[plane_num]->try_send(std::move(tpa_vector), iomanager::Sender::s_no_block)) {
         ers::warning(FailedToSendTPVector(ERS_HERE, ts_begin, channel_begin, ts_end, channel_end));
         m_tps_send_failed++;
+        m_num_tp_trains_send_failed++;
       } else {
         m_num_new_tps += num_new_tps;
+        m_num_tp_trains_sent++;
+        if (tp_train_size < m_min_tp_train_size.load()) {
+          m_min_tp_train_size.store(tp_train_size);
+        }
+        if (tp_train_size > m_max_tp_train_size.load()) {
+          m_max_tp_train_size.store(tp_train_size);
+        }
       }
     }
   }

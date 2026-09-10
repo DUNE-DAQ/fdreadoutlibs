@@ -44,6 +44,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -182,6 +183,13 @@ protected:
   std::atomic<uint64_t> m_num_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
+
+  std::atomic<uint32_t> m_num_tp_trains_sent{ 0 };
+  std::atomic<uint32_t> m_num_tp_trains_send_failed{ 0 };
+  std::atomic<uint32_t> m_min_tp_train_size{ std::numeric_limits<uint32_t>::max() };
+  std::atomic<uint32_t> m_max_tp_train_size{ 0 };
+  std::atomic<uint32_t> m_num_tp_train_send_checks_by_frame_limit{ 0 };
+  std::atomic<uint32_t> m_num_tp_train_send_checks_by_tp_limit{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
 
