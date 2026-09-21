@@ -18,9 +18,9 @@ namespace types {
 
 /**
  * @brief For DAPHNEEth the numbers are different.
- * Header + (64 channels * 64 time slices) = 233[Bytes]
+ * 256 packed samples and headers = 520 bytes.
  * */
-const constexpr std::size_t kDAPHNEEthSize = 1864;
+const constexpr std::size_t kDAPHNEEthSize = 520;
 
 struct DAPHNEEthTypeAdapter
 {
