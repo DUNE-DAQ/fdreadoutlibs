@@ -8,14 +8,14 @@
 
 #define BOOST_TEST_MODULE FDTypeAdaptersBuffers_test // NOLINT
 
-#include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/CRTBernTypeAdapter.hpp"
+#include "fdreadoutlibs/CRTGrenobleTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNEEthStreamTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
-#include "fdreadoutlibs/CRTBernTypeAdapter.hpp"
-#include "fdreadoutlibs/CRTGrenobleTypeAdapter.hpp"
 
 #include "datahandlinglibs/testutils/TestUtilities.hpp"
 
@@ -61,7 +61,8 @@ BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStream)
 {
   dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,
                                                     dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
-}BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)
+}
+BOOST_AUTO_TEST_CASE(FixedRateQueueModel_TDEEth)
 {
   dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::FixedRateQueueModel,
                                                     dunedaq::fdreadoutlibs::types::TDEEthTypeAdapter>();
@@ -73,13 +74,13 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_TDEEth)
 }
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTBern)
 {
-    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
-        dunedaq::fdreadoutlibs::types::CRTBernTypeAdapter>();
+  dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+                                                    dunedaq::fdreadoutlibs::types::CRTBernTypeAdapter>();
 }
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_CRTGrenoble)
 {
-    dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
-        dunedaq::fdreadoutlibs::types::CRTGrenobleTypeAdapter>();
+  dunedaq::datahandlinglibs::test::test_queue_model<dunedaq::datahandlinglibs::SkipListLatencyBufferModel,
+                                                    dunedaq::fdreadoutlibs::types::CRTGrenobleTypeAdapter>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

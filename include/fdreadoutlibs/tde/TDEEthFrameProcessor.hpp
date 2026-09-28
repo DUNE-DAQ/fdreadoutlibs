@@ -8,16 +8,16 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETHFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_TDEETHFRAMEPROCESSOR_HPP_
 
-#include "fdreadoutlibs/TPCEthFrameProcessor.hpp"
 #include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
+#include "fdreadoutlibs/TPCEthFrameProcessor.hpp"
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
 class TDEEthFrameProcessor : public TPCEthFrameProcessor<types::TDEEthTypeAdapter>
 {
-  public:
-    using TPCEthFrameProcessor<types::TDEEthTypeAdapter>::TPCEthFrameProcessor;
+public:
+  using TPCEthFrameProcessor<types::TDEEthTypeAdapter>::TPCEthFrameProcessor;
 };
 
 } // namespace fdreadoutlibs

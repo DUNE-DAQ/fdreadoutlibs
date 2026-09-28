@@ -10,27 +10,25 @@
 
 #include "logging/Logging.hpp"
 
-#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 
 #include "iomanager/IOManager.hpp"
 #include "iomanager/Sender.hpp"
 
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
-#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "fdreadoutlibs/FDReadoutIssues.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 
 #include "fddetdataformats/DAPHNEFrame.hpp"
-#include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
+#include "trgdataformats/TriggerPrimitive.hpp"
 
-#include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
-
+#include "appmodel/TPCRawDataProcessor.hpp"
 
 #include "detchannelmaps/PDSChannelMap.hpp"
-
 
 #include "appmodel/DataHandlerModule.hpp"
 #include "confmodel/Connection.hpp"
@@ -42,7 +40,7 @@
 
 using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 
-namespace dunedaq {  
+namespace dunedaq {
 namespace fdreadoutlibs {
 
 class DAPHNEFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>
@@ -56,11 +54,12 @@ public:
   using constframeptr = const types::DAPHNESuperChunkTypeAdapter*;
 
   // Constructor
-  explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
-    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry, post_processing_enabled)
-  {}
-
- 
+  explicit DAPHNEFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry,
+                                bool post_processing_enabled)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNESuperChunkTypeAdapter>(error_registry,
+                                                                                      post_processing_enabled)
+  {
+  }
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
@@ -89,35 +88,30 @@ protected:
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
 
-  void extract_tps( constframeptr fp);
-  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp( dunedaq::fddetdataformats::DAPHNEFrame &frame, int i);
-  
-private:
+  void extract_tps(constframeptr fp);
+  dunedaq::trgdataformats::TriggerPrimitive peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame& frame, int i);
 
-  //PDSChannelMap
+private:
+  // PDSChannelMap
   std::shared_ptr<detchannelmaps::PDSChannelMap> m_channel_map;
   std::vector<std::pair<trgdataformats::channel_t, int16_t>> m_channel_plane_numbers;
 
-  uint32_t m_det_id; // NOLINT(build/unsigned)
-  uint32_t m_crate_id; // NOLINT(build/unsigned)
-  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_det_id;    // NOLINT(build/unsigned)
+  uint32_t m_crate_id;  // NOLINT(build/unsigned)
+  uint32_t m_slot_id;   // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
 
   std::set<unsigned int> m_channel_mask_set;
   uint32_t m_def_adc_intg_thresh = 0;
 
-
-
   std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>> m_tp_sink;
 
-  std::atomic<uint64_t> m_num_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_num_new_tps{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
-  
-
 };
 
 } // namespace fdreadoutlibs

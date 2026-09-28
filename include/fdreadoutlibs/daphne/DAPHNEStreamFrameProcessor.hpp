@@ -11,8 +11,8 @@
 
 #include "logging/Logging.hpp"
 
-#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/TaskRawDataProcessorModel.hpp"
 
@@ -29,7 +29,8 @@ using dunedaq::datahandlinglibs::logging::TLVL_BOOKKEEPING;
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-class DAPHNEStreamFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>
+class DAPHNEStreamFrameProcessor
+  : public datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>
 {
 
 public:
@@ -38,9 +39,12 @@ public:
   using daphneframeptr = dunedaq::fddetdataformats::DAPHNEStreamFrame*;
   using timestamp_t = std::uint64_t; // NOLINT(build/unsigned)
 
-  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
-    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry, post_processing_enabled)
-  {}
+  explicit DAPHNEStreamFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry,
+                                      bool post_processing_enabled)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEStreamSuperChunkTypeAdapter>(error_registry,
+                                                                                            post_processing_enabled)
+  {
+  }
 
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
@@ -63,7 +67,6 @@ protected:
   bool m_first_ts_missmatch = true;
   bool m_problem_reported = false;
   std::atomic<int> m_ts_error_ctr{ 0 };
-
 };
 
 } // namespace fdreadoutlibs

@@ -11,8 +11,8 @@
 
 #include "logging/Logging.hpp"
 
-#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/DataHandlingIssues.hpp"
+#include "datahandlinglibs/FrameErrorRegistry.hpp"
 #include "datahandlinglibs/ReadoutLogging.hpp"
 #include "datahandlinglibs/models/DefaultRequestHandlerModel.hpp"
 #include "datahandlinglibs/models/SkipListLatencyBufferModel.hpp"
@@ -44,9 +44,9 @@ class DAPHNEListRequestHandler
 {
 public:
   // Using shorter typenames
-  using inherited =
-    datahandlinglibs::DefaultRequestHandlerModel<types::DAPHNESuperChunkTypeAdapter,
-                                            datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>;
+  using inherited = datahandlinglibs::DefaultRequestHandlerModel<
+    types::DAPHNESuperChunkTypeAdapter,
+    datahandlinglibs::SkipListLatencyBufferModel<types::DAPHNESuperChunkTypeAdapter>>;
   using SkipListAcc = typename folly::ConcurrentSkipList<types::DAPHNESuperChunkTypeAdapter>::Accessor;
   using SkipListSkip = typename folly::ConcurrentSkipList<types::DAPHNESuperChunkTypeAdapter>::Skipper;
 
