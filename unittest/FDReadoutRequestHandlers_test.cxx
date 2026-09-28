@@ -8,14 +8,14 @@
 
 #define BOOST_TEST_MODULE FDReadoutRequestHandlers_test // NOLINT
 
-#include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
-#include "fdreadoutlibs/DAPHNEEthStreamTypeAdapter.hpp"
-#include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
-#include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
-#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
-#include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 #include "fdreadoutlibs/CRTBernTypeAdapter.hpp"
 #include "fdreadoutlibs/CRTGrenobleTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthStreamTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNEStreamSuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DAPHNESuperChunkTypeAdapter.hpp"
+#include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+#include "fdreadoutlibs/TDEEthTypeAdapter.hpp"
 
 #include "datahandlinglibs/testutils/TestUtilities.hpp"
 
@@ -59,16 +59,14 @@ BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEStreamSuperChunk)
 }
 BOOST_AUTO_TEST_CASE(FixedRateQueueModel_DAPHNEEthStream)
 {
-  dunedaq::datahandlinglibs::test::test_request_model<
-    dunedaq::datahandlinglibs::FixedRateQueueModel,
-    dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
+  dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::FixedRateQueueModel,
+                                                      dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
 }
 
 BOOST_AUTO_TEST_CASE(BinarySearchQueueModel_DAPHNEEthStream)
 {
-  dunedaq::datahandlinglibs::test::test_request_model<
-    dunedaq::datahandlinglibs::BinarySearchQueueModel,
-    dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
+  dunedaq::datahandlinglibs::test::test_request_model<dunedaq::datahandlinglibs::BinarySearchQueueModel,
+                                                      dunedaq::fdreadoutlibs::types::DAPHNEEthStreamTypeAdapter>();
 }
 BOOST_AUTO_TEST_CASE(SkipListLatencyBufferModel_DAPHNESuperChunk)
 {

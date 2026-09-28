@@ -18,20 +18,22 @@ namespace fdreadoutlibs {
 class CRTGrenobleFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<types::CRTGrenobleTypeAdapter>
 {
 public:
-    explicit CRTGrenobleFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool post_processing_enabled)
-    : datahandlinglibs::TaskRawDataProcessorModel<types::CRTGrenobleTypeAdapter>(error_registry, post_processing_enabled)
-    {}
+  explicit CRTGrenobleFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry,
+                                     bool post_processing_enabled)
+    : datahandlinglibs::TaskRawDataProcessorModel<types::CRTGrenobleTypeAdapter>(error_registry,
+                                                                                 post_processing_enabled)
+  {
+  }
 
-    void conf(const appmodel::DataHandlerModule* conf) override;
+  void conf(const appmodel::DataHandlerModule* conf) override;
 
 protected:
-    using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
+  using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
 
-    void timestamp_check(types::CRTGrenobleTypeAdapter* fp);
+  void timestamp_check(types::CRTGrenobleTypeAdapter* fp);
 };
 
 } // namespace fdreadoutlibs
 } // namespace dunedaq
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_CRT_CRTGRENOBLEFRAMEPROCESSOR_HPP_
-

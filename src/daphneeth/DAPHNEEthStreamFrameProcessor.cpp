@@ -6,8 +6,8 @@
  * Licensing/copyright details are in the COPYING file that you should have
  * received with this code.
  */
-#include "fddetdataformats/DAPHNEEthStreamFrame.hpp"
 #include "fdreadoutlibs/daphneeth/DAPHNEEthStreamFrameProcessor.hpp"
+#include "fddetdataformats/DAPHNEEthStreamFrame.hpp"
 
 #include <atomic>
 #include <functional>
@@ -20,7 +20,7 @@ using dunedaq::datahandlinglibs::logging::TLVL_FRAME_RECEIVED;
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-void 
+void
 DAPHNEEthStreamFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
   datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEEthStreamTypeAdapter>::add_preprocess_task(
@@ -32,28 +32,32 @@ DAPHNEEthStreamFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 /**
  * Pipeline Stage 1.: Check proper timestamp increments in DAPHNE frame
  * */
-void 
+void
 DAPHNEEthStreamFrameProcessor::timestamp_check(frameptr fp)
 {
-/* Let Source Emulator deal with this
-  // If EMU data, emulate perfectly incrementing timestamp
-  if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
-    uint64_t ts_next = m_previous_ts + 64; // NOLINT(build/unsigned)
-    auto df = reinterpret_cast<daphneframeptr>(((uint8_t*)fp));  // NOLINT
-    for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
-      //auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
-      df->set_timestamp(ts_next);
-      ts_next += 64;
-      df++;
+  /* Let Source Emulator deal with this
+    // If EMU data, emulate perfectly incrementing timestamp
+    if (inherited::m_emulator_mode) { // emulate perfectly incrementing timestamp
+      uint64_t ts_next = m_previous_ts + 64; // NOLINT(build/unsigned)
+      auto df = reinterpret_cast<daphneframeptr>(((uint8_t*)fp));  // NOLINT
+      for (unsigned int i = 0; i < fp->get_num_frames(); ++i) { // NOLINT(build/unsigned)
+        //auto wfh = const_cast<dunedaq::fddetdataformats::WIB2Header*>(wf->get_wib_header());
+        df->set_timestamp(ts_next);
+        ts_next += 64;
+        df++;
+      }
     }
-  }
-*/
+  */
   // Acquire timestamp
   m_current_ts = fp->get_timestamp();
   uint64_t k_clock_frequency = 62500000; // NOLINT(build/unsigned)
   uint16_t tick_difference = types::DAPHNEEthStreamTypeAdapter::expected_tick_difference;
   uint16_t frame_tick_difference = tick_difference * fp->get_num_frames();
-  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNEEthStream frame timestamp value of " << m_current_ts << " ticks (..." << std::fixed << std::setprecision(8) << (static_cast<double>(m_current_ts % (k_clock_frequency*1000)) / static_cast<double>(k_clock_frequency)) << " sec)"; // NOLINT
+  TLOG_DEBUG(TLVL_FRAME_RECEIVED) << "Received DAPHNEEthStream frame timestamp value of " << m_current_ts
+                                  << " ticks (..." << std::fixed << std::setprecision(8)
+                                  << (static_cast<double>(m_current_ts % (k_clock_frequency * 1000)) /
+                                      static_cast<double>(k_clock_frequency))
+                                  << " sec)"; // NOLINT
 
   // Check timestamp
   // RS warning : not fixed rate!
@@ -76,7 +80,7 @@ DAPHNEEthStreamFrameProcessor::timestamp_check(frameptr fp)
 /**
  * Pipeline Stage 2.: Check DAPHNE headers for error flags
  * */
-void 
+void
 DAPHNEEthStreamFrameProcessor::frame_error_check(frameptr /*fp*/)
 {
   // check error fields

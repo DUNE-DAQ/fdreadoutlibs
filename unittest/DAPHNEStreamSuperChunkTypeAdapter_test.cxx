@@ -19,13 +19,11 @@ BOOST_AUTO_TEST_SUITE(DAPHNEStreamSuperChunkTypeAdapter_test)
 BOOST_AUTO_TEST_CASE(Sizes)
 {
   DAPHNEStreamSuperChunkTypeAdapter blob_of_junk;
-  
-  BOOST_REQUIRE(blob_of_junk.end() - blob_of_junk.begin() \
-    == blob_of_junk.get_num_frames());
 
-  BOOST_REQUIRE(reinterpret_cast<uint8_t*>(blob_of_junk.end()) - \
-    reinterpret_cast<uint8_t*>(blob_of_junk.begin()) \
-    == blob_of_junk.get_payload_size());
+  BOOST_REQUIRE(blob_of_junk.end() - blob_of_junk.begin() == blob_of_junk.get_num_frames());
+
+  BOOST_REQUIRE(reinterpret_cast<uint8_t*>(blob_of_junk.end()) - reinterpret_cast<uint8_t*>(blob_of_junk.begin()) ==
+                blob_of_junk.get_payload_size());
 }
 
 BOOST_AUTO_TEST_CASE(Timestamps)
@@ -47,9 +45,8 @@ BOOST_AUTO_TEST_CASE(Timestamps)
 
   for (size_t i = 0; i < blob_of_junk.get_num_frames(); ++i) {
     const DAPHNEStreamSuperChunkTypeAdapter::FrameType* frame = blob_of_junk.begin() + i;
-    BOOST_REQUIRE(frame->get_timestamp() == timestamp + i*offset);
+    BOOST_REQUIRE(frame->get_timestamp() == timestamp + i * offset);
   }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

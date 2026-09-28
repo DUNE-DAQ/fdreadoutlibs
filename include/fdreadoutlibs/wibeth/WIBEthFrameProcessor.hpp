@@ -8,16 +8,16 @@
 #ifndef FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 #define FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_WIBEth_WIBFRAMEPROCESSOR_HPP_
 
-#include "fdreadoutlibs/TPCEthFrameProcessor.hpp"
 #include "fdreadoutlibs/DUNEWIBEthTypeAdapter.hpp"
+#include "fdreadoutlibs/TPCEthFrameProcessor.hpp"
 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
 class WIBEthFrameProcessor : public TPCEthFrameProcessor<types::DUNEWIBEthTypeAdapter>
 {
-  public:
-    using TPCEthFrameProcessor<types::DUNEWIBEthTypeAdapter>::TPCEthFrameProcessor;
+public:
+  using TPCEthFrameProcessor<types::DUNEWIBEthTypeAdapter>::TPCEthFrameProcessor;
 };
 
 } // namespace fdreadoutlibs

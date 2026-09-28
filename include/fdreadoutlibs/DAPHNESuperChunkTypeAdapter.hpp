@@ -6,10 +6,10 @@
 #include "fddetdataformats/DAPHNEFrame.hpp"
 
 #include <cstdint> // uint_t types
-#include <memory>  // unique_ptr
-#include <vector>
 #include <cstring> // memcpy
-#include <tuple> // forward_as_tuple
+#include <memory>  // unique_ptr
+#include <tuple>   // forward_as_tuple
+#include <vector>
 
 namespace dunedaq {
 namespace fdreadoutlibs {
@@ -33,7 +33,8 @@ struct DAPHNESuperChunkTypeAdapter
     auto thisptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&data);        // NOLINT
     auto otherptr = reinterpret_cast<const dunedaq::fddetdataformats::DAPHNEFrame*>(&other.data); // NOLINT
 
-    return std::forward_as_tuple(thisptr->get_timestamp(), thisptr->get_channel()) < std::forward_as_tuple(otherptr->get_timestamp(), otherptr->get_channel());
+    return std::forward_as_tuple(thisptr->get_timestamp(), thisptr->get_channel()) <
+           std::forward_as_tuple(otherptr->get_timestamp(), otherptr->get_channel());
   }
 
   uint64_t get_timestamp() const // NOLINT(build/unsigned)
@@ -51,23 +52,24 @@ struct DAPHNESuperChunkTypeAdapter
   {
     uint64_t ts_next = first_timestamp; // NOLINT(build/unsigned)
     for (unsigned int i = 0; i < get_num_frames(); ++i) {
-      auto df = reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * get_frame_size()); // NOLINT
+      auto df =
+        reinterpret_cast<dunedaq::fddetdataformats::DAPHNEFrame*>(((uint8_t*)(&data)) + i * get_frame_size()); // NOLINT
       df->set_timestamp(ts_next);
       ts_next += offset;
     }
   }
 
-  void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t link_id) {
-      for (unsigned int i = 0; i < get_num_frames(); ++i) {
-        auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
-	df->daq_header.slot_id = slot_id;
-        df->daq_header.link_id = link_id;
-        df->daq_header.crate_id = crate_id;
-      }
+  void fake_geoid(uint16_t crate_id, uint16_t slot_id, uint16_t link_id)
+  {
+    for (unsigned int i = 0; i < get_num_frames(); ++i) {
+      auto df = reinterpret_cast<FrameType*>((reinterpret_cast<uint8_t*>(&data)) + i * get_frame_size());
+      df->daq_header.slot_id = slot_id;
+      df->daq_header.link_id = link_id;
+      df->daq_header.crate_id = crate_id;
+    }
   }
 
-  void fake_adc_pattern(int /*channel*/) {
-  }
+  void fake_adc_pattern(int /*channel*/) {}
 
   void fake_frame_errors(std::vector<uint16_t>* /*fake_errors*/) // NOLINT
   {
@@ -90,14 +92,14 @@ struct DAPHNESuperChunkTypeAdapter
 
   size_t get_frame_size() const { return kDAPHNEFrameSize; }
 
-  static const constexpr daqdataformats::SourceID::Subsystem subsystem = daqdataformats::SourceID::Subsystem::kDetectorReadout;
+  static const constexpr daqdataformats::SourceID::Subsystem subsystem =
+    daqdataformats::SourceID::Subsystem::kDetectorReadout;
   static const constexpr daqdataformats::FragmentType fragment_type = daqdataformats::FragmentType::kDAPHNE;
   static const constexpr uint64_t expected_tick_difference = 1024; // NOLINT(build/unsigned)
 };
 
 static_assert(sizeof(struct DAPHNESuperChunkTypeAdapter) == kDAPHNESuperChunkSize,
               "Check your assumptions on DAPHNESuperChunkTypeAdapter");
-
 
 } // namespace types
 } // namespace fdreadoutlibs

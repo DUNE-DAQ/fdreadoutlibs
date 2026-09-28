@@ -32,8 +32,8 @@
 #include "logging/Logging.hpp"
 
 #include "tpglibs/TPGenerator.hpp"
-#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #include "trgdataformats/Types.hpp"
+#include "trigger/TriggerPrimitiveTypeAdapter.hpp"
 #ifdef TPGLIBS_ENABLE_STATE_MONITORING
 #include "fdreadoutlibs/tpg/TPGInternalStateHarvester.hpp"
 #endif
@@ -56,7 +56,7 @@
 namespace dunedaq {
 namespace fdreadoutlibs {
 
-template <class ReadoutTypeAdapter>
+template<class ReadoutTypeAdapter>
 class TPCEthFrameProcessor : public datahandlinglibs::TaskRawDataProcessorModel<ReadoutTypeAdapter>
 {
 
@@ -66,7 +66,8 @@ public:
   using constframeptr = const ReadoutTypeAdapter*;
   using tpcframeptr = ReadoutTypeAdapter::FrameType*;
 
-  explicit TPCEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry, bool processing_enabled);
+  explicit TPCEthFrameProcessor(std::unique_ptr<datahandlinglibs::FrameErrorRegistry>& error_registry,
+                                bool processing_enabled);
 
   void start(const appfwk::DAQModule::CommandData_t& args) override;
 
@@ -102,8 +103,15 @@ protected:
 #ifdef TPGLIBS_ENABLE_STATE_MONITORING
   void publish_processor_metric_to_opmon();
   void publish_processor_metric_to_opmon_with_aggregation();
-  std::map<int16_t, std::map<std::string, std::tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
-  calculate_all_metric_summaries_across_planes(const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>& metrics);
+  std::map<
+    int16_t,
+    std::map<
+      std::string,
+      std::
+        tuple<float, int16_t, int16_t, float, dunedaq::trgdataformats::channel_t, dunedaq::trgdataformats::channel_t>>>
+  calculate_all_metric_summaries_across_planes(
+    const std::unordered_map<dunedaq::trgdataformats::channel_t, std::vector<std::pair<std::string, int16_t>>>&
+      metrics);
 #endif
   /**
    * Pipeline Stage 1.: Check proper sequence id increments in DAQ Eth header
@@ -157,7 +165,9 @@ protected:
   std::vector<std::pair<std::string, nlohmann::json>> m_tpg_configs;
 
   std::unordered_map<unsigned int, std::vector<trigger::TriggerPrimitiveTypeAdapter>> m_plane_to_tpa_vector_map;
-  std::unordered_map<unsigned int, std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>>> m_plane_to_tp_sink_map;
+  std::unordered_map<unsigned int,
+                     std::shared_ptr<iomanager::SenderConcept<std::vector<trigger::TriggerPrimitiveTypeAdapter>>>>
+    m_plane_to_tp_sink_map;
 
   uint32_t m_tp_count_limit = 0;
   uint32_t m_frame_count_limit = 0;
@@ -174,12 +184,12 @@ protected:
   std::unordered_map<trgdataformats::channel_t, unsigned int> m_channel_plane_map;
 
   // OpMon related variables.
-  bool m_tpg_metric_collect_enabled{false};
-  uint32_t m_metric_collect_opmon_period { 128 };
+  bool m_tpg_metric_collect_enabled{ false };
+  uint32_t m_metric_collect_opmon_period{ 128 };
 
   std::map<uint, std::atomic<int>> m_tp_channel_rate_map;
 
-  std::atomic<uint64_t> m_num_new_tps{ 0 };  // NOLINT(build/unsigned)
+  std::atomic<uint64_t> m_num_new_tps{ 0 }; // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
 
@@ -188,9 +198,9 @@ protected:
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   // Source & Geo ID related variables.
-  uint32_t m_det_id; // NOLINT(build/unsigned)
-  uint32_t m_crate_id; // NOLINT(build/unsigned)
-  uint32_t m_slot_id;  // NOLINT(build/unsigned)
+  uint32_t m_det_id;    // NOLINT(build/unsigned)
+  uint32_t m_crate_id;  // NOLINT(build/unsigned)
+  uint32_t m_slot_id;   // NOLINT(build/unsigned)
   uint32_t m_stream_id; // NOLINT(build/unsigned)
 
   daqdataformats::SourceID m_sourceid;
