@@ -247,7 +247,7 @@ DAPHNEFrameProcessor::peak_to_tp(dunedaq::fddetdataformats::DAPHNEFrame& frame, 
                                                                                   frame.get_channel());
   tp.adc_integral = frame.peaks_data.get_adc_integral(i);
   tp.adc_peak = frame.peaks_data.get_adc_max(i);
-  tp.detid = dunedaq::trgdataformats::INVALID_DETID;
+  tp.detid = dunedaq::trgdataformats::TypeDefaults::s_invalid_detid;
   return tp;
 }
 
