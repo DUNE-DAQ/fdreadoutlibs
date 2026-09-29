@@ -18,9 +18,9 @@ namespace types {
 
 /**
  * @brief For DAPHNEEth the numbers are different.
- * 256 packed samples and headers = 520 bytes.
+ * 256 packed samples and compact headers = 512 bytes.
  * */
-const constexpr std::size_t kDAPHNEEthSize = 520;
+const constexpr std::size_t kDAPHNEEthSize = 512;
 
 struct DAPHNEEthTypeAdapter
 {
