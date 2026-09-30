@@ -80,6 +80,7 @@ daq_add_library(
 # Test Apps
 
 daq_add_application(tde_file_creator tde_file_creator.cxx TEST LINK_LIBRARIES fdreadoutlibs)
+daq_add_application(pds_descriptor_replay pds_descriptor_replay.cxx TEST LINK_LIBRARIES fdreadoutlibs CLI11::CLI11)
 
 ##############################################################################
 
