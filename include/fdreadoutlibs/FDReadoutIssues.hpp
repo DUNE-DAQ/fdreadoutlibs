@@ -63,6 +63,11 @@ ERS_DECLARE_ISSUE(fdreadoutlibs,
                   ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe) ((size_t)ipeak))
 
 ERS_DECLARE_ISSUE(fdreadoutlibs,
+                  PDSDescriptorFrameRejected,
+                  "Rejected DAPHNE descriptor frame at " << timestamp << ": " << reason,
+                  ((uint64_t)timestamp) ((std::string)reason))
+
+ERS_DECLARE_ISSUE(fdreadoutlibs,
                   PDSUnphysicalFrameTimestamp,
                   "PDS Frame with unphysical timestamp detected with ts=" << timestamp << ", ch=" << channel << ", sc_iframe=" << superchunk_iframe,
                   ((uint64_t)timestamp) ((uint64_t)channel) ((size_t)superchunk_iframe))

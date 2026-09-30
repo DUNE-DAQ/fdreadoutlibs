@@ -110,6 +110,7 @@ private:
   std::atomic<uint64_t> m_num_new_tps{ 0 };  // NOLINT(build/unsigned)
   std::atomic<uint64_t> m_tps_suppressed_too_long{ 0 };
   std::atomic<uint64_t> m_tps_send_failed{ 0 };
+  std::atomic<uint64_t> m_descriptor_frames_rejected{ 0 };
   std::atomic<uint64_t> m_frame_counter{ 0 };
 
   std::chrono::time_point<std::chrono::high_resolution_clock> m_t0;
@@ -121,4 +122,3 @@ private:
 } // namespace dunedaq
 
 #endif // FDREADOUTLIBS_INCLUDE_FDREADOUTLIBS_DAPHNEETH_DAPHNEETHFRAMEPROCESSOR_HPP_
-
