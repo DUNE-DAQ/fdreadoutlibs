@@ -18,6 +18,7 @@ find_package(detdataformats REQUIRED)
 find_package(fddetdataformats REQUIRED)
 find_package(tpglibs REQUIRED)
 find_package(trigger REQUIRED)
+find_package(triggeralgs REQUIRED)
 find_package(hdf5libs REQUIRED)
 find_package(appmodel REQUIRED)
 find_package(CLI11 REQUIRED)
@@ -45,6 +46,7 @@ set(FDREADOUTLIBS_DEPENDENCIES
   fddetdataformats::fddetdataformats
   tpglibs::tpglibs
   trigger::trigger
+  triggeralgs::triggeralgs
   appmodel::appmodel
   detchannelmaps::detchannelmaps
 )
@@ -86,6 +88,7 @@ daq_add_unit_test(FDTypeAdaptersBuffers_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(FDReadoutRequestHandlers_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(TPGInternalStateHarvester_test LINK_LIBRARIES fdreadoutlibs)
 daq_add_unit_test(PDSDescriptorToTP_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(PDSDescriptorPipeline_test LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
