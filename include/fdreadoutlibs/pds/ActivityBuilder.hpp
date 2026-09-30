@@ -133,5 +133,85 @@ private:
   std::deque<TP> m_inputs;
 };
 
+struct PromptConfig
+{
+  uint64_t prompt_ticks = 7; // ceil(0.1 us * 62.5 MHz), illustrative only.
+  uint64_t total_ticks = 625;
+  uint32_t ticks_per_sample = 1;
+};
+
+struct PromptLight
+{
+  uint64_t time_start = 0;
+  uint64_t time_end = 0; // Exclusive gate end, may precede the end of a crossing pulse.
+  uint64_t prompt_integral = 0;
+  uint64_t total_integral = 0;
+  uint64_t pulse_count = 0;
+  uint8_t detid = trgdataformats::INVALID_DETID;
+  std::optional<double> fraction() const
+  {
+    if (!total_integral) return std::nullopt;
+    return double(prompt_integral) / double(total_integral);
+  }
+};
+
+class PromptLightBuilder : private OrderedInput
+{
+public:
+  explicit PromptLightBuilder(PromptConfig config = {})
+    : OrderedInput(config.ticks_per_sample), m_config(config)
+  {
+    if (!config.prompt_ticks || config.prompt_ticks > config.total_ticks) {
+      throw std::invalid_argument("Require 0 < prompt gate <= total gate");
+    }
+  }
+
+  std::optional<PromptLight> push(const TP& tp)
+  {
+    validate(tp);
+    // Only a new gate needs a new end. A late TP in an existing gate can be
+    // valid even when adding a whole gate width to its timestamp would wrap.
+    if (!m_current || tp.time_start >= m_current->time_end) {
+      checked_add(tp.time_start, m_config.total_ticks);
+    }
+    // Complete previous gate before accepting the TP on its exclusive boundary.
+    auto completed = advance(tp.time_start);
+    if (!m_current) {
+      m_current = PromptLight{tp.time_start, checked_add(tp.time_start, m_config.total_ticks),
+                              0, 0, 0, static_cast<uint8_t>(tp.detid)};
+    }
+    if (m_current->total_integral > UINT64_MAX - tp.adc_integral || m_current->pulse_count == UINT64_MAX) {
+      throw std::overflow_error("PDS light accumulator overflow");
+    }
+    accept(tp);
+    m_current->total_integral += tp.adc_integral;
+    ++m_current->pulse_count;
+    if (tp.time_start - m_current->time_start < m_config.prompt_ticks) {
+      m_current->prompt_integral += tp.adc_integral;
+    }
+    return completed;
+  }
+
+  std::optional<PromptLight> advance(uint64_t timestamp)
+  {
+    watermark(timestamp);
+    if (!m_current || timestamp < m_current->time_end) return std::nullopt;
+    auto completed = m_current;
+    m_current.reset();
+    return completed;
+  }
+
+  // End-of-input asserts completeness through the actual pending gate end.
+  std::optional<PromptLight> finish()
+  {
+    if (!m_current) return std::nullopt;
+    return advance(m_current->time_end);
+  }
+
+private:
+  PromptConfig m_config;
+  std::optional<PromptLight> m_current;
+};
+
 } // namespace dunedaq::fdreadoutlibs::pds
 #endif
