@@ -1,0 +1,12 @@
+{
+  "evidence": "/nfs/home/marroyav/workareas/daq/daphne/pds-trigger-dev-20260930/checks/continuation-rate-paced/fresh.pcap",
+  "sample_udp_payload_lengths": {
+    "8": 8,
+    "8192": 989
+  },
+  "max_udp_payload_words": 1025,
+  "receiver_mtu": 9000,
+  "rx_ring_size": 4096,
+  "rx_burst_size": 2048,
+  "same_source_ip_uses_single_rx_queue": true
+}
