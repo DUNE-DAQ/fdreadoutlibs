@@ -11,7 +11,9 @@ Build and install directories are fresh. Python uses the release's shared venv
 (`dbt-create -q`); no local Python development packages were installed.
 
 Changes are confined to `fdreadoutlibs`, on branch
-`marroyav/pds-descriptor-trigger-scaffold`. No DAQ session or hardware was started.
+`marroyav/pds-descriptor-trigger-scaffold`. Initial scaffold validation did not
+start a DAQ session or hardware. Subsequent hardware checks are recorded in
+[the continuation test report](pds-continuation-check.md).
 
 ## Components
 
