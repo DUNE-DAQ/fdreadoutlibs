@@ -53,8 +53,9 @@ SOURCES
 }
 
 daphne_build_env "$@"
+daphne_build_result=$?
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    exit "$?"
+    exit "$daphne_build_result"
 else
-    return "$?"
+    return "$daphne_build_result"
 fi
