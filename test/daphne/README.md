@@ -1,5 +1,9 @@
 # DAPHNE scan checks
 
+From a clean CERN AlmaLinux 9 shell, run
+`source scripts/build_daphne_env.sh /path/to/new/workarea 8` to download the
+tested sources, build them, run their unit tests, and load the environment.
+
 `rate_producer.c` is the board-local paced MMIO producer used in the scans.
 Arguments are frequency in Hz and maximum writes; signals stop it cleanly and
 an alarm bounds execution to 120 seconds. It requires gateware `14f56c3`,
