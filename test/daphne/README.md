@@ -1,8 +1,14 @@
 # DAPHNE scan checks
 
-From a clean CERN AlmaLinux 9 shell, run
-`source scripts/build_daphne_env.sh /path/to/new/workarea 8` to download the
-tested sources, build them, run their unit tests, and load the environment.
+From a clean CERN AlmaLinux 9 shell, copy the recipe and configuration:
+
+```bash
+cp -R /nfs/home/marroyav/workareas/daq/daphne/recipe-14f56c3 "$HOME/daphne-recipe"
+source "$HOME/daphne-recipe/build_daphne_env.sh" "$HOME/daphne-test" 8
+```
+
+This downloads the tested sources, builds them, runs their unit tests, and loads
+the environment. The workarea directory must not already exist.
 
 `rate_producer.c` is the board-local paced MMIO producer used in the scans.
 Arguments are frequency in Hz and maximum writes; signals stop it cleanly and
