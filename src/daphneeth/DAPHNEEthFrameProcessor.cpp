@@ -13,6 +13,8 @@
 #include "fdreadoutlibs/pds/DescriptorToTP.hpp"
 
 #include "confmodel/GeoId.hpp"
+#include "confmodel/Queue.hpp"
+#include "appmodel/DataMoveCallbackConf.hpp"
 
 #include <atomic>
 #include <cstring>
@@ -31,9 +33,17 @@ DUNE_DAQ_TYPESTRING(std::vector<dunedaq::trigger::TriggerPrimitiveTypeAdapter>, 
 namespace dunedaq {
 namespace fdreadoutlibs {
 
+DAPHNEEthFrameProcessor::~DAPHNEEthFrameProcessor()
+{
+  pds::remove_descriptor_processor(m_descriptor_key, m_descriptor_processor);
+}
+
 void 
 DAPHNEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
 {
+  pds::remove_descriptor_processor(m_descriptor_key, m_descriptor_processor);
+  m_descriptor_processor.reset();
+  bool separate_descriptors = false;
   m_tp_sink.reset();
   m_channel_map.reset();
   m_channel_mask_set.clear();
@@ -61,6 +71,7 @@ DAPHNEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
       TLOG()<< "PDS RawDataProcessor does not exist.";
     } else { 
       m_def_adc_intg_thresh = proc_conf-> get_default_adc_intg_thresh();
+      separate_descriptors = proc_conf->get_separate_descriptor_processing();
       
       auto geo_id = conf->get_geo_id();
       if (geo_id != nullptr) {
@@ -82,11 +93,45 @@ DAPHNEEthFrameProcessor::conf(const appmodel::DataHandlerModule* conf)
   if (m_post_processing_enabled && (!m_tp_sink || !m_channel_map)) {
     throw std::runtime_error("DAPHNE descriptor TPG requires a PDS channel map and TriggerPrimitiveVector output");
   }
+  if (m_post_processing_enabled && separate_descriptors) {
+    for (auto output : conf->get_outputs()) {
+      if (output->get_data_type() != "TriggerPrimitiveVector") continue;
+      auto queue = output->cast<confmodel::Queue>();
+      if (!queue || queue->get_queue_type() != confmodel::Queue::Queue_type::KFollyMPMCQueue) {
+        throw std::runtime_error("Separate descriptor processing requires a kFollyMPMCQueue TP output");
+      }
+    }
+    if (!conf->get_raw_data_callback()) {
+      throw std::runtime_error("Separate descriptor processing requires a raw callback");
+    }
+  }
   TLOG() << "Calling parent conf.";
   inherited::conf(conf);
   // Register only after configuration succeeds, so a failed attempt leaves no callbacks.
   inherited::add_preprocess_task(std::bind(&DAPHNEEthFrameProcessor::timestamp_check, this, std::placeholders::_1));
-  if (m_post_processing_enabled) {
+  if (m_post_processing_enabled && separate_descriptors) {
+    auto raw_callback = conf->get_raw_data_callback();
+    m_descriptor_key = raw_callback->UID();
+    auto map = m_channel_map;
+    auto sink = m_tp_sink;
+    m_descriptor_processor = std::make_shared<pds::DescriptorProcessor>(
+      [map](const pds::Frame& input) {
+        return map->get_offline_channel_from_det_crate_slot_stream_chan(
+          input.daq_header.det_id, input.daq_header.crate_id, input.daq_header.slot_id,
+          input.daq_header.stream_id, input.get_channel());
+      }, m_channel_mask_set, m_def_adc_intg_thresh,
+      [sink](std::vector<pds::TP>&& primitives) {
+        std::vector<trigger::TriggerPrimitiveTypeAdapter> output;
+        output.reserve(primitives.size());
+        for (const auto& tp : primitives) {
+          trigger::TriggerPrimitiveTypeAdapter adapter;
+          adapter.tp = tp;
+          output.push_back(adapter);
+        }
+        return sink->try_send(std::move(output), iomanager::Sender::s_no_block);
+      });
+    pds::register_descriptor_processor(m_descriptor_key, m_descriptor_processor);
+  } else if (m_post_processing_enabled) {
     // Pre-process because SkipList latency buffers do not support this post-processing path.
     inherited::add_preprocess_task(std::bind(&DAPHNEEthFrameProcessor::extract_tps, this, std::placeholders::_1));
   }
@@ -106,6 +151,10 @@ void DAPHNEEthFrameProcessor::start(const appfwk::DAQModule::CommandData_t& args
   m_tps_send_failed.exchange(0);
   m_descriptor_frames_rejected.exchange(0);
 
+  if (m_descriptor_processor) {
+    auto& c = m_descriptor_processor->counters;
+    c.frames = 0; c.overflow = 0; c.malformed = 0; c.sent = 0; c.send_failed = 0;
+  }
   inherited::start(args);
 }
 void
@@ -209,9 +258,9 @@ DAPHNEEthFrameProcessor::generate_opmon_data() {
   //right now, just fill some basic tp info...
   if (m_post_processing_enabled) {
     auto now = std::chrono::high_resolution_clock::now();
-    int num_new_tps = m_num_new_tps.exchange(0);
+    uint64_t num_new_tps = m_descriptor_processor ? m_descriptor_processor->counters.sent.exchange(0) : m_num_new_tps.exchange(0);
     int num_new_tps_suppressed_too_long = 0; // not relevant for PDS TPs
-    int num_new_tps_send_failed = m_tps_send_failed.exchange(0);
+    uint64_t num_new_tps_send_failed = m_descriptor_processor ? m_descriptor_processor->counters.send_failed.exchange(0) : m_tps_send_failed.exchange(0);
     const auto rejected_frames = m_descriptor_frames_rejected.exchange(0);
     double seconds = std::chrono::duration_cast<std::chrono::microseconds>(now - m_t0).count() / 1000000.;
     TLOG_DEBUG(TLVL_BOOKKEEPING) << "TP rate: " << std::to_string(num_new_tps / seconds / 1000.) << " [kHz]";

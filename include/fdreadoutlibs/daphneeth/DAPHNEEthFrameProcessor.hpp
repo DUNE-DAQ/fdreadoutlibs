@@ -24,6 +24,7 @@
 #include "fddetdataformats/DAPHNEEthFrame.hpp"
 #include "trgdataformats/TriggerPrimitive.hpp"
 #include "fdreadoutlibs/DAPHNEEthTypeAdapter.hpp"
+#include "fdreadoutlibs/pds/DescriptorProcessor.hpp"
 
 #include "appmodel/TPCRawDataProcessor.hpp"
 #include "appmodel/PDSRawDataProcessor.hpp"
@@ -60,6 +61,8 @@ public:
     : datahandlinglibs::TaskRawDataProcessorModel<types::DAPHNEEthTypeAdapter>(error_registry, post_processing_enabled)
   {}
 
+  ~DAPHNEEthFrameProcessor() override;
+
   // Override config for pipeline setup
   void conf(const appmodel::DataHandlerModule* conf) override;
 
@@ -90,6 +93,9 @@ protected:
   void extract_tps( constframeptr fp);
   
 private:
+
+  std::shared_ptr<pds::DescriptorProcessor> m_descriptor_processor;
+  std::string m_descriptor_key;
 
   //PDSChannelMap
   std::shared_ptr<detchannelmaps::PDSChannelMap> m_channel_map;
