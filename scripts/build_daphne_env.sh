@@ -9,7 +9,7 @@ daphne_build_env() {
     local target="${1:-$PWD/daphne-fddaq-v5.6.2}" jobs="${2:-8}"
     local repo commit extra
     local dbt_root=/cvmfs/dunedaq.opensciencegrid.org/tools/dbt/v8.14.0
-    local configuration=/nfs/sw/marroyav/daphne-14f56c3/config-30462f7
+    local configuration=/nfs/home/marroyav/workareas/daq/daphne/recipe-14f56c3/config/tp-live-10ms-10Hz
     if [[ "$target" == --help || "$target" == -h ]]; then
         printf 'source build_daphne_env.sh /path/to/new/workarea [jobs]\n'
         return 0
