@@ -9,6 +9,7 @@ daphne_build_env() {
     local target="${1:-$PWD/daphne-fddaq-v5.6.2}" jobs="${2:-8}"
     local repo commit extra
     local dbt_root=/cvmfs/dunedaq.opensciencegrid.org/tools/dbt/v8.14.0
+    local configuration=/nfs/sw/marroyav/daphne-14f56c3/config-30462f7
     if [[ "$target" == --help || "$target" == -h ]]; then
         printf 'source build_daphne_env.sh /path/to/new/workarea [jobs]\n'
         return 0
@@ -20,6 +21,7 @@ daphne_build_env() {
     [[ "$jobs" =~ ^[1-9][0-9]*$ ]] || return 1
     [[ ! -e "$target" ]] || { printf 'Target already exists: %s\n' "$target" >&2; return 1; }
     [[ -r "$dbt_root/env.sh" ]] || { printf 'CVMFS DBT v8.14.0 is required.\n' >&2; return 1; }
+    [[ -r "$configuration/sessions/pds-vst-session.data.xml" ]] || { printf 'Shared test configuration is unavailable: %s\n' "$configuration" >&2; return 1; }
     command -v git >/dev/null || return 1
     source "$dbt_root/env.sh" || return
     dbt-create -b stable fddaq-v5.6.2-a9-1 "$target" || return
@@ -40,10 +42,13 @@ fdreadoutmodules 398b621c7c448308cc82187045a43cf7a4d9546d
 hermesmodules d7de1de6627dff097f282d4753508b588dad10a9
 rawdatautils ab30656d57dda8daa198de3db1e44b35135a706f
 SOURCES
+    mkdir -p config || return
+    cp -R "$configuration" config/tp-live-10ms-10Hz || return
     source env.sh || return
     dbt-build -j "$jobs" || return
     ctest --test-dir build/fdreadoutlibs --output-on-failure --no-tests=error || return
     ctest --test-dir build/dpdklibs --output-on-failure --no-tests=error || return
+    source config/tp-live-10ms-10Hz/setup_db_path.sh || return
     printf 'DAPHNE environment built and loaded: %s\n' "$PWD"
 }
 
