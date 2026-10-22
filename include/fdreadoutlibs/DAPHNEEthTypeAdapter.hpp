@@ -16,10 +16,9 @@ namespace fdreadoutlibs {
 namespace types {
 
 /**
- * @brief For DAPHNEEth the numbers are different.
- * Header + (64 channels * 64 time slices) = 233[Bytes]
+ * @brief One complete DAPHNE Ethernet frame, including compact peak descriptors.
  * */
-const constexpr std::size_t kDAPHNEEthSize = 1864;
+const constexpr std::size_t kDAPHNEEthSize = sizeof(fddetdataformats::DAPHNEEthFrame);
 
 struct DAPHNEEthTypeAdapter
 {

@@ -11,6 +11,9 @@ find_package(appfwk REQUIRED)
 find_package(logging REQUIRED)
 find_package(opmonlib REQUIRED)
 find_package(datahandlinglibs REQUIRED)
+if(datahandlinglibs_VERSION VERSION_LESS 3.2.4)
+  message(FATAL_ERROR "PDS post-insertion TPG requires datahandlinglibs >= 3.2.4 (SkipList insertion fix)")
+endif()
 find_package(daqdataformats REQUIRED)
 find_package(detchannelmaps REQUIRED)
 find_package(trgdataformats REQUIRED)
@@ -78,6 +81,12 @@ daq_add_unit_test(FDReadoutRequestHandlers_test LINK_LIBRARIES fdreadoutlibs)
 if(TPGLIBS_ENABLE_STATE_MONITORING)
   daq_add_unit_test(TPGInternalStateHarvester_test LINK_LIBRARIES fdreadoutlibs)
 endif()
+
+daq_add_unit_test(PDSDescriptorToTP_test LINK_LIBRARIES fdreadoutlibs)
+
+daq_add_unit_test(PDSPostInsertion_test LINK_LIBRARIES fdreadoutlibs)
+
+daq_add_application(pds_validate_config pds_validate_config.cxx TEST LINK_LIBRARIES fdreadoutlibs)
 
 ##############################################################################
 # Installation
