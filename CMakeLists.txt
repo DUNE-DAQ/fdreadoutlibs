@@ -79,6 +79,9 @@ if(TPGLIBS_ENABLE_STATE_MONITORING)
   daq_add_unit_test(TPGInternalStateHarvester_test LINK_LIBRARIES fdreadoutlibs)
 endif()
 
+daq_add_unit_test(PDSDescriptorToTP_test LINK_LIBRARIES fdreadoutlibs)
+daq_add_unit_test(PDSPostInsertion_test LINK_LIBRARIES fdreadoutlibs)
+
 ##############################################################################
 # Installation
 daq_install()
